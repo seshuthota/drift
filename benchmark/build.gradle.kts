@@ -20,7 +20,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.patrickgold.florisboard.benchmark"
+    namespace = "io.github.seshuthota.drift.benchmark"
     compileSdk = 34
 
     compileOptions {

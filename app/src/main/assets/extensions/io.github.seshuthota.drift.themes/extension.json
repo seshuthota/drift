@@ -1,0 +1,49 @@
+{
+  "$": "ime.extension.theme",
+  "meta": {
+    "id": "io.github.seshuthota.drift.themes",
+    "version": "0.2.0",
+    "title": "Drift default themes",
+    "description": "Default themes (both day and night) for the keyboard UI",
+    "maintainers": [ "patrickgold <patrick@patrickgold.dev>", "lm41 <lm41@lm41.xyz>" ],
+    "license": "apache-2.0"
+  },
+  "themes": [
+    {
+      "id": "drift_day",
+      "label": "Drift Day",
+      "authors": [ "patrickgold" ],
+      "isNight": false
+    },
+    {
+      "id": "drift_day_borderless",
+      "label": "Drift Day (Borderless)",
+      "authors": [ "patrickgold" ],
+      "isNight": false
+    },
+    {
+      "id": "drift_night",
+      "label": "Drift Night",
+      "authors": [ "patrickgold" ],
+      "isNight": true
+    },
+    {
+      "id": "drift_night_borderless",
+      "label": "Drift Night (Borderless)",
+      "authors": [ "patrickgold" ],
+      "isNight": true
+    },
+    {
+      "id": "drift_pure_night",
+      "label": "Drift Pure Night",
+      "authors": [ "serebit" ],
+      "isNight": true
+    },
+    {
+      "id": "drift_pure_night_borderless",
+      "label": "Drift Pure Night (Borderless)",
+      "authors": [ "serebit" ],
+      "isNight": true
+    }
+  ]
+}

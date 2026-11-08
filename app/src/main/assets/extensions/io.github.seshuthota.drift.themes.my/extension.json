@@ -1,0 +1,49 @@
+{
+  "$": "ime.extension.theme",
+  "meta": {
+    "id": "io.github.seshuthota.drift.themes.my",
+    "version": "0.2.0",
+    "title": "Drift default themes (Material You)",
+    "description": "Default Material You themes (both day and night) for the keyboard UI",
+    "maintainers": [ "patrickgold <patrick@patrickgold.dev>", "lm41 <lm41@lm41.xyz>" ],
+    "license": "apache-2.0"
+  },
+  "themes": [
+    {
+      "id": "drift_day_my",
+      "label": "Drift Day (Material You)",
+      "authors": [ "lm41" ],
+      "isNight": false
+    },
+    {
+      "id": "drift_day_my_borderless",
+      "label": "Drift Day Borderless (Material You)",
+      "authors": [ "lm41" ],
+      "isNight": false
+    },
+    {
+      "id": "drift_night_my",
+      "label": "Drift Night (Material You)",
+      "authors": [ "lm41" ],
+      "isNight": true
+    },
+    {
+      "id": "drift_night_my_borderless",
+      "label": "Drift Night Borderless (Material You)",
+      "authors": [ "lm41" ],
+      "isNight": true
+    },
+    {
+      "id": "drift_pure_night_my",
+      "label": "Drift Pure Night (Material You)",
+      "authors": [ "lm41" ],
+      "isNight": true
+    },
+    {
+      "id": "drift_pure_night_my_borderless",
+      "label": "Drift Pure Night Borderless (Material You)",
+      "authors": [ "lm41" ],
+      "isNight": true
+    }
+  ]
+}

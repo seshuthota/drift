@@ -26,6 +26,7 @@ ksp = "2.3.11"
 material-kolor = "4.1.1"
 mikepenz-aboutlibraries = "15.2.0"
 okio = "3.18.2"
+onnxruntime = "1.22.0"
 patrickgold-compose-tooltip = "0.2.0-rc02"
 patrickgold-jetpref = "0.5.0-beta01"
 
@@ -77,6 +78,7 @@ material-kolor = { module = "com.materialkolor:material-kolor", version.ref = "m
 mikepenz-aboutlibraries-core = { module = "com.mikepenz:aboutlibraries-core", version.ref = "mikepenz-aboutlibraries" }
 mikepenz-aboutlibraries-compose = { module = "com.mikepenz:aboutlibraries-compose-m3", version.ref = "mikepenz-aboutlibraries" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
+onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android", version.ref = "onnxruntime" }
 patrickgold-compose-tooltip = { module = "dev.patrickgold.compose.tooltip:tooltip", version.ref = "patrickgold-compose-tooltip" }
 patrickgold-jetpref-datastore-model = { module = "dev.patrickgold.jetpref:jetpref-datastore-model", version.ref = "patrickgold-jetpref" }
 patrickgold-jetpref-datastore-model-processor = { module = "dev.patrickgold.jetpref:jetpref-datastore-model-processor", version.ref = "patrickgold-jetpref" }

@@ -1,0 +1,777 @@
+{
+  "$": "ime.extension.keyboard",
+  "meta": {
+    "id": "io.github.seshuthota.drift.localization",
+    "version": "0.2.0",
+    "title": "Default subtype presets / popup mappings",
+    "description": "Default subtype presets and popup mappings which are always available.",
+    "maintainers": [ "patrickgold <patrick@patrickgold.dev>" ],
+    "license": "apache-2.0"
+  },
+  "dependencies": [
+    "io.github.seshuthota.drift.composers",
+    "io.github.seshuthota.drift.currencysets",
+    "io.github.seshuthota.drift.layouts"
+  ],
+  "punctuationRules": [
+    {
+      "id": "default",
+      "label": "Default",
+      "symbolsPrecedingAutoSpace": ".,?‽!\"&%)]}»",
+      "symbolsFollowingAutoSpace": "",
+      "symbolsPrecedingPhantomSpace": ".,;:?‽!&%)]}»©®™",
+      "symbolsFollowingPhantomSpace": "¿⸘¡([{",
+      "symbolsTerminatingSentence": ".?‽!"
+    }
+  ],
+  "popupMappings": [
+    { "id": "default", "authors": [ "patrickgold" ] },
+    { "id": "ar", "authors": [ "HeiWiper" ] },
+    { "id": "ast", "authors": [ "Softastur" ] },
+    { "id": "bg", "authors": [ "iorvethe" ] },
+    { "id": "bn-unijoy", "authors": [ "RHJihan" ] },
+    { "id": "ca", "authors": [ "mikelloc" ] },
+    { "id": "cjk", "authors": [ "moonbeamcelery" ] },
+    { "id": "ckb", "authors": [ "GoRaN" ] },
+    { "id": "cs", "authors": [ "stefan-misik" ] },
+    { "id": "da", "authors": [ "patrickgold" ] },
+    { "id": "de", "authors": [ "patrickgold" ] },
+    { "id": "de-DE-neobone", "authors": [ "ostrya" ] },
+    { "id": "el", "authors": [ "tsiflimagas" ] },
+    { "id": "en", "authors": [ "patrickgold" ] },
+    { "id": "eo", "authors": [ "jeremiah-miller" ] },
+    { "id": "es", "authors": [ "patrickgold" ] },
+    { "id": "et", "authors": [ "OneSheepy" ] },
+    { "id": "fa", "authors": [ "PHELAT" ] },
+    { "id": "fa2", "authors": [ "M-Koushan" ] },
+    { "id": "fa3", "authors": [ "SaeID-Rz" ] },
+    { "id": "fi", "authors": [ "patrickgold" ] },
+    { "id": "fo", "authors": [ "BinFlush" ] },
+    { "id": "fr", "authors": [ "patrickgold" ] },
+    { "id": "hi-IN", "authors": [ "npnpatidar" ] },
+    { "id": "hr", "authors": [ "hedidnothingwrong" ] },
+    { "id": "hu", "authors": [ "zoli111, gabik65" ] },
+    { "id": "hy", "authors": [ "PJTSearch" ] },
+    { "id": "id", "authors": [ "Linerly" ] },
+    { "id": "is", "authors": [ "patrickgold" ] },
+    { "id": "it", "authors": [ "patrickgold" ] },
+    { "id": "iw", "authors": [ "Antony" ] },
+    { "id": "ja-JP-jis", "authors": [ "waelwindows" ] },
+    { "id": "ka-std", "authors": [ "nE" ] },
+    { "id": "kab", "authors": [ "yanis867" ] },
+    { "id": "ko", "authors": [ "patrickgold", "Hayleia" ] },
+    { "id": "ko-KR", "authors": [ "Shunnuo" ] },
+    { "id": "ku", "authors": [ "GoRaN" ] },
+    { "id": "lt", "authors": [ "patrickgold" ] },
+    { "id": "lv", "authors": [ "patrickgold", "eandersons" ] },
+    { "id": "nb", "authors": [ "patrickgold" ] },
+    { "id": "nn", "authors": [ "patrickgold" ] },
+    { "id": "pl", "authors": [ "Mikołaj Biel" ] },
+    { "id": "pt", "authors": [ "patrickgold" ] },
+    { "id": "pt-BR", "authors": [ "rickym7" ] },
+    { "id": "ro", "authors": [ "bertin0" ] },
+    { "id": "ru", "authors": [ "williamtheaker", "33kk" ] },
+    { "id": "rue", "authors": [ "svvvst" ] },
+    { "id": "sk", "authors": [ "stefan-misik", "majso" ] },
+    { "id": "sr", "authors": [ "hedidnothingwrong", "GrbavaCigla" ] },
+    { "id": "sv", "authors": [ "patrickgold" ] },
+    { "id": "tr", "authors": [ "kisekinopureya", "patrickgold", "dvrnynr" ] },
+    { "id": "udm", "authors": [ "vorgoron" ] },
+    { "id": "uk", "authors": [ "williamtheaker", "33kk", "honsiorovskyi" ] },
+    { "id": "uk-cyr-ext", "authors": [ "williamtheaker", "33kk", "honsiorovskyi" ] },
+    { "id": "ur-PK", "authors": [ "mubashir-rehman", "mirfatif" ] },
+    { "id": "vi-VN", "authors": [ "patrickgold", "Hayleia" ] }
+  ],
+  "subtypePresets": [
+    {
+      "languageTag": "en-US",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:en",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwerty"
+      }
+    },
+    {
+      "languageTag": "en-UK",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:pound",
+      "popupMapping": "io.github.seshuthota.drift.localization:en",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwerty"
+      }
+    },
+    {
+      "languageTag": "en-CA",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:en",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwerty"
+      }
+    },
+    {
+      "languageTag": "en-AU",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:en",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwerty"
+      }
+    },
+    {
+      "languageTag": "de-DE",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:de",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwertz"
+      }
+    },
+    {
+      "languageTag": "de-AT",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:de",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwertz"
+      }
+    },
+    {
+      "languageTag": "de-CH",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:de",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:swiss_german"
+      }
+    },
+    {
+      "languageTag": "de-DE-neobone",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:de-DE-neobone",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:neo2",
+        "symbols": "io.github.seshuthota.drift.layouts:neo2",
+        "numericRow": "io.github.seshuthota.drift.layouts:neo2"
+      }
+    },
+    {
+      "languageTag": "fr-FR",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:fr",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:azerty"
+      }
+    },
+    {
+      "languageTag": "fr-CA",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:fr",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:canadian_french"
+      }
+    },
+    {
+      "languageTag": "fr-CH",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:fr",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:swiss_french"
+      }
+    },
+    {
+      "languageTag": "it-IT",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:it",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwerty"
+      }
+    },
+    {
+      "languageTag": "it-CH",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:it",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:swiss_italian"
+      }
+    },
+    {
+      "languageTag": "es-ES",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:es",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:spanish"
+      }
+    },
+    {
+      "languageTag": "es-US",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:es",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:spanish"
+      }
+    },
+    {
+      "languageTag": "es-419",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:es",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:spanish"
+      }
+    },
+    {
+      "languageTag": "pt-PT",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:pt",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwerty"
+      }
+    },
+    {
+      "languageTag": "pt-BR",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:pt-BR",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwerty"
+      }
+    },
+    {
+      "languageTag": "nb-NO",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:nb",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:norwegian"
+      }
+    },
+    {
+      "languageTag": "nn-NO",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:nn",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:norwegian"
+      }
+    },
+    {
+      "languageTag": "sv-SE",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:sv",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:swedish_finnish"
+      }
+    },
+    {
+      "languageTag": "fi-FI",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:fi",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:swedish_finnish"
+      }
+    },
+    {
+      "languageTag": "da-DK",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:da",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:danish"
+      }
+    },
+    {
+      "languageTag": "id",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:id",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwerty"
+      }
+    },
+    {
+      "languageTag": "is-IS",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:is",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:icelandic"
+      }
+    },
+    {
+      "languageTag": "fo",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:fo",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:faroese"
+      }
+    },
+    {
+      "languageTag": "fa-FA",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:rial",
+      "popupMapping": "io.github.seshuthota.drift.localization:fa",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:persian",
+        "symbols": "io.github.seshuthota.drift.layouts:persian",
+        "symbols2": "io.github.seshuthota.drift.layouts:persian",
+        "numericRow": "io.github.seshuthota.drift.layouts:persian"
+      }
+    },
+    {
+      "languageTag": "fa-FA",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:rial",
+      "popupMapping": "io.github.seshuthota.drift.localization:fa2",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:persian2",
+        "symbols": "io.github.seshuthota.drift.layouts:persian",
+        "symbols2": "io.github.seshuthota.drift.layouts:persian",
+        "numericRow": "io.github.seshuthota.drift.layouts:persian"
+      }
+    },
+    {
+      "languageTag": "fa-FA",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:rial",
+      "popupMapping": "io.github.seshuthota.drift.localization:fa3",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:persian3",
+        "symbols": "io.github.seshuthota.drift.layouts:persian",
+        "symbols2": "io.github.seshuthota.drift.layouts:persian",
+        "numericRow": "io.github.seshuthota.drift.layouts:western_arabic"
+      }
+    },
+    {
+      "languageTag": "ar",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:rial",
+      "popupMapping": "io.github.seshuthota.drift.localization:ar",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:arabic",
+        "symbols": "io.github.seshuthota.drift.layouts:eastern",
+        "symbols2": "io.github.seshuthota.drift.layouts:eastern",
+        "numericRow": "io.github.seshuthota.drift.layouts:eastern_arabic"
+      }
+    },
+    {
+      "languageTag": "az",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:azerbaijani_manat",
+      "popupMapping": "io.github.seshuthota.drift.localization:tr",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:azerbaijani"
+      }
+    },
+    {
+      "languageTag": "hu",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:hu",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:hungarian"
+      }
+    },
+    {
+      "languageTag": "eo",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:eo",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:esperanto"
+      }
+    },
+    {
+      "languageTag": "hr",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:hr",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwertz"
+      }
+    },
+    {
+      "languageTag": "hy",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:armenian_dram",
+      "popupMapping": "io.github.seshuthota.drift.localization:hy",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:armenian_alt_phonetic",
+        "symbols": "io.github.seshuthota.drift.layouts:armenian"
+      }
+    },
+    {
+      "languageTag": "hy",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:armenian_dram",
+      "popupMapping": "io.github.seshuthota.drift.localization:hy",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:western_armenian",
+        "symbols": "io.github.seshuthota.drift.layouts:armenian"
+      }
+    },
+    {
+      "languageTag": "hy",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:armenian_dram",
+      "popupMapping": "io.github.seshuthota.drift.localization:hy",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:eastern_armenian",
+        "symbols": "io.github.seshuthota.drift.layouts:armenian"
+      }
+    },
+    {
+      "languageTag": "ka-GE",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:georgian_lari",
+      "popupMapping": "io.github.seshuthota.drift.localization:ka-std",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:georgian_standard"
+      }
+    },
+    {
+      "languageTag": "ru",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:russian_ruble",
+      "popupMapping": "io.github.seshuthota.drift.localization:ru",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:jcuken_russian"
+      }
+    },
+    {
+      "languageTag": "rue",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:rue",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:rusyn"
+      }
+    },
+    {
+      "languageTag": "uk",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:ukrainian_hryvnia",
+      "popupMapping": "io.github.seshuthota.drift.localization:uk",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:jcuken_ukrainian"
+      }
+    },
+    {
+      "languageTag": "el",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:el",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:greek"
+      }
+    },
+    {
+      "languageTag": "ro",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:ro",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwerty"
+      }
+    },
+    {
+      "languageTag": "pl",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:pl",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwerty"
+      }
+    },
+    {
+      "languageTag": "bg-bg",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:bg",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:bulgarian_phonetic"
+      }
+    },
+    {
+      "languageTag": "tr",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:turkish_lira",
+      "popupMapping": "io.github.seshuthota.drift.localization:tr",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwerty"
+      }
+    },
+    {
+      "languageTag": "iw-IL",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:israeli_new_shekel",
+      "popupMapping": "io.github.seshuthota.drift.localization:iw",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:hebrew"
+      }
+    },
+    {
+      "languageTag": "ckb",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:ckb",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:kurdish",
+        "symbols": "io.github.seshuthota.drift.layouts:eastern",
+        "symbols2": "io.github.seshuthota.drift.layouts:eastern",
+        "numericRow": "io.github.seshuthota.drift.layouts:eastern_arabic"
+      }
+    },
+    {
+      "languageTag": "sr-RS",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:sr",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:serbian_cyrillic"
+      }
+    },
+    {
+      "languageTag": "sl-SI",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:sl-SI",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:slovenian"
+      }
+    },
+    {
+      "languageTag": "lv-LV",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:lv",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwerty"
+      }
+    },
+    {
+      "languageTag": "ku",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "popupMapping": "io.github.seshuthota.drift.localization:ku",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:kurdish_kurmanci"
+      }
+    },
+    {
+      "languageTag": "ca",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:ca",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:catalan"
+      }
+    },
+    {
+      "languageTag": "IPA-IPA",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:dollar",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:ipa",
+        "symbols": "io.github.seshuthota.drift.layouts:ipa",
+        "symbols2": "io.github.seshuthota.drift.layouts:ipa"
+      }
+    },
+    {
+      "languageTag": "sk",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:sk",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwertz"
+      }
+    },
+    {
+      "languageTag": "cs",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:cs",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwertz"
+      }
+    },
+    {
+      "languageTag": "ko",
+      "composer": "io.github.seshuthota.drift.composers:hangul-unicode",
+      "currencySet": "io.github.seshuthota.drift.currencysets:south_korean_won",
+      "popupMapping": "io.github.seshuthota.drift.localization:ko",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:korean"
+      }
+    },
+    {
+      "languageTag": "ko-KR",
+      "composer": "io.github.seshuthota.drift.composers:hangul-unicode",
+      "currencySet": "io.github.seshuthota.drift.currencysets:south_korean_won",
+      "popupMapping": "io.github.seshuthota.drift.localization:ko",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:korean_phonetic"
+      }
+    },
+    {
+      "languageTag": "lt-LT",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:lt",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwerty"
+      }
+    },
+    {
+      "languageTag": "ja-JP-jis",
+      "composer": "io.github.seshuthota.drift.composers:kana-unicode",
+      "currencySet": "io.github.seshuthota.drift.currencysets:yen",
+      "popupMapping": "io.github.seshuthota.drift.localization:ja-JP-jis",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:jis",
+        "symbols": "io.github.seshuthota.drift.layouts:cjk",
+        "symbols2": "io.github.seshuthota.drift.layouts:cjk",
+        "numericRow": "io.github.seshuthota.drift.layouts:cjk"
+      }
+    },
+    {
+      "languageTag": "th-kd",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:thai_baht",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:thai_kedmanee",
+        "numericRow": "io.github.seshuthota.drift.layouts:thai"
+      }
+    },
+    {
+      "languageTag": "vi-VN",
+      "composer": "io.github.seshuthota.drift.composers:telex",
+      "currencySet": "io.github.seshuthota.drift.currencysets:vietnamese_dong",
+      "popupMapping": "io.github.seshuthota.drift.localization:vi-VN",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwerty"
+      }
+    },
+    {
+      "languageTag": "ig-NG",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:nigerian_naira",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:igbo"
+      }
+    },
+    {
+      "languageTag": "hoc",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:indian_rupee",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:warang_citi",
+        "numericRow": "io.github.seshuthota.drift.layouts:warang_citi"
+      }
+    },
+    {
+      "languageTag": "udm",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:russian_ruble",
+      "popupMapping": "io.github.seshuthota.drift.localization:udm",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:udmurt_extended"
+      }
+    },
+    {
+      "languageTag": "ur-PK",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:pakistani_rupee",
+      "popupMapping": "io.github.seshuthota.drift.localization:ur-PK",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:urdu_phonetic"
+      }
+    },
+    {
+      "languageTag": "zh-CN-zhengma",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "nlpProviders": {
+        "spelling": "io.github.seshuthota.drift.nlp.providers.han.shape",
+        "suggestion": "io.github.seshuthota.drift.nlp.providers.han.shape"
+      },
+      "currencySet": "io.github.seshuthota.drift.currencysets:yen",
+      "popupMapping": "io.github.seshuthota.drift.localization:cjk",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwerty",
+        "symbols": "io.github.seshuthota.drift.layouts:cjk",
+        "symbols2": "io.github.seshuthota.drift.layouts:cjk"
+      }
+    },
+	  {
+      "languageTag": "bn-BD",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:bangladeshi_taka",
+      "popupMapping": "io.github.seshuthota.drift.localization:bn-unijoy",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:bengali_unijoy",
+        "numericRow": "io.github.seshuthota.drift.layouts:bengali",
+        "numericAdvanced": "io.github.seshuthota.drift.layouts:bengali"
+      }
+    },
+    {
+      "languageTag": "bn-IN",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:indian_rupee",
+      "popupMapping": "io.github.seshuthota.drift.localization:bn-unijoy",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:bengali_unijoy",
+        "numericRow": "io.github.seshuthota.drift.layouts:bengali",
+        "numericAdvanced": "io.github.seshuthota.drift.layouts:bengali"
+      }
+    },
+    {
+      "languageTag": "hi-IN",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:indian_rupee",
+      "popupMapping": "io.github.seshuthota.drift.localization:hi-IN",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:hindi_in",
+        "numericRow": "io.github.seshuthota.drift.layouts:devanagari"
+      }
+    },
+    {
+      "languageTag": "ast",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:ast",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwerty"
+      }
+    },
+    {
+      "languageTag": "ta-lk",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:indian_rupee",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:tamil"
+      }
+    },
+    {
+      "languageTag": "kab",
+      "composer": "io.github.seshuthota.drift.composers:appender",
+      "currencySet": "io.github.seshuthota.drift.currencysets:euro",
+      "popupMapping": "io.github.seshuthota.drift.localization:kab",
+      "preferred": {
+        "characters": "io.github.seshuthota.drift.layouts:qwerty"
+      }
+    }
+  ]
+}

@@ -33,7 +33,7 @@ kotlin {
 }
 
 configure<LibraryExtension> {
-    namespace = "org.florisboard.lib.compose"
+    namespace = "io.github.seshuthota.drift.lib.compose"
     compileSdk = providers.gradleProperty("projectCompileSdk").get().toInt()
 
     defaultConfig {
