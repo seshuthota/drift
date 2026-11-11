@@ -156,6 +156,10 @@ In recommended order. Each item says what it fixes.
    (McNemar p = 0.029), +0.87 pt on 3k test rows (p = 0.0009), and +1.26 pt with OASST chat contexts
    (p = 1e-8). The FUTO optimum is still λ = 0.4 (0.6 and 0.8 are lower); chat contexts would prefer
    λ = 0.6–0.8, so the single λ trades some chat gain for FUTO safety.
+11. **More conversational training data — tried, not adopted.** OASST2 + UltraChat (47.6M chat tokens):
+   web_test 16.23 / 26.73 → 16.55 / 27.40 % top-1/3, but chat_test 21.43 / 34.41 → 19.27 / 31.22 %.
+   A 5M-token UltraChat cap with a 25 % chat share still lost 1.1 pt of chat top-1. Not worth a model
+   swap on the only chat benchmark; a real-user corpus or a broader benchmark is the next attempt.
 
 ---
 
@@ -236,6 +240,11 @@ In recommended order. Each item says what it fixes.
   (`ml/results/fuse_shipping.json`). λ = 0.4 remains the FUTO optimum.
 - Remaining: more conversational training text. The chat-context fusion measurement now exists; personal
   learning is focus item 4 and does not retrain this model.
+- Conversational data, 2026-11-11 — tried, not adopted. OASST2 + UltraChat user turns (47.6M chat tokens)
+  raised web_test to 16.55 / 27.40 % top-1/3 but dropped chat_test to 19.27 / 31.22 % (shipped: 16.23 / 26.73
+  web, 21.43 / 34.41 chat). Capping UltraChat at 5M tokens and raising the chat share to 25 % still lost
+  1.1 pt of chat top-1. UltraChat is instruction-style and dominates the mix; the OASST benchmark rewards
+  OASST-style training. Code stays (`prepare.py --oasst-extra --ultrachat`, `mix_chat.py`); the model did not.
 
 ### Phase 4 — layout-agnostic and multilingual · later
 

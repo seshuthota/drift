@@ -12,6 +12,11 @@ model can truncate its output layer to the top-K ids.
 
     python prepare.py --fineweb ../work/nwp/raw/sample/10BT/000_00000.parquet \
         --oasst ../work/nwp/raw/2023-04-12_oasst_ready.messages.jsonl.gz --out ../work/nwp
+
+Larger conversational corpus (the OASST1 test tree bucket is excluded from extras):
+
+    python prepare.py --fineweb ... --oasst ... --oasst-extra ../work/nwp/raw2/oasst2.jsonl.gz \
+        --ultrachat ../work/nwp/raw2/train_sft-*.parquet --out ../work/nwp_chat
 """
 
 import argparse
@@ -88,10 +93,40 @@ def oasst_texts(path):
     return train, test
 
 
+def oasst_extra_texts(path):
+    """English prompts from a second OASST dump, minus the tree bucket used by the OASST1 test split."""
+    out = []
+    with gzip.open(path, "rt", encoding="utf-8") as f:
+        for line in f:
+            m = json.loads(line)
+            if m.get("role") != "prompter" or m.get("lang") != "en":
+                continue
+            if zlib.crc32(m["message_tree_id"].encode()) % 10 == 0:
+                continue
+            out.append(m["text"])
+    return out
+
+
+def ultrachat_texts(paths):
+    """User turns of UltraChat conversations (MIT). Prompts and follow-ups are separate samples."""
+    texts = []
+    for path in paths:
+        table = pq.read_table(path, columns=["messages"])
+        for row in table.to_pylist():
+            for message in row["messages"]:
+                if message["role"] == "user":
+                    texts.append(message["content"])
+    return texts
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--fineweb", required=True)
     ap.add_argument("--oasst", required=True)
+    ap.add_argument("--oasst-extra", nargs="*", default=[],
+                    help="additional OASST dumps; the tree bucket used by the OASST1 test split is dropped")
+    ap.add_argument("--ultrachat", nargs="*", default=[],
+                    help="UltraChat parquet files; every user turn becomes a training text")
     ap.add_argument("--out", required=True)
     ap.add_argument("--train-tokens", type=int, default=300_000_000)
     ap.add_argument("--heldout-tokens", type=int, default=2_000_000)
@@ -124,6 +159,10 @@ def main():
                     break
 
     chat_train_txt, chat_test_txt = oasst_texts(args.oasst)
+    for path in args.oasst_extra:
+        chat_train_txt = chat_train_txt + oasst_extra_texts(path)
+    if args.ultrachat:
+        chat_train_txt = chat_train_txt + ultrachat_texts(args.ultrachat)
     chat_train = _tok_batch(chat_train_txt)
     chat_test = _tok_batch(chat_test_txt)
     web_train = np.concatenate(train_parts)

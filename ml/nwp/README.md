@@ -80,3 +80,20 @@ end-to-end chat accuracy. Report: `ml/results/fuse_shipping.json`.
 
 The previous run (`fuse_eval.py`, 400k checkpoint, h512 LSTM, old 128–255 dictionary, K = 16) gave +0.7 pt on
 FUTO with no endpoint term; λ = 0.4 carried over unchanged.
+
+## More conversational data (2026-11-11, not adopted)
+
+Two permissively licensed corpora were added: OASST2 prompts (Apache-2.0; the tree bucket used by the OASST1
+test split is dropped) and every user turn of UltraChat 200k (MIT). Prepared with `prepare.py --oasst-extra
+--ultrachat`; the source-balanced variant is built by `mix_chat.py`.
+
+| Training data | web_test top-1/3/5 | chat_test top-1/3/5 |
+|---|---|---|
+| Shipped h256: 0.38M OASST tokens, 15 % chat | 16.23 / 26.73 / 32.06 | **21.43 / 34.41 / 41.07** |
+| + UltraChat/OASST2, 47.6M chat tokens, 15 % chat | 16.55 / 27.40 / 32.61 | 19.27 / 31.22 / 37.35 |
+| UltraChat capped at 5M, 25 % chat | **16.57 / 27.12 / 32.48** | 20.34 / 33.31 / 39.83 |
+
+UltraChat is instruction-style and dominates any mixture it joins; the OASST test set is style-matched to the
+old 100 %-OASST sampling. Web accuracy gains ~0.3 pt, but the only chat benchmark regresses, so the shipped
+model stays. The next conversational-data attempt needs a real-user corpus (WildChat is ODC-BY) or a broader
+chat benchmark before a model swap can be justified.
