@@ -152,6 +152,15 @@ fun AboutScreen() {
                     summary = stringRes(id = R.string.about__third_party_licenses__summary),
                 )
             }
+            Text(
+                text = stringRes(R.string.about__training_data__title),
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(start = 16.dp, top = 24.dp, end = 16.dp),
+            )
+            Text(
+                text = stringRes(R.string.about__training_data__body),
+                modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 16.dp),
+            )
         }
     }
 }

@@ -90,6 +90,14 @@ class DictionaryManager private constructor(context: Context) {
 
     }
 
+    /** Saves [word] in the internal user dictionary when that dictionary is enabled and the word is new. */
+    fun rememberWord(word: String) {
+        loadUserDictionariesIfNecessary()
+        val dao = driftUserDictionaryDao() ?: return
+        if (dao.queryExact(word).isNotEmpty()) return
+        dao.insert(UserDictionaryEntry(id = 0, word = word, freq = FREQUENCY_DEFAULT, locale = null, shortcut = null))
+    }
+
     fun spell(word: String, locale: DriftLocale): Boolean {
         val driftDao = driftUserDictionaryDao()
         val systemDao = systemUserDictionaryDao()

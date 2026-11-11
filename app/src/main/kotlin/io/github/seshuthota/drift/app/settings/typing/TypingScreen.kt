@@ -20,7 +20,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.LibraryAdd
 import androidx.compose.material.icons.filled.SpaceBar
+import androidx.compose.material.icons.filled.Spellcheck
 import androidx.compose.material3.Card
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Text
@@ -124,10 +126,11 @@ fun TypingScreen() {
             }
 
             SegmentedListColumn(title = stringRes(R.string.pref__correction__title)) {
-                val count = 3
+                val count = 4
                 SwitchPreference(
                     prefs.correction.autoCorrect,
                     shapes = ListItemDefaults.segmentedShapes(0, count),
+                    icon = Icons.Default.Spellcheck,
                     title = stringRes(R.string.pref__correction__auto_correct__label),
                     summary = stringRes(R.string.pref__correction__auto_correct__summary),
                 )
@@ -151,7 +154,7 @@ fun TypingScreen() {
                             )
                             DriftHyperlinkText(
                                 text = "Feedback thread (GitHub)",
-                                url = "https://github.com/seshuthota/drift/discussions/1935",
+                                url = "https://github.com/florisboard/florisboard/discussions/1935",
                             )
                         }
                     }
@@ -161,6 +164,13 @@ fun TypingScreen() {
                     shapes = ListItemDefaults.segmentedShapes(2, count),
                     title = stringRes(R.string.pref__correction__double_space_period__label),
                     summary = stringRes(R.string.pref__correction__double_space_period__summary),
+                )
+                SwitchPreference(
+                    prefs.correction.personalLearning,
+                    shapes = ListItemDefaults.segmentedShapes(3, count),
+                    icon = Icons.Default.LibraryAdd,
+                    title = stringRes(R.string.pref__correction__personal_learning__label),
+                    summary = stringRes(R.string.pref__correction__personal_learning__summary),
                 )
             }
 

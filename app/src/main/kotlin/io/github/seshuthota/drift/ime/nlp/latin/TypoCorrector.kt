@@ -17,6 +17,7 @@
 package io.github.seshuthota.drift.ime.nlp.latin
 
 import kotlin.math.hypot
+import kotlin.math.ln
 
 /**
  * Typing-error correction over a word list. Pure Kotlin.
@@ -30,8 +31,8 @@ import kotlin.math.hypot
  * - swapping two adjacent letters is one cheap edit;
  * - anything that changes the first letter costs extra, since people rarely get it wrong.
  *
- * Candidates are ranked by `-EDIT_WEIGHT * cost + frequency / FREQ_DIVISOR + lmWeight * lmLogProb`, where frequency
- * is the app dictionary's 0–255 value and lmLogProb an optional next-word log-probability.
+ * Candidates are ranked by `-EDIT_WEIGHT * cost + ln(1 + count) / FREQ_DIVISOR + lmWeight * lmLogProb`, where count
+ * is the dictionary's raw frequency and lmLogProb an optional next-word log-probability.
  */
 class TypoCorrector(words: Map<String, Int>, keyCenters: Map<Char, Pair<Float, Float>> = QWERTY_CENTERS) {
     data class Correction(val word: String, val cost: Float, val score: Float)
@@ -162,7 +163,7 @@ class TypoCorrector(words: Map<String, Int>, keyCenters: Map<Char, Pair<Float, F
             if (w >= 0 && row[n] <= budget) {
                 val cost = row[n]
                 val word = wordList[w]
-                var score = -EDIT_WEIGHT * cost + wordFreq[w] / FREQ_DIVISOR
+                var score = -EDIT_WEIGHT * cost + frequencyTerm(wordFreq[w])
                 if (lmLogProb != null) score += lmWeight * (lmLogProb(word) ?: -LM_FLOOR)
                 results.add(Correction(word, cost, score))
             }
@@ -188,7 +189,7 @@ class TypoCorrector(words: Map<String, Int>, keyCenters: Map<Char, Pair<Float, F
      * model as for a correction, minus [COMPLETION_PENALTY] for guessing the rest of the word.
      */
     fun completionScore(word: String, lmLogProb: ((String) -> Float?)? = null, lmWeight: Float = LM_WEIGHT): Float {
-        var score = frequencyOf(word) / FREQ_DIVISOR - COMPLETION_PENALTY
+        var score = frequencyTerm(frequencyOf(word)) - COMPLETION_PENALTY
         if (lmLogProb != null) score += lmWeight * (lmLogProb(word) ?: -LM_FLOOR)
         return score
     }
@@ -218,25 +219,25 @@ class TypoCorrector(words: Map<String, Int>, keyCenters: Map<Char, Pair<Float, F
     }
 
     /**
-     * The app dictionary contains common misspellings and junk (`recieve`, `teh`, `cna`). A dictionary word is
-     * treated as a likely misspelling of [best] when it is not a common word, [best] is, and [best] beats it on
-     * edit cost plus frequency (no language model) by more than [MISSPELLING_MARGIN].
+     * A dictionary word is treated as a likely misspelling of [best] when it is not a common word, [best] is, and
+     * [best] beats it on edit cost plus log-frequency (no language model) by more than [MISSPELLING_MARGIN].
+     * Autocorrect does not use this: the cleaned word list no longer contains the junk it used to catch, and the
+     * same margin also matches rare real words.
      */
     fun isLikelyMisspelling(typed: String, best: Correction, isCommonWord: (String) -> Boolean): Boolean {
         if (best.word == typed || !contains(typed) || isCommonWord(typed) || !isCommonWord(best.word)) return false
-        val margin = -EDIT_WEIGHT * best.cost + (frequencyOf(best.word) - frequencyOf(typed)) / FREQ_DIVISOR
+        val margin = -EDIT_WEIGHT * best.cost +
+            frequencyTerm(frequencyOf(best.word)) - frequencyTerm(frequencyOf(typed))
         return margin > MISSPELLING_MARGIN
     }
 
     /**
      * Whether [typed] may be replaced by the top of [ranked] (the result of [correct] for [typed] with the same
      * [lmLogProb]) without asking, e.g. when a word separator is typed.
-     * - [typed] is not a dictionary word: the best correction must beat the next one by [AUTOCORRECT_MARGIN]
-     *   (~98 % precision on the synthetic benchmark).
-     * - [typed] is a dictionary word and the correction only adds apostrophes (`dont` → `don't`): the contraction
-     *   must beat [typed] by [APOSTROPHE_AUTOCORRECT_MARGIN], which keeps `ill`, `id`, `were`, `its`.
-     * Other dictionary words are never replaced: the rule that spots misspellings in the dictionary (`recieve`)
-     * cannot tell them from rare real words (`pout` → `put`), so those only lead the suggestion bar.
+     * - The correction only adds apostrophes (`dont` → `don't`): it must beat the runner-up, or the typed word
+     *   when that word is in the dictionary, by [APOSTROPHE_AUTOCORRECT_MARGIN]. That keeps `ill`, `id`, `were`, `its`.
+     * - [typed] is not a dictionary word: the best correction must beat the next one by [AUTOCORRECT_MARGIN].
+     * Other dictionary words are never replaced. Rare real words that remain (`pout`) are left alone.
      */
     fun isAutoCorrectable(
         typed: String,
@@ -247,13 +248,18 @@ class TypoCorrector(words: Map<String, Int>, keyCenters: Map<Char, Pair<Float, F
         if (best.word == typed) return false
         val second = ranked.drop(1).firstOrNull { it.word != typed }
         val margin = if (second != null) best.score - second.score else Float.POSITIVE_INFINITY
-        if (!contains(typed)) return typed.length >= 2 && margin >= AUTOCORRECT_MARGIN
         if (best.word.replace("'", "") == typed) {
+            if (!contains(typed)) {
+                return typed.length >= 2 && margin >= APOSTROPHE_AUTOCORRECT_MARGIN
+            }
             val typedScore = completionScore(typed, lmLogProb) + COMPLETION_PENALTY
             return best.score - typedScore >= APOSTROPHE_AUTOCORRECT_MARGIN
         }
+        if (!contains(typed)) return typed.length >= 2 && margin >= AUTOCORRECT_MARGIN
         return false
     }
+
+    private fun frequencyTerm(count: Int): Float = ln(1f + count.toFloat()) / FREQ_DIVISOR
 
     private fun keyDistance(a: Char, b: Char): Float {
         val ax = if (a.code < 128) keyX[a.code] else Float.NaN
@@ -318,7 +324,12 @@ class TypoCorrector(words: Map<String, Int>, keyCenters: Map<Char, Pair<Float, F
         private const val MIN_OMIT_COST = APOSTROPHE_OMIT_COST
 
         const val EDIT_WEIGHT = 6.0f
-        const val FREQ_DIVISOR = 16f
+
+        /**
+         * Scales `ln(1 + count)`. 2 puts the term around 1–8, matching the spread the edit weights were tuned
+         * against when frequencies were the old 128–255 values divided by 16.
+         */
+        const val FREQ_DIVISOR = 2f
         const val LM_WEIGHT = 0.4f
         const val LM_FLOOR = 10f
         const val COMPLETION_PENALTY = 1.0f

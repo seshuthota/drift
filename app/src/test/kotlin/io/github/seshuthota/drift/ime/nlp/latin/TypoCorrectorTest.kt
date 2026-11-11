@@ -84,7 +84,7 @@ class TypoCorrectorTest : FunSpec({
             leads("dont", listOf("dont")) shouldBe true
         }
         val common = loadVocab().toHashSet()
-        test("a misspelling that is in the dictionary leads with the intended word") {
+        test("an unknown misspelling leads with the intended word") {
             for (typo in listOf("recieve", "teh", "untill", "thier")) {
                 val best = corrector.correct(typo, 4).first { it.word != typo }
                 corrector.shouldLeadWithCorrection(typo, best, listOf(typo), isCommonWord = { it in common }) shouldBe true
@@ -102,21 +102,22 @@ class TypoCorrectorTest : FunSpec({
     context("autocorrect") {
         fun auto(typed: String) = corrector.isAutoCorrectable(typed, corrector.correct(typed, 5))
         test("clear typos are corrected") {
-            for (typo in listOf("thw", "becuase", "dont", "didnt")) {
+            for (typo in listOf("thw", "becuase", "dont", "didnt", "recieve", "teh")) {
                 withClue(typo) { auto(typo) shouldBe true }
             }
         }
         test("real words and ambiguous typos are left alone") {
-            for (word in listOf("ill", "id", "were", "its", "well", "house", "masking", "pout", "hime", "recieve")) {
+            for (word in listOf("ill", "id", "were", "its", "well", "house", "masking", "pout", "hime")) {
                 withClue(word) { auto(word) shouldBe false }
             }
         }
     }
 
-    context("dictionary misspellings") {
-        test("a misspelling in the dictionary is outscored by the intended word") {
+    context("removed misspellings") {
+        test("a spelling the word list dropped corrects to the real word") {
             val words = corrector.correct("teh", 4).map { it.word }
-            words.indexOf("the") shouldBeLessThan words.indexOf("teh")
+            words.first() shouldBe "the"
+            (words.contains("teh")) shouldBe false
         }
     }
 

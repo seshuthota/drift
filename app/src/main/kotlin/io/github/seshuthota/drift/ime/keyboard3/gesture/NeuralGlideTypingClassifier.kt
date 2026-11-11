@@ -45,11 +45,11 @@ internal class NeuralGlideTypingClassifier(private val context: Context) : Glide
         const val BEAM_WIDTH = 120
         const val TOP_CHARS = 12
         /**
-         * Weight of the dictionary frequency (0..1, i.e. the app's 0-255 scale / 255) added to the CTC log
-         * probability. Tuned on 4,000 dev rows with the app dictionary: top-1 plateaus for 12..20 (87.8 % with no
-         * prior, 89.8-89.9 % on the plateau); see `ml/REPORT.md`.
+         * Weight of [io.github.seshuthota.drift.ime.nlp.latin.LatinLanguageProvider.getFrequencyForWord], a 0–1
+         * log-frequency (`ln(1 + count) / ln(1 + maxCount)`). 6.87 is `0.4 * ln(1 + maxCount)` for the shipping
+         * list, the dev-tuned prior `0.4 * ln(1 + count)` from `ml/PLAN.md`.
          */
-        const val FREQUENCY_WEIGHT = 16.0
+        const val FREQUENCY_WEIGHT = 6.87
         const val MIN_CHAR_PROB = 1e-7
         const val MODEL_ASSET = "swipe/ctc_swipe.onnx"
         const val MAX_WORD_LEN = 26
@@ -142,7 +142,15 @@ internal class NeuralGlideTypingClassifier(private val context: Context) : Glide
         val features = featurize() ?: return emptyList()
         val startedAt = System.nanoTime()
         val logProbs = runModel(session, features) ?: return emptyList()
-        val result = beamSearch(logProbs, trie, maxSuggestionCount)
+        val result = beamSearch(
+            logProbs,
+            trie,
+            maxSuggestionCount,
+            startX = features[0],
+            startY = features[POINTS],
+            endX = features[POINTS - 1],
+            endY = features[POINTS * 2 - 1],
+        )
         if (result.isNotEmpty()) {
             val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000
             Log.d(TAG, "decode ${elapsedMs}ms -> ${result.take(3)}")
@@ -274,7 +282,15 @@ internal class NeuralGlideTypingClassifier(private val context: Context) : Glide
         return if (found) floatArrayOf(minX, maxX, minY, maxY) else null
     }
 
-    private fun beamSearch(logProbs: FloatArray, trie: SwipeTrie, maxCount: Int): List<String> {
+    private fun beamSearch(
+        logProbs: FloatArray,
+        trie: SwipeTrie,
+        maxCount: Int,
+        startX: Float,
+        startY: Float,
+        endX: Float,
+        endY: Float,
+    ): List<String> {
         var beams = HashMap<String, DoubleArray>(256)
         beams[""] = doubleArrayOf(1.0, 0.0)
 
@@ -360,8 +376,10 @@ internal class NeuralGlideTypingClassifier(private val context: Context) : Glide
                 continue
             }
             val acoustic = ln(probability)
+            val endpoints = endpointPenalty(prefix, startX, startY, endX, endY)
             for (form in surfaceForms[prefix] ?: listOf(prefix)) {
-                val score = acoustic + FREQUENCY_WEIGHT * frequencyOf(form.lowercase()) + (scorer?.invoke(form) ?: 0.0)
+                val score = acoustic + FREQUENCY_WEIGHT * frequencyOf(form.lowercase()) -
+                    GLIDE_ENDPOINT_WEIGHT * endpoints + (scorer?.invoke(form) ?: 0.0)
                 scored.add(form to score)
             }
         }
@@ -374,6 +392,29 @@ internal class NeuralGlideTypingClassifier(private val context: Context) : Glide
             }
         }
         return result.toList()
+    }
+
+    /** Squared distance from the stroke ends to the first and last letters, in the 0–1 letter box. */
+    private fun endpointPenalty(letters: String, startX: Float, startY: Float, endX: Float, endY: Float): Float {
+        if (letters.length < 2) {
+            return 0f
+        }
+        val bounds = letterBounds() ?: return 0f
+        val first = normalizedCenter(letters[0].code, bounds) ?: return 0f
+        val last = normalizedCenter(letters[letters.lastIndex].code, bounds) ?: return 0f
+        return glideEndpointPenalty(startX, startY, endX, endY, first.first, first.second, last.first, last.second)
+    }
+
+    private fun normalizedCenter(code: Int, bounds: FloatArray): Pair<Float, Float>? {
+        val key = keys.firstOrNull { it.code == code } ?: return null
+        val width = bounds[1] - bounds[0]
+        val height = bounds[3] - bounds[2]
+        if (width <= 0f || height <= 0f) {
+            return null
+        }
+        val x = ((key.centerX - bounds[0]) / width).coerceIn(0f, 1f)
+        val y = ((key.centerY - bounds[2]) / height).coerceIn(0f, 1f)
+        return x to y
     }
 
     /** `i'm` -> `I'm`: the pronoun is capitalized; every other contraction keeps the dictionary spelling. */
@@ -397,6 +438,32 @@ internal class NeuralGlideTypingClassifier(private val context: Context) : Glide
         }
         return word.length + repeats <= CTC_MAX_TARGET
     }
+}
+
+/**
+ * Cost of the stroke starting away from the first letter and ending away from the last, in squared
+ * keyboard-box distance. 20 lets a straight o→k stroke rank `ok` ahead of `of`: the encoder prefers
+ * `of` there by about 1.6 nats, and frequency widens that. On the sealed 4k set this moves top-1
+ * from 90.33% to 90.50%, with length 2 unchanged.
+ */
+internal const val GLIDE_ENDPOINT_WEIGHT = 20.0
+
+/** Squared distance from a stroke's ends to a word's first and last key centers. */
+internal fun glideEndpointPenalty(
+    startX: Float,
+    startY: Float,
+    endX: Float,
+    endY: Float,
+    firstX: Float,
+    firstY: Float,
+    lastX: Float,
+    lastY: Float,
+): Float {
+    val dsx = startX - firstX
+    val dsy = startY - firstY
+    val dex = endX - lastX
+    val dey = endY - lastY
+    return dsx * dsx + dsy * dsy + dex * dex + dey * dey
 }
 
 /**

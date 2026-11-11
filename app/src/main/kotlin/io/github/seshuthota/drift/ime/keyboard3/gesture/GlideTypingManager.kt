@@ -106,25 +106,36 @@ class GlideTypingManager(context: Context) {
         if (subtype != preparedSubtype) {
             preparedSubtype = subtype
             synchronized(frequencyCache) { frequencyCache.clear() }
-            prepareJob?.cancel()
-            prepareJob = scope.launch {
-                nlpManager.ensureSuggestionProviderPreloaded(subtype)
-                predictor.ensureLoaded()
-                val words = nlpManager.getListOfWords(subtype)
-                if (preparedSubtype != subtype) {
-                    return@launch
-                }
-                synchronized(classifierLock) {
-                    classifier.setWordData(words) { word ->
-                        synchronized(frequencyCache) {
-                            frequencyCache.getOrPut(word) { nlpManager.getFrequencyForWord(subtype, word) }
-                        }
-                    }
-                }
-            }
+            prepareWords(subtype)
         }
         scope.launch {
             synchronized(classifierLock) { classifier.setLayout(keys) }
+        }
+    }
+
+    /** Reloads the word list after a word was learned, without waiting for a layout change. */
+    fun reloadLexicon() {
+        val subtype = preparedSubtype ?: return
+        synchronized(frequencyCache) { frequencyCache.clear() }
+        prepareWords(subtype)
+    }
+
+    private fun prepareWords(subtype: Subtype) {
+        prepareJob?.cancel()
+        prepareJob = scope.launch {
+            nlpManager.ensureSuggestionProviderPreloaded(subtype)
+            predictor.ensureLoaded()
+            val words = nlpManager.getListOfWords(subtype)
+            if (preparedSubtype != subtype) {
+                return@launch
+            }
+            synchronized(classifierLock) {
+                classifier.setWordData(words) { word ->
+                    synchronized(frequencyCache) {
+                        frequencyCache.getOrPut(word) { nlpManager.getFrequencyForWord(subtype, word) }
+                    }
+                }
+            }
         }
     }
 

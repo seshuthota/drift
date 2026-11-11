@@ -357,9 +357,20 @@ class ImeController(
 
         override fun emitText(value: K3String) {
             val text = value.toText()
-            val corrected = if (text.length == 1 && text[0] in AUTOCORRECT_SEPARATORS) autocorrectBeforeSeparator() else null
+            if (text == " " && commitDoubleSpacePeriod()) {
+                return
+            }
+            val wordBeforeSeparator = if (text.length == 1 && text[0] in AUTOCORRECT_SEPARATORS) {
+                NwpText.partialWord(state.content.surroundingText.textBefore)
+            } else {
+                null
+            }
+            val corrected = if (wordBeforeSeparator != null) autocorrectBeforeSeparator() else null
             lastAutocorrection = null
             super.emitText(value)
+            if (corrected == null && !wordBeforeSeparator.isNullOrEmpty() && isProseField()) {
+                nlpManager?.takeIf { it.isInitialized() }?.value?.noteTypedWord(wordBeforeSeparator, immediate = false)
+            }
             expectedContentQueue.push(state.content)
             if (corrected != null) {
                 lastAutocorrection = corrected.copy(separator = text)
@@ -369,19 +380,37 @@ class ImeController(
         }
 
         /**
+         * A second space directly after a letter or digit becomes ". " when double-space period is on.
+         * The space already before the cursor is replaced, so the field gains one period and keeps one space.
+         */
+        private fun commitDoubleSpacePeriod(): Boolean {
+            if (!prefs.correction.doubleSpacePeriod.get()) return false
+            if (state.content.selection.isNotCollapsed()) return false
+            val info = state.editor.info
+            if (info.isRawInputEditor || !info.isRichInputEditor) return false
+            if (state.flags.keyVariation == KeyVariation.PASSWORD) return false
+            val variation = info.inputAttributes.variation
+            if (variation == InputAttributes.Variation.PASSWORD ||
+                variation == InputAttributes.Variation.VISIBLE_PASSWORD ||
+                variation == InputAttributes.Variation.WEB_PASSWORD
+            ) {
+                return false
+            }
+            val before = state.editor.getTextBeforeCursor(2)
+            if (!isDoubleSpacePeriod(before)) return false
+            lastAutocorrection = null
+            if (!replaceBeforeCursor(1, ". ")) return false
+            requestSuggestions()
+            return true
+        }
+
+        /**
          * Replaces the word before the cursor with the suggestion provider's auto-commit candidate, if autocorrect
          * is enabled, the field takes prose, and the candidate was computed for exactly this word.
          */
         private fun autocorrectBeforeSeparator(): Autocorrection? {
             if (!prefs.correction.autoCorrect.get()) return null
-            val info = state.editor.info
-            if (info.isRawInputEditor || !info.isRichInputEditor) return null
-            val attributes = info.inputAttributes
-            if (attributes.type != InputAttributes.Type.TEXT || attributes.flagTextNoSuggestions ||
-                attributes.variation !in AUTOCORRECT_VARIATIONS || state.flags.keyVariation == KeyVariation.PASSWORD
-            ) {
-                return null
-            }
+            if (!isProseField()) return null
             if (state.content.selection.isNotCollapsed()) return null
             val nlp = nlpManager?.takeIf { it.isInitialized() }?.value ?: return null
             val subtype = subtypeManager?.activeSubtype ?: return null
@@ -398,6 +427,18 @@ class ImeController(
             return Autocorrection(original = typed, corrected = corrected, separator = "")
         }
 
+        /**
+         * The field takes prose: not a raw editor, password, URL, email, name or no-suggestions field.
+         * Autocorrect and personal learning only act here.
+         */
+        private fun isProseField(): Boolean {
+            val info = state.editor.info
+            if (info.isRawInputEditor || !info.isRichInputEditor) return false
+            val attributes = info.inputAttributes
+            return attributes.type == InputAttributes.Type.TEXT && !attributes.flagTextNoSuggestions &&
+                attributes.variation in AUTOCORRECT_VARIATIONS && state.flags.keyVariation != KeyVariation.PASSWORD
+        }
+
         /** Undoes [autocorrection] if its text is still directly before the cursor. */
         private fun revertAutocorrection(autocorrection: Autocorrection): Boolean {
             val committed = autocorrection.corrected + autocorrection.separator
@@ -409,6 +450,7 @@ class ImeController(
             if (!replaceBeforeCursor(committed.length, autocorrection.original)) return false
             flogDebug { "autocorrect reverted: '${autocorrection.corrected}' -> '${autocorrection.original}'" }
             rejectedAutocorrection = autocorrection.original
+            nlpManager?.takeIf { it.isInitialized() }?.value?.noteTypedWord(autocorrection.original, immediate = true)
             requestSuggestions()
             return true
         }
@@ -418,6 +460,15 @@ class ImeController(
             when (descriptor) {
                 // TODO once k3lp supports this remove
                 ImeActions.Delete -> emitForwardDelete()
+                ImeActions.BackspaceWord -> {
+                    if (state.editor.info.isRawInputEditor) {
+                        // Ctrl+W is readline's kill-word. The text model does not hold the shell line.
+                        state.editor.commitRawBytes("\u0017", dropTracked = true)
+                        resetContent()
+                    } else {
+                        super.emitDescriptor(descriptor)
+                    }
+                }
                 // TODO evaluate use of modern cursor anchor API instead of sending raw key events
                 ImeActions.ArrowDown -> state.editor.sendDownUpKeyEvent(KeyEvent.KEYCODE_DPAD_DOWN)
                 ImeActions.ArrowLeft -> state.editor.sendDownUpKeyEvent(KeyEvent.KEYCODE_DPAD_LEFT)
@@ -527,13 +578,34 @@ class ImeController(
             if (autocorrection != null && revertAutocorrection(autocorrection)) {
                 return
             }
-            super.emitBackspace()
+            if (state.editor.info.isRawInputEditor) {
+                // k3 only deletes characters it has tracked since this field was focused. A terminal
+                // line is longer than that (prompt leftovers, text from before the keyboard attached),
+                // and once the tracked buffer is empty further backspaces would do nothing.
+                val lengthBefore = state.content.surroundingText.textBefore.length
+                super.emitBackspace()
+                if (ImeEditor.rawBackspaceNeedsExtraDelete(
+                        lengthBefore,
+                        state.content.surroundingText.textBefore.length,
+                    )
+                ) {
+                    state.editor.commitRawBackspace()
+                }
+            } else {
+                super.emitBackspace()
+            }
             expectedContentQueue.push(state.content)
             requestSuggestions()
         }
 
         override fun emitEnter() {
             val info = state.editor.info
+            if (info.isRawInputEditor) {
+                // A terminal has no editor action. Enter must write a carriage return even when
+                // imeOptions says NONE or UNSPECIFIED, or reverse-i-search never accepts the line.
+                emitEnterKey()
+                return
+            }
             val isShiftPressed = false // TODO inputEventDispatcher.isPressed(KeyCode.SHIFT)
             if (info.imeOptions.flagNoEnterAction || info.inputAttributes.flagTextMultiLine && isShiftPressed) {
                 emitEnterKey()
@@ -554,7 +626,9 @@ class ImeController(
         fun emitEnterKey() {
             val info = state.editor.info
             if (info.isRawInputEditor) {
-                state.editor.sendDownUpKeyEvent(KeyEvent.KEYCODE_ENTER)
+                state.editor.commitRawEnter()
+                // The shell consumed the line. Drop the tracked buffer so the next key starts clean.
+                resetContent()
             } else {
                 emitText(NEWLINE_SEQ)
             }
@@ -565,6 +639,10 @@ class ImeController(
         }
 
         fun emitForwardDelete() {
+            if (state.editor.info.isRawInputEditor) {
+                state.editor.sendDownUpKeyEvent(KeyEvent.KEYCODE_FORWARD_DEL)
+                return
+            }
             // TODO request additional text if too low on context length
             if (state.content.selection.isNotCollapsed()) {
                 emitBackspace()
@@ -881,6 +959,14 @@ private class ExpectedContentQueue {
 private data class Autocorrection(val original: String, val corrected: String, val separator: String)
 
 private val AUTOCORRECT_SEPARATORS = setOf(' ', '.', ',', '!', '?', ';', ':', '\n')
+
+/** The character before the trailing space is a letter or digit, so a second space can become a period. */
+internal fun isDoubleSpacePeriod(textBeforeCursor: CharSequence): Boolean {
+    if (textBeforeCursor.length < 2) return false
+    val end = textBeforeCursor.length
+    if (textBeforeCursor[end - 1] != ' ') return false
+    return textBeforeCursor[end - 2].isLetterOrDigit()
+}
 
 /** Prose fields; names, addresses, emails, URLs, passwords and filters are never autocorrected. */
 private val AUTOCORRECT_VARIATIONS = setOf(

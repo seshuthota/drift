@@ -109,19 +109,31 @@ class NextWordPredictor(private val context: Context) {
      * Top [maxCount] vocabulary words after [textBefore]; if [prefix] is non-empty only words starting with it
      * (case-insensitive) are considered. Special tokens are never returned.
      */
-    fun predict(textBefore: CharSequence, truncated: Boolean, prefix: String, maxCount: Int): List<Prediction> {
+    fun predict(
+        textBefore: CharSequence,
+        truncated: Boolean,
+        prefix: String,
+        maxCount: Int,
+        allowed: (String) -> Boolean = { true },
+    ): List<Prediction> {
         val logProbs = nextWordLogProbs(textBefore, truncated) ?: return emptyList()
-        return predict(logProbs, prefix, maxCount)
+        return predict(logProbs, prefix, maxCount, allowed)
     }
 
     /** As [predict], over log-probabilities already computed by [nextWordLogProbs]. */
-    fun predict(logProbs: FloatArray, prefix: String, maxCount: Int): List<Prediction> {
+    fun predict(
+        logProbs: FloatArray,
+        prefix: String,
+        maxCount: Int,
+        allowed: (String) -> Boolean = { true },
+    ): List<Prediction> {
         val p = NwpText.normalize(prefix)
         val best = ArrayList<Prediction>(maxCount + 1)
         for (i in NwpText.N_SPECIAL until logProbs.size.coerceAtMost(vocab.size)) {
             val lp = logProbs[i]
             if (best.size == maxCount && lp <= best.last().logProb) continue
             val word = vocab[i]
+            if (!allowed(word)) continue
             if (p.isNotEmpty() && !word.startsWith(p)) continue
             var at = best.size
             while (at > 0 && best[at - 1].logProb < lp) at--

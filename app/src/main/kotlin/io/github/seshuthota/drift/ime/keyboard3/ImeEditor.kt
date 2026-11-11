@@ -36,6 +36,9 @@ import java.lang.ref.WeakReference
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
+/** Characters to erase and characters to write for one raw-editor replace. */
+internal data class RawInputEdit(val deletes: Int, val insert: String)
+
 open class ImeEditor(
     val ic: WeakReference<InputConnection>,
     val info: DriftEditorInfo,
@@ -80,12 +83,58 @@ open class ImeEditor(
         newComposition: K3TextRange?,
     ) {
         val ic = ic.get() ?: return
+        if (info.isRawInputEditor) {
+            // TYPE_NULL editors such as Termux keep a scratch buffer and forward all of it on
+            // commitText. setComposingRegion cannot address characters already on the terminal,
+            // and deleteSurroundingText's key events never erase them, so committing the whole
+            // word on every key piles up (x, xxh, xxhxhz).
+            replaceTextRaw(ic, range, text)
+            return
+        }
         ic.beginBatchEdit()
         ic.setComposingRegion(range.first, range.last + 1)
         ic.commitText(text, 1)
         ic.setSelection(newSelection.start, newSelection.end)
         setComposition(newComposition)
         ic.endBatchEdit()
+    }
+
+    /** Text k3 last put before the cursor. Used to send only the changed tail to a raw editor. */
+    private var rawTextBefore: String = ""
+
+    private fun replaceTextRaw(ic: InputConnection, range: IntRange, text: String) {
+        val oldLength = rawInputDeleteBefore(range)
+        val previous = rawTextBefore.takeIf { it.length == oldLength }
+        val edit = rawInputEdit(previous, oldLength, text)
+        rawTextBefore = text
+        val payload = buildString {
+            repeat(edit.deletes) { append(RAW_DELETE) }
+            append(edit.insert)
+        }
+        if (payload.isNotEmpty()) {
+            // One commit. Termux writes the whole scratch buffer on commitText, so the payload
+            // must be only the new tail, with U+007F for each erased code point.
+            ic.commitText(payload, 1)
+        }
+    }
+
+    /**
+     * Enter for a raw editor. Termux turns a committed `\n` into the carriage return the shell
+     * accepts, including inside reverse-i-search. A KEYCODE_ENTER event never arrives there.
+     */
+    fun commitRawEnter() {
+        rawTextBefore = ""
+        ic.get()?.commitText("\n", 1)
+    }
+
+    /** One terminal erase. Used when k3's buffer is already empty but the line is not. */
+    fun commitRawBackspace() {
+        val ic = ic.get() ?: return
+        if (rawTextBefore.isNotEmpty()) {
+            val last = rawTextBefore.codePointBefore(rawTextBefore.length)
+            rawTextBefore = rawTextBefore.dropLast(Character.charCount(last))
+        }
+        ic.commitText(RAW_DELETE.toString(), 1)
     }
 
     fun deleteSurroundingText(charsBefore: Int, charsAfter: Int) {
@@ -188,12 +237,25 @@ open class ImeEditor(
     }
 
     fun sendDownUpKeyEvent(keyCode: Int, metaState: Int = 0): Boolean {
-        val ic = ic.get() ?: return false
+        val connection = ic.get() ?: return false
+        if (info.isRawInputEditor) {
+            // Termux drops these key events. Commit the sequence its own KeyHandler would write.
+            val sequence = rawKeySequence(keyCode, metaState) ?: return false
+            return connection.commitText(sequence, 1)
+        }
         val downTime = SystemClock.uptimeMillis()
-        ic.sendDownKeyEvent(keyCode, metaState, downTime)
+        connection.sendDownKeyEvent(keyCode, metaState, downTime)
         val upTime = SystemClock.uptimeMillis()
-        ic.sendUpKeyEvent(keyCode, metaState, downTime, upTime)
+        connection.sendUpKeyEvent(keyCode, metaState, downTime, upTime)
         return true
+    }
+
+    /** Commit bytes to a raw editor. [dropTracked] forgets the line Drift thinks it owns. */
+    fun commitRawBytes(text: String, dropTracked: Boolean = false) {
+        if (dropTracked) {
+            rawTextBefore = ""
+        }
+        ic.get()?.commitText(text, 1)
     }
 
     override fun setComposition(newComposition: K3TextRange?) {
@@ -217,6 +279,95 @@ open class ImeEditor(
     }
 
     companion object {
+        /**
+         * How many characters before the cursor [range] covers.
+         *
+         * k3 passes `offset until selection`, which is empty when nothing has been typed yet.
+         * An empty [IntRange] still has `first > last`, so the length has to go through [IntRange.isEmpty].
+         */
+        internal fun rawInputDeleteBefore(range: IntRange): Int {
+            if (range.isEmpty()) return 0
+            return range.last - range.first + 1
+        }
+
+        /**
+         * Edit that turns the previous raw-editor text into [newText].
+         *
+         * [previous] is only trusted when it has [oldLength] characters. Otherwise the span length
+         * is the only fact available: a longer string contributes its new tail, a shorter one
+         * contributes that many deletes.
+         */
+        internal fun rawInputEdit(previous: String?, oldLength: Int, newText: String): RawInputEdit {
+            if (previous != null && previous.length == oldLength) {
+                val common = previous.commonPrefixWith(newText).length
+                val removed = previous.substring(common)
+                return RawInputEdit(
+                    deletes = removed.codePointCount(0, removed.length),
+                    insert = newText.substring(common),
+                )
+            }
+            if (newText.length >= oldLength) {
+                return RawInputEdit(deletes = 0, insert = newText.substring(oldLength.coerceAtLeast(0)))
+            }
+            return RawInputEdit(deletes = oldLength - newText.length, insert = "")
+        }
+
+        /** DEL. Termux's shell erases on this byte; deleteSurroundingText key events do not land. */
+        internal const val RAW_DELETE = '\u007f'
+
+        /** True when a backspace did not shorten k3's text, so the terminal still needs an erase. */
+        internal fun rawBackspaceNeedsExtraDelete(lengthBefore: Int, lengthAfter: Int): Boolean {
+            return lengthAfter >= lengthBefore
+        }
+
+        /**
+         * Bytes a `TYPE_NULL` terminal should receive instead of [keyCode].
+         *
+         * Sequences match Termux `KeyHandler` with cursor-application mode off (a normal shell).
+         * Ctrl+Z is absent on purpose: that byte suspends the foreground job.
+         * Returns null when this key has no terminal equivalent.
+         */
+        internal fun rawKeySequence(keyCode: Int, metaState: Int = 0): String? {
+            val shift = metaState and (KeyEvent.META_SHIFT_ON or KeyEvent.META_SHIFT_LEFT_ON or
+                KeyEvent.META_SHIFT_RIGHT_ON) != 0
+            val alt = metaState and (KeyEvent.META_ALT_ON or KeyEvent.META_ALT_LEFT_ON or
+                KeyEvent.META_ALT_RIGHT_ON) != 0
+            val ctrl = metaState and (KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON or
+                KeyEvent.META_CTRL_RIGHT_ON) != 0
+            val mod = when {
+                shift && alt && ctrl -> 8
+                alt && ctrl -> 7
+                shift && ctrl -> 6
+                ctrl -> 5
+                shift && alt -> 4
+                alt -> 3
+                shift -> 2
+                else -> 0
+            }
+            fun csi(final: Char, bare: String): String {
+                return if (mod == 0) bare else "\u001b[1;$mod$final"
+            }
+            fun tilde(code: Int): String {
+                return if (mod == 0) "\u001b[$code~" else "\u001b[$code;$mod~"
+            }
+            return when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_UP -> csi('A', "\u001b[A")
+                KeyEvent.KEYCODE_DPAD_DOWN -> csi('B', "\u001b[B")
+                KeyEvent.KEYCODE_DPAD_RIGHT -> csi('C', "\u001b[C")
+                KeyEvent.KEYCODE_DPAD_LEFT -> csi('D', "\u001b[D")
+                KeyEvent.KEYCODE_MOVE_HOME -> csi('H', "\u001b[H")
+                KeyEvent.KEYCODE_MOVE_END -> csi('F', "\u001b[F")
+                KeyEvent.KEYCODE_PAGE_UP -> tilde(5)
+                KeyEvent.KEYCODE_PAGE_DOWN -> tilde(6)
+                KeyEvent.KEYCODE_FORWARD_DEL -> tilde(3)
+                KeyEvent.KEYCODE_DEL -> RAW_DELETE.toString()
+                KeyEvent.KEYCODE_ESCAPE -> "\u001b"
+                KeyEvent.KEYCODE_TAB -> if (shift) "\u001b[Z" else "\t"
+                KeyEvent.KEYCODE_A -> if (ctrl && mod == 5) "\u0001" else null
+                else -> null
+            }
+        }
+
         /**
          * The input connection update cursor flags.
          *

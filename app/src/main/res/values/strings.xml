@@ -499,6 +499,10 @@
     <string name="pref__correction__auto_space_punctuation__summary" comment="Preference summary">Automatically insert a space after a punctuation</string>
     <string name="pref__correction__double_space_period__label" comment="Preference title">Double-space period</string>
     <string name="pref__correction__double_space_period__summary" comment="Preference summary">Tapping twice on spacebar inserts a period followed by a space</string>
+    <string name="pref__correction__personal_learning__label" comment="Preference title">Learn words you use</string>
+    <string name="pref__correction__personal_learning__summary" comment="Preference summary">Remember a word after you type it three times, and any word you restore by undoing autocorrect. Off in incognito mode. Saved in the internal user dictionary on this device</string>
+    <string name="about__training_data__title" comment="Section title on the About screen">Training data</string>
+    <string name="about__training_data__body" comment="Attribution required by the datasets used to train on-device models">Glide typing was trained on the FUTO swipe dataset, which is under the MIT License (https://huggingface.co/datasets/futo-org/swipe.futo.org). Next-word prediction was trained on FineWeb, under the Open Data Commons Attribution License (ODC-By), and on OpenAssistant Conversations, under the Apache License 2.0.</string>
     <string name="pref__spelling__title" comment="Preference group title">Spelling</string>
     <string name="pref__spelling__active_spellchecker__summary_disabled">Disabled system-wide. No red lines will appear in text fields for incorrect words. Tap to change.</string>
     <string name="pref__spelling__active_spellchecker__summary_none">No inline text spell checker service set. Tap to change.</string>

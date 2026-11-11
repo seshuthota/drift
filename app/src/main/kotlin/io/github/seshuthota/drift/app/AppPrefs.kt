@@ -165,6 +165,10 @@ abstract class DriftPreferenceModel : PreferenceModel() {
             key = "correction__double_space_period",
             default = true,
         )
+        val personalLearning = boolean(
+            key = "correction__personal_learning",
+            default = false,
+        )
     }
 
     val devtools = Devtools()

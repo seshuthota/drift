@@ -25,7 +25,10 @@ import io.github.seshuthota.drift.ime.clipboard.provider.ClipboardItem
 import io.github.seshuthota.drift.ime.clipboard.provider.ItemType
 import io.github.seshuthota.drift.ime.core.Subtype
 import io.github.seshuthota.drift.ime.media.emoji.EmojiSuggestionProvider
+import io.github.seshuthota.drift.glideTypingManager
+import io.github.seshuthota.drift.ime.dictionary.DictionaryManager
 import io.github.seshuthota.drift.ime.nlp.latin.LatinLanguageProvider
+import io.github.seshuthota.drift.ime.nlp.latin.PersonalLearning
 import io.github.seshuthota.drift.ime.nlp.latin.isTypingPosition
 import io.github.seshuthota.drift.inferDriftApplication
 import io.github.seshuthota.drift.lib.util.NetworkUtils
@@ -71,6 +74,8 @@ class NlpManager(context: Context) {
     private val providersForceSuggestionOn = mutableMapOf<String, Boolean>()
 
     private val internalSuggestionsGuard = Mutex()
+    private val personalLearning = PersonalLearning()
+    private val personalLearningGuard = Mutex()
     private var internalSuggestions by Delegates.observable(SystemClock.uptimeMillis() to listOf<SuggestionCandidate>()) { _, _, _ ->
         scope.launch { assembleCandidates() }
     }
@@ -299,6 +304,39 @@ class NlpManager(context: Context) {
                 }
             }
         }
+    }
+
+    /**
+     * Records a committed word for personal learning. [immediate] is an autocorrect undo.
+     * No-op unless the preference is on and the field is not incognito. Work happens off the caller thread.
+     */
+    fun noteTypedWord(word: String, immediate: Boolean) {
+        if (!prefs.correction.personalLearning.get()) return
+        if (imeController.snapshotState().flags.isIncognitoMode) return
+        val key = PersonalLearning.keyOf(word) ?: return
+        scope.launch {
+            personalLearningGuard.withLock {
+                if (!prefs.correction.personalLearning.get()) return@withLock
+                if (imeController.snapshotState().flags.isIncognitoMode) return@withLock
+                val latin = latinProvider() ?: return@withLock
+                if (!latin.isLexiconReady() || latin.knowsWord(key)) return@withLock
+                val ready = personalLearning.observe(key, immediate) ?: return@withLock
+                if (!latin.addLearnedWord(ready)) return@withLock
+                DictionaryManager.default().rememberWord(ready)
+                reloadGlideLexicon()
+            }
+        }
+    }
+
+    private suspend fun latinProvider(): LatinLanguageProvider? {
+        val subtype = subtypeManager.activeSubtype
+        return providers.withLock { it[subtype.nlpProviders.suggestion] }?.provider as? LatinLanguageProvider
+    }
+
+    private fun reloadGlideLexicon() {
+        val glide = appContext.glideTypingManager
+        if (!glide.isInitialized()) return
+        glide.value.reloadLexicon()
     }
 
     fun getListOfWords(subtype: Subtype): List<String> {
