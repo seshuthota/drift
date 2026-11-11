@@ -113,10 +113,11 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         if (normalized.isEmpty() || !normalized.all { it in 'a'..'z' || it == '\'' }) {
             return SpellingResult.validWord()
         }
-        if (corrector.contains(normalized) || corrector.contains(normalized.removeSuffix("'s"))) {
+        val known = corrector.contains(normalized) || corrector.contains(normalized.removeSuffix("'s"))
+        val corrections = corrector.correct(normalized, maxSuggestionCount + 1).filter { it.word != normalized }
+        if (known && corrections.firstOrNull()?.let { corrector.isLikelyMisspelling(normalized, it, isCommonWord) } != true) {
             return SpellingResult.validWord()
         }
-        val corrections = corrector.correct(normalized, maxSuggestionCount)
         val suggestions = corrections.map { NwpText.displayForm(it.word, word, sentenceStart = false) }
         val confident = corrections.firstOrNull()?.let { it.cost <= TypoCorrector.SUB_NEAR_COST } == true
         return SpellingResult.typo(suggestions.toTypedArray(), isHighConfidenceResult = confident)
@@ -162,22 +163,31 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         }
 
         val corrector = corrector
-        val typedIsWord = corrector?.contains(p) ?: true
-        val corrections = if (corrector == null || typedIsWord || p.length < MIN_CORRECTION_LENGTH) {
+            ?: return completions.map { candidate(it, prefix, sentenceStart, confidence[it] ?: 0.0) }
+        val lm: ((String) -> Float?)? = logProbs?.let { lp -> { word -> predictor.idOf(word)?.let { lp[it] } } }
+        // The dictionary holds common misspellings and apostrophe-less forms ("teh", "dont"), so a dictionary word
+        // still gets the corrections that score above it (results are best first, the typed word included).
+        val corrections = if (p.length < MIN_CORRECTION_LENGTH) {
             emptyList()
         } else {
-            val lm: ((String) -> Float?)? = logProbs?.let { lp -> { word -> predictor.idOf(word)?.let { lp[it] } } }
-            corrector.correct(p, MAX_CORRECTIONS, lm).map { it.word }
+            corrector.correct(p, MAX_CORRECTIONS + 1, lm).takeWhile { it.word != p }.take(MAX_CORRECTIONS)
+        }
+        val lead = corrector.shouldLeadWithCorrection(p, corrections.firstOrNull(), completions, lm, isCommonWord)
+        val correctionWords = corrections.map { it.word }.let { words ->
+            // A typed dictionary word stays right after the correction that displaced it.
+            if (lead && corrector.contains(p)) listOf(words[0], p) + words.drop(1) else words
         }
         val words = TypingSuggestions.merge(
-            corrections = corrections,
+            corrections = correctionWords,
             completions = completions,
-            typedIsWord = typedIsWord,
-            isPrefix = corrector?.hasCompletion(p) ?: true,
+            leadWithCorrection = lead,
             maxCount = maxCandidateCount,
         )
         return words.map { candidate(it, prefix, sentenceStart, confidence[it] ?: 0.0) }
     }
+
+    /** Words in the next-word model's vocabulary (the ~20k most frequent); false if the model is unavailable. */
+    private val isCommonWord: (String) -> Boolean = { predictor.idOf(it) != null }
 
     private fun candidate(word: String, prefix: String, sentenceStart: Boolean, confidence: Double) =
         WordSuggestionCandidate(

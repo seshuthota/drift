@@ -19,6 +19,7 @@ package io.github.seshuthota.drift.ime.nlp.latin
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.doubles.shouldBeGreaterThanOrEqual
+import io.kotest.matchers.ints.shouldBeLessThan
 import io.kotest.matchers.longs.shouldBeLessThan
 import io.kotest.matchers.shouldBe
 import kotlinx.serialization.json.Json
@@ -55,17 +56,52 @@ class TypoCorrectorTest : FunSpec({
     context("suggestion order") {
         val corrections = listOf("the", "then")
         val completions = listOf("thwart", "thwarted")
-        test("a dictionary word gets completions only") {
-            TypingSuggestions.merge(corrections, completions, typedIsWord = true, isPrefix = true, maxCount = 3) shouldBe
-                listOf("thwart", "thwarted")
-        }
-        test("a word in progress leads with a completion, then a correction") {
-            TypingSuggestions.merge(corrections, completions, typedIsWord = false, isPrefix = true, maxCount = 3) shouldBe
+        test("a word or word in progress leads with a completion, then alternates") {
+            TypingSuggestions.merge(corrections, completions, leadWithCorrection = false, maxCount = 3) shouldBe
                 listOf("thwart", "the", "thwarted")
         }
         test("a typo leads with corrections and drops duplicates") {
-            TypingSuggestions.merge(corrections, listOf("then", "x"), typedIsWord = false, isPrefix = false, maxCount = 3) shouldBe
+            TypingSuggestions.merge(corrections, listOf("then", "x"), leadWithCorrection = true, maxCount = 3) shouldBe
                 listOf("the", "then", "x")
+        }
+        test("no corrections leaves completions alone") {
+            TypingSuggestions.merge(emptyList(), completions, leadWithCorrection = false, maxCount = 3) shouldBe
+                completions
+        }
+    }
+
+    context("leading suggestion") {
+        fun leads(typed: String, completions: List<String>) =
+            corrector.shouldLeadWithCorrection(typed, corrector.correct(typed, 4).firstOrNull { it.word != typed }, completions)
+        test("a typo leads with its correction over rare completions") {
+            leads("thw", listOf("thwart", "thwarted")) shouldBe true
+        }
+        test("a word in progress leads with a common completion") {
+            leads("hel", listOf("help", "hello")) shouldBe false
+        }
+        test("a missing apostrophe leads with the contraction") {
+            leads("dont", listOf("dont")) shouldBe true
+        }
+        val common = loadVocab().toHashSet()
+        test("a misspelling that is in the dictionary leads with the intended word") {
+            for (typo in listOf("recieve", "teh", "untill", "thier")) {
+                val best = corrector.correct(typo, 4).first { it.word != typo }
+                corrector.shouldLeadWithCorrection(typo, best, listOf(typo), isCommonWord = { it in common }) shouldBe true
+            }
+        }
+        test("a common word is never a misspelling") {
+            val best = corrector.correct("form", 4).first { it.word != "form" }
+            corrector.isLikelyMisspelling("form", best) { it in common } shouldBe false
+        }
+        test("a real word is not displaced by a different word") {
+            leads("masking", listOf("masking")) shouldBe false
+        }
+    }
+
+    context("dictionary misspellings") {
+        test("a misspelling in the dictionary is outscored by the intended word") {
+            val words = corrector.correct("teh", 4).map { it.word }
+            words.indexOf("the") shouldBeLessThan words.indexOf("teh")
         }
     }
 

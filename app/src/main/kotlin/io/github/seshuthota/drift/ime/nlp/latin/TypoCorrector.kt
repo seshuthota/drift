@@ -183,6 +183,51 @@ class TypoCorrector(words: Map<String, Int>, keyCenters: Map<Char, Pair<Float, F
         return if (results.size > maxCount) results.subList(0, maxCount).toList() else results
     }
 
+    /**
+     * Score of [word] as a completion of the typed text, comparable to [Correction.score]: frequency and language
+     * model as for a correction, minus [COMPLETION_PENALTY] for guessing the rest of the word.
+     */
+    fun completionScore(word: String, lmLogProb: ((String) -> Float?)? = null, lmWeight: Float = LM_WEIGHT): Float {
+        var score = frequencyOf(word) / FREQ_DIVISOR - COMPLETION_PENALTY
+        if (lmLogProb != null) score += lmWeight * (lmLogProb(word) ?: -LM_FLOOR)
+        return score
+    }
+
+    /**
+     * Whether the suggestion bar should lead with [best], the top correction for [typed] (which must score above
+     * [typed] itself), instead of the best of [completions].
+     * - [typed] is a dictionary word: only if [best] is [typed] with apostrophes added (`dont` → `don't`) or [typed]
+     *   is a likely misspelling ([isLikelyMisspelling]).
+     * - otherwise: if [best] scores above every completion (`thw` → `the` rather than `thwarted`).
+     */
+    fun shouldLeadWithCorrection(
+        typed: String,
+        best: Correction?,
+        completions: List<String>,
+        lmLogProb: ((String) -> Float?)? = null,
+        isCommonWord: ((String) -> Boolean)? = null,
+    ): Boolean {
+        if (best == null) return false
+        if (contains(typed)) {
+            return best.word.replace("'", "") == typed ||
+                (isCommonWord != null && isLikelyMisspelling(typed, best, isCommonWord))
+        }
+        val bestCompletion = completions.filter { it != typed }.maxOfOrNull { completionScore(it, lmLogProb) }
+            ?: return true
+        return best.score > bestCompletion
+    }
+
+    /**
+     * The app dictionary contains common misspellings and junk (`recieve`, `teh`, `cna`). A dictionary word is
+     * treated as a likely misspelling of [best] when it is not a common word, [best] is, and [best] beats it on
+     * edit cost plus frequency (no language model) by more than [MISSPELLING_MARGIN].
+     */
+    fun isLikelyMisspelling(typed: String, best: Correction, isCommonWord: (String) -> Boolean): Boolean {
+        if (best.word == typed || !contains(typed) || isCommonWord(typed) || !isCommonWord(best.word)) return false
+        val margin = -EDIT_WEIGHT * best.cost + (frequencyOf(best.word) - frequencyOf(typed)) / FREQ_DIVISOR
+        return margin > MISSPELLING_MARGIN
+    }
+
     private fun keyDistance(a: Char, b: Char): Float {
         val ax = if (a.code < 128) keyX[a.code] else Float.NaN
         val bx = if (b.code < 128) keyX[b.code] else Float.NaN
@@ -249,6 +294,8 @@ class TypoCorrector(words: Map<String, Int>, keyCenters: Map<Char, Pair<Float, F
         const val FREQ_DIVISOR = 16f
         const val LM_WEIGHT = 0.4f
         const val LM_FLOOR = 10f
+        const val COMPLETION_PENALTY = 1.0f
+        const val MISSPELLING_MARGIN = 2.5f
     }
 }
 
@@ -256,38 +303,26 @@ class TypoCorrector(words: Map<String, Int>, keyCenters: Map<Char, Pair<Float, F
 object TypingSuggestions {
     /**
      * Merges typo [corrections] (best first) and [completions] (words starting with the typed text, best first)
-     * into at most [maxCount] distinct words.
-     * - The typed word is in the dictionary: completions only, no corrections.
-     * - The typed text is no dictionary word but starts one ([isPrefix]): the user is probably mid-word, so the
-     *   best completion leads, followed by the best correction, then the rest alternating.
-     * - Otherwise it is a typo: corrections lead, completions follow.
+     * into at most [maxCount] distinct words. When [leadWithCorrection] (the typed text is neither a word nor the
+     * start of one) corrections come first; otherwise the user may be mid-word or typed a real word, so the best
+     * completion leads and the two lists alternate.
      */
     fun merge(
         corrections: List<String>,
         completions: List<String>,
-        typedIsWord: Boolean,
-        isPrefix: Boolean,
+        leadWithCorrection: Boolean,
         maxCount: Int,
     ): List<String> {
         val out = LinkedHashSet<String>()
-        fun addAll(words: List<String>) {
-            for (w in words) {
-                if (out.size >= maxCount) return
-                out.add(w)
-            }
-        }
-        when {
-            typedIsWord -> addAll(completions)
-            isPrefix -> {
-                val longest = maxOf(corrections.size, completions.size)
-                for (i in 0 until longest) {
-                    completions.getOrNull(i)?.let { if (out.size < maxCount) out.add(it) }
-                    corrections.getOrNull(i)?.let { if (out.size < maxCount) out.add(it) }
-                }
-            }
-            else -> {
-                addAll(corrections)
-                addAll(completions)
+        val first = if (leadWithCorrection) corrections else completions
+        val second = if (leadWithCorrection) completions else corrections
+        if (leadWithCorrection) {
+            for (w in first) if (out.size < maxCount) out.add(w)
+            for (w in second) if (out.size < maxCount) out.add(w)
+        } else {
+            for (i in 0 until maxOf(first.size, second.size)) {
+                first.getOrNull(i)?.let { if (out.size < maxCount) out.add(it) }
+                second.getOrNull(i)?.let { if (out.size < maxCount) out.add(it) }
             }
         }
         return out.toList()
