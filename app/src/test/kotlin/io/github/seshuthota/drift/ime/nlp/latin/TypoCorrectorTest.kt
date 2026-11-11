@@ -16,6 +16,7 @@
 
 package io.github.seshuthota.drift.ime.nlp.latin
 
+import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.doubles.shouldBeGreaterThanOrEqual
@@ -95,6 +96,20 @@ class TypoCorrectorTest : FunSpec({
         }
         test("a real word is not displaced by a different word") {
             leads("masking", listOf("masking")) shouldBe false
+        }
+    }
+
+    context("autocorrect") {
+        fun auto(typed: String) = corrector.isAutoCorrectable(typed, corrector.correct(typed, 5))
+        test("clear typos are corrected") {
+            for (typo in listOf("thw", "becuase", "dont", "didnt")) {
+                withClue(typo) { auto(typo) shouldBe true }
+            }
+        }
+        test("real words and ambiguous typos are left alone") {
+            for (word in listOf("ill", "id", "were", "its", "well", "house", "masking", "pout", "hime", "recieve")) {
+                withClue(word) { auto(word) shouldBe false }
+            }
         }
     }
 

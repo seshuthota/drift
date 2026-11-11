@@ -102,6 +102,9 @@ interface SuggestionCandidate {
 /**
  * Default implementation for a word candidate (autocorrect and next/current word suggestion).
  *
+ * [correctsWord] is the exact typed text (as it appears before the cursor) this candidate was computed to replace;
+ * autocorrect only applies an [isEligibleForAutoCommit] candidate while that text is still the word being typed.
+ *
  * @see SuggestionCandidate
  */
 data class WordSuggestionCandidate(
@@ -111,6 +114,7 @@ data class WordSuggestionCandidate(
     override val isEligibleForAutoCommit: Boolean = false,
     override val isEligibleForUserRemoval: Boolean = true,
     override val sourceProvider: SuggestionProvider? = null,
+    val correctsWord: String? = null,
 ) : SuggestionCandidate {
     override val icon: ImageVector? = null
 }

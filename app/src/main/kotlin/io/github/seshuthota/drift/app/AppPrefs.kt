@@ -153,6 +153,10 @@ abstract class DriftPreferenceModel : PreferenceModel() {
 
     val correction = Correction()
     inner class Correction {
+        val autoCorrect = boolean(
+            key = "correction__auto_correct",
+            default = true,
+        )
         val autoSpacePunctuation = boolean(
             key = "correction__auto_space_punctuation",
             default = false,

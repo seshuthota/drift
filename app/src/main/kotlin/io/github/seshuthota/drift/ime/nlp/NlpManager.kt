@@ -269,6 +269,23 @@ class NlpManager(context: Context) {
         return activeCandidates.firstOrNull { it.isEligibleForAutoCommit }
     }
 
+    /**
+     * The auto-commit candidate for exactly [content], computed synchronously. Used when a word separator is typed:
+     * the asynchronous suggestions may still be for an earlier keystroke. Blocks for one provider call (a few ms).
+     */
+    fun autoCommitCandidateFor(subtype: Subtype, content: K3Content): SuggestionCandidate? {
+        if (!prefs.suggestion.enabled.get()) return null
+        return runBlocking {
+            getSuggestionProvider(subtype).suggest(
+                subtype = subtype,
+                content = content,
+                maxCandidateCount = 3,
+                allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
+                isPrivateSession = false,
+            )
+        }.firstOrNull { it.isEligibleForAutoCommit }
+    }
+
     fun removeSuggestion(subtype: Subtype, candidate: SuggestionCandidate): Boolean {
         return runBlocking { candidate.sourceProvider?.removeSuggestion(subtype, candidate) == true }.also { result ->
             if (result) {

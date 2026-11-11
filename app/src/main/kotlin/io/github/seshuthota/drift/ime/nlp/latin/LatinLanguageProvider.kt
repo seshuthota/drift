@@ -17,6 +17,7 @@
 package io.github.seshuthota.drift.ime.nlp.latin
 
 import android.content.Context
+import io.github.seshuthota.drift.app.DriftPreferenceStore
 import io.github.seshuthota.drift.appContext
 import io.github.seshuthota.drift.ime.core.Subtype
 import io.github.seshuthota.drift.ime.nlp.SpellingProvider
@@ -52,6 +53,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
     private val appContext by context.appContext()
     private val predictor by context.nextWordPredictor()
+    private val prefs by DriftPreferenceStore
 
     private val wordData = guardedByLock { mutableMapOf<String, Int>() }
     private val wordDataSerializer = MapSerializer(String.serializer(), Int.serializer())
@@ -167,11 +169,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val lm: ((String) -> Float?)? = logProbs?.let { lp -> { word -> predictor.idOf(word)?.let { lp[it] } } }
         // The dictionary holds common misspellings and apostrophe-less forms ("teh", "dont"), so a dictionary word
         // still gets the corrections that score above it (results are best first, the typed word included).
-        val corrections = if (p.length < MIN_CORRECTION_LENGTH) {
-            emptyList()
-        } else {
-            corrector.correct(p, MAX_CORRECTIONS + 1, lm).takeWhile { it.word != p }.take(MAX_CORRECTIONS)
-        }
+        val ranked = if (p.length < MIN_CORRECTION_LENGTH) emptyList() else corrector.correct(p, MAX_CORRECTIONS + 2, lm)
+        val corrections = ranked.takeWhile { it.word != p }.take(MAX_CORRECTIONS)
         val lead = corrector.shouldLeadWithCorrection(p, corrections.firstOrNull(), completions, lm, isCommonWord)
         val correctionWords = corrections.map { it.word }.let { words ->
             // A typed dictionary word stays right after the correction that displaced it.
@@ -183,7 +182,26 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             leadWithCorrection = lead,
             maxCount = maxCandidateCount,
         )
-        return words.map { candidate(it, prefix, sentenceStart, confidence[it] ?: 0.0) }
+        val autoCorrect = lead && prefs.correction.autoCorrect.get() && isAutoCorrectCasing(prefix, sentenceStart, corrections.first().word) &&
+            corrector.isAutoCorrectable(p, ranked, lm)
+        return words.mapIndexed { i, word ->
+            if (i == 0 && autoCorrect) {
+                candidate(word, prefix, sentenceStart, confidence[word] ?: 0.0)
+                    .copy(isEligibleForAutoCommit = true, correctsWord = prefix)
+            } else {
+                candidate(word, prefix, sentenceStart, confidence[word] ?: 0.0)
+            }
+        }
+    }
+
+    /**
+     * All-caps text (acronyms) and words capitalized mid-sentence (likely names) are never autocorrected, except
+     * into a contraction of "I" (`Im` → `I'm`).
+     */
+    private fun isAutoCorrectCasing(prefix: String, sentenceStart: Boolean, correction: String): Boolean = when {
+        prefix.length >= 2 && prefix.all { !it.isLetter() || it.isUpperCase() } -> false
+        prefix[0].isUpperCase() && !sentenceStart -> correction.startsWith("i'")
+        else -> true
     }
 
     /** Words in the next-word model's vocabulary (the ~20k most frequent); false if the model is unavailable. */

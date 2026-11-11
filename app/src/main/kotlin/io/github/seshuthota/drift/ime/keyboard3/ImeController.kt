@@ -51,6 +51,7 @@ import io.github.seshuthota.drift.ime.nlp.NlpManager
 import io.github.seshuthota.drift.ime.nlp.latin.NwpText
 import io.github.seshuthota.drift.ime.nlp.latin.isTypingPosition
 import io.github.seshuthota.drift.ime.nlp.SuggestionCandidate
+import io.github.seshuthota.drift.ime.nlp.WordSuggestionCandidate
 import io.github.seshuthota.drift.ime.text.key.KeyVariation
 import io.github.seshuthota.drift.lib.DriftLocale
 import io.github.seshuthota.drift.lib.devtools.flogDebug
@@ -102,6 +103,11 @@ class ImeController(
     private val breakIterators = BreakIterators()
     private val expectedContentQueue = ExpectedContentQueue()
     private var emitInterceptor = AtomicReference<EmitInterceptor?>(null)
+
+    /** The autocorrection made by the last key press, revertible by an immediate backspace. */
+    private var lastAutocorrection: Autocorrection? = null
+    /** A word whose autocorrection the user reverted; it is not corrected again in this field. */
+    private var rejectedAutocorrection: String? = null
 
     val activeTouchModelOptions = combine<Any, TouchModelOptions>(
         prefs.keyboard.numberRow.asFlow(),
@@ -317,6 +323,8 @@ class ImeController(
             )
             resetContent(initialSelection, initialSurrounding)
             expectedContentQueue.clear()
+            lastAutocorrection = null
+            rejectedAutocorrection = null
             requestSuggestions(force = true)
         }
 
@@ -327,6 +335,8 @@ class ImeController(
                 return
             }
             resetContent(newSelection, state.editor.getSurroundingText(50, 10))
+            // The cursor moved or the text changed outside of our own edits.
+            lastAutocorrection = null
             // Cursor-anchor updates also fire for layout/scroll changes and can carry stale selections, so only
             // drop glide alternatives once the glided word is really no longer directly before the cursor.
             dismissGlideAlternativesIfStale()
@@ -346,10 +356,61 @@ class ImeController(
         }
 
         override fun emitText(value: K3String) {
+            val text = value.toText()
+            val corrected = if (text.length == 1 && text[0] in AUTOCORRECT_SEPARATORS) autocorrectBeforeSeparator() else null
+            lastAutocorrection = null
             super.emitText(value)
             expectedContentQueue.push(state.content)
+            if (corrected != null) {
+                lastAutocorrection = corrected.copy(separator = text)
+            }
             reevaluateInputShiftState()
             requestSuggestions()
+        }
+
+        /**
+         * Replaces the word before the cursor with the suggestion provider's auto-commit candidate, if autocorrect
+         * is enabled, the field takes prose, and the candidate was computed for exactly this word.
+         */
+        private fun autocorrectBeforeSeparator(): Autocorrection? {
+            if (!prefs.correction.autoCorrect.get()) return null
+            val info = state.editor.info
+            if (info.isRawInputEditor || !info.isRichInputEditor) return null
+            val attributes = info.inputAttributes
+            if (attributes.type != InputAttributes.Type.TEXT || attributes.flagTextNoSuggestions ||
+                attributes.variation !in AUTOCORRECT_VARIATIONS || state.flags.keyVariation == KeyVariation.PASSWORD
+            ) {
+                return null
+            }
+            if (state.content.selection.isNotCollapsed()) return null
+            val nlp = nlpManager?.takeIf { it.isInitialized() }?.value ?: return null
+            val subtype = subtypeManager?.activeSubtype ?: return null
+            val typed = NwpText.partialWord(state.content.surroundingText.textBefore)
+            if (typed.length < 2 || typed == rejectedAutocorrection) return null
+            val start = System.nanoTime()
+            val candidate = nlp.autoCommitCandidateFor(subtype, state.content) as? WordSuggestionCandidate ?: return null
+            flogDebug { "autocorrect lookup took ${(System.nanoTime() - start) / 1000} µs" }
+            if (candidate.correctsWord != typed) return null
+            if (state.editor.getTextBeforeCursor(typed.length).toString() != typed) return null
+            val corrected = candidate.text.toString()
+            if (corrected == typed || !replaceBeforeCursor(typed.length, corrected)) return null
+            flogDebug { "autocorrect: '$typed' -> '$corrected'" }
+            return Autocorrection(original = typed, corrected = corrected, separator = "")
+        }
+
+        /** Undoes [autocorrection] if its text is still directly before the cursor. */
+        private fun revertAutocorrection(autocorrection: Autocorrection): Boolean {
+            val committed = autocorrection.corrected + autocorrection.separator
+            if (state.content.selection.isNotCollapsed() ||
+                state.editor.getTextBeforeCursor(committed.length).toString() != committed
+            ) {
+                return false
+            }
+            if (!replaceBeforeCursor(committed.length, autocorrection.original)) return false
+            flogDebug { "autocorrect reverted: '${autocorrection.corrected}' -> '${autocorrection.original}'" }
+            rejectedAutocorrection = autocorrection.original
+            requestSuggestions()
+            return true
         }
 
         override fun emitDescriptor(descriptor: K3Descriptor) {
@@ -445,6 +506,11 @@ class ImeController(
                     val enabled = prefs.smartbar.enabled.get()
                     scope.launch { prefs.smartbar.enabled.set(!enabled) }
                 }
+                ImeActions.ToggleAutocorrect -> {
+                    val enabled = prefs.correction.autoCorrect.get()
+                    scope.launch { prefs.correction.autoCorrect.set(!enabled) }
+                    requestSuggestions()
+                }
                 ImeActions.ToggleFloatingWindow -> windowController?.actions?.toggleFloatingWindow()
                 ImeActions.ToggleResizeMode -> windowController?.editor?.toggleEnabled()
                 ImeActions.CompactLayoutToLeft -> windowController?.actions?.compactLayoutToLeft()
@@ -456,6 +522,11 @@ class ImeController(
         }
 
         override fun emitBackspace() {
+            val autocorrection = lastAutocorrection
+            lastAutocorrection = null
+            if (autocorrection != null && revertAutocorrection(autocorrection)) {
+                return
+            }
             super.emitBackspace()
             expectedContentQueue.push(state.content)
             requestSuggestions()
@@ -805,6 +876,20 @@ private class ExpectedContentQueue {
         list.clear()
     }
 }
+
+/** A word replaced by autocorrect when [separator] was typed. */
+private data class Autocorrection(val original: String, val corrected: String, val separator: String)
+
+private val AUTOCORRECT_SEPARATORS = setOf(' ', '.', ',', '!', '?', ';', ':', '\n')
+
+/** Prose fields; names, addresses, emails, URLs, passwords and filters are never autocorrected. */
+private val AUTOCORRECT_VARIATIONS = setOf(
+    InputAttributes.Variation.NORMAL,
+    InputAttributes.Variation.EMAIL_SUBJECT,
+    InputAttributes.Variation.LONG_MESSAGE,
+    InputAttributes.Variation.SHORT_MESSAGE,
+    InputAttributes.Variation.WEB_EDIT_TEXT,
+)
 
 fun K3Content.cursorCapsMode(inputAttributes: InputAttributes): InputAttributes.CapsMode {
     return InputAttributes.CapsMode.fromFlags(

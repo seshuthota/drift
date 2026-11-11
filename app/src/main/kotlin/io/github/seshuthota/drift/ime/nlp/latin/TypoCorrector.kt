@@ -228,6 +228,33 @@ class TypoCorrector(words: Map<String, Int>, keyCenters: Map<Char, Pair<Float, F
         return margin > MISSPELLING_MARGIN
     }
 
+    /**
+     * Whether [typed] may be replaced by the top of [ranked] (the result of [correct] for [typed] with the same
+     * [lmLogProb]) without asking, e.g. when a word separator is typed.
+     * - [typed] is not a dictionary word: the best correction must beat the next one by [AUTOCORRECT_MARGIN]
+     *   (~98 % precision on the synthetic benchmark).
+     * - [typed] is a dictionary word and the correction only adds apostrophes (`dont` → `don't`): the contraction
+     *   must beat [typed] by [APOSTROPHE_AUTOCORRECT_MARGIN], which keeps `ill`, `id`, `were`, `its`.
+     * Other dictionary words are never replaced: the rule that spots misspellings in the dictionary (`recieve`)
+     * cannot tell them from rare real words (`pout` → `put`), so those only lead the suggestion bar.
+     */
+    fun isAutoCorrectable(
+        typed: String,
+        ranked: List<Correction>,
+        lmLogProb: ((String) -> Float?)? = null,
+    ): Boolean {
+        val best = ranked.firstOrNull() ?: return false
+        if (best.word == typed) return false
+        val second = ranked.drop(1).firstOrNull { it.word != typed }
+        val margin = if (second != null) best.score - second.score else Float.POSITIVE_INFINITY
+        if (!contains(typed)) return typed.length >= 2 && margin >= AUTOCORRECT_MARGIN
+        if (best.word.replace("'", "") == typed) {
+            val typedScore = completionScore(typed, lmLogProb) + COMPLETION_PENALTY
+            return best.score - typedScore >= APOSTROPHE_AUTOCORRECT_MARGIN
+        }
+        return false
+    }
+
     private fun keyDistance(a: Char, b: Char): Float {
         val ax = if (a.code < 128) keyX[a.code] else Float.NaN
         val bx = if (b.code < 128) keyX[b.code] else Float.NaN
@@ -296,6 +323,8 @@ class TypoCorrector(words: Map<String, Int>, keyCenters: Map<Char, Pair<Float, F
         const val LM_FLOOR = 10f
         const val COMPLETION_PENALTY = 1.0f
         const val MISSPELLING_MARGIN = 2.5f
+        const val AUTOCORRECT_MARGIN = 2.5f
+        const val APOSTROPHE_AUTOCORRECT_MARGIN = 0.8f
     }
 }
 
