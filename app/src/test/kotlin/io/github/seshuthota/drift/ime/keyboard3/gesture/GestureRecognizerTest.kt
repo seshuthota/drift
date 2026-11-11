@@ -148,6 +148,19 @@ class GestureRecognizerTest : FunSpec({
             recognizer.onUp(1L, 90f, 0f, 40L).shouldBeInstanceOf<GestureOutcome.Swipe>()
         }
 
+        test("a slow vertical move of the same length stays a tap") {
+            val recognizer = GestureRecognizer()
+            recognizer.press()
+            recognizer.onMove(1L, 0f, -50f, 60L)
+            recognizer.onUp(1L, 5f, -90f, 150L) shouldBe GestureOutcome.Tap
+        }
+
+        test("a diagonal neighbour still counts as a short glide") {
+            val recognizer = GestureRecognizer()
+            recognizer.press()
+            recognizer.onUp(1L, -50f, 95f, 150L).shouldBeInstanceOf<GestureOutcome.Glide>()
+        }
+
         test("a slide that stays within the down key is a tap") {
             val recognizer = GestureRecognizer()
             recognizer.press()
