@@ -1,0 +1,163 @@
+"""Tokenize corpora into uint16 word-id arrays over the app dictionary vocabulary.
+
+Vocabulary = every key of `app/src/main/assets/ime/dict/data.json` (lowercase words, incl.
+contractions such as don't / i'm), plus three specials:
+
+    0 <unk>   word outside the dictionary (also anything containing a digit)
+    1 <s>     boundary: document start, sentence end (. ! ?), newline
+    2 ,       comma, kept as context only (never shown as a prediction)
+
+Word ids are re-ordered by training-corpus frequency (id 3 = most frequent word), so a neural
+model can truncate its output layer to the top-K ids.
+
+    python prepare.py --fineweb ../work/nwp/raw/sample/10BT/000_00000.parquet \
+        --oasst ../work/nwp/raw/2023-04-12_oasst_ready.messages.jsonl.gz --out ../work/nwp
+"""
+
+import argparse
+import gzip
+import json
+import os
+import re
+import zlib
+from multiprocessing import Pool
+
+import numpy as np
+import pyarrow.parquet as pq
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+DICT_PATH = os.path.join(ROOT, "app/src/main/assets/ime/dict/data.json")
+SPECIALS = ["<unk>", "<s>", ","]
+UNK, BOS, COMMA = 0, 1, 2
+TOKEN_RE = re.compile(r"[a-z0-9]+(?:'[a-z]+)?|[.!?]+|,|\n")
+
+_word_to_id = None
+
+
+def load_dict_words(path=DICT_PATH):
+    return sorted(json.load(open(path, encoding="utf-8")).keys())
+
+
+def _init(words):
+    global _word_to_id
+    _word_to_id = {w: i + len(SPECIALS) for i, w in enumerate(words)}
+
+
+def tokenize(text):
+    """Text -> list of ids (dictionary order). Starts with <s>, collapses repeated <s>."""
+    text = text.lower().replace("’", "'").replace("‘", "'")
+    out = [BOS]
+    for tok in TOKEN_RE.findall(text):
+        c = tok[0]
+        if c == "\n" or c in ".!?":
+            if out[-1] != BOS:
+                out.append(BOS)
+        elif c == ",":
+            if out[-1] not in (BOS, COMMA):
+                out.append(COMMA)
+        else:
+            out.append(_word_to_id.get(tok, UNK))
+    if out[-1] != BOS:
+        out.append(BOS)
+    return out
+
+
+def _tok_batch(texts):
+    ids = []
+    for t in texts:
+        ids.extend(tokenize(t))
+    return np.asarray(ids, dtype=np.uint16)
+
+
+def fineweb_batches(path, batch_docs=2000):
+    pf = pq.ParquetFile(path)
+    for batch in pf.iter_batches(batch_size=batch_docs, columns=["text"]):
+        yield batch.column(0).to_pylist()
+
+
+def oasst_texts(path):
+    """English user prompts, split by conversation tree (90 % train / 10 % test)."""
+    train, test = [], []
+    with gzip.open(path, "rt", encoding="utf-8") as f:
+        for line in f:
+            m = json.loads(line)
+            if m.get("role") != "prompter" or m.get("lang") != "en":
+                continue
+            bucket = zlib.crc32(m["message_tree_id"].encode()) % 10
+            (test if bucket == 0 else train).append(m["text"])
+    return train, test
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--fineweb", required=True)
+    ap.add_argument("--oasst", required=True)
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--train-tokens", type=int, default=300_000_000)
+    ap.add_argument("--heldout-tokens", type=int, default=2_000_000)
+    ap.add_argument("--workers", type=int, default=8)
+    args = ap.parse_args()
+
+    words = load_dict_words()
+    vocab_size = len(SPECIALS) + len(words)
+    assert vocab_size < 65535
+    _init(words)
+
+    # Held-out web text comes from the first batches, training from the rest (document-level split).
+    web_val, web_test, train_parts = [], [], []
+    n_val = n_test = n_train = 0
+    with Pool(args.workers, initializer=_init, initargs=(words,)) as pool:
+        for arr in pool.imap(_tok_batch, fineweb_batches(args.fineweb)):
+            if n_val < args.heldout_tokens:
+                web_val.append(arr)
+                n_val += len(arr)
+            elif n_test < args.heldout_tokens:
+                web_test.append(arr)
+                n_test += len(arr)
+            else:
+                train_parts.append(arr)
+                n_train += len(arr)
+                if len(train_parts) % 50 == 0:
+                    print(f"train tokens {n_train / 1e6:.0f}M", flush=True)
+                if n_train >= args.train_tokens:
+                    pool.terminate()
+                    break
+
+    chat_train_txt, chat_test_txt = oasst_texts(args.oasst)
+    chat_train = _tok_batch(chat_train_txt)
+    chat_test = _tok_batch(chat_test_txt)
+    web_train = np.concatenate(train_parts)
+    del train_parts
+
+    # Re-order word ids by training frequency (specials keep 0..2).
+    counts = np.bincount(web_train, minlength=vocab_size) + np.bincount(chat_train, minlength=vocab_size)
+    order = np.argsort(-counts[len(SPECIALS):], kind="stable") + len(SPECIALS)
+    new_id = np.empty(vocab_size, dtype=np.uint16)
+    new_id[:len(SPECIALS)] = np.arange(len(SPECIALS))
+    new_id[order] = np.arange(len(SPECIALS), vocab_size)
+    vocab = SPECIALS + [words[i - len(SPECIALS)] for i in order]
+
+    os.makedirs(args.out, exist_ok=True)
+    for name, arr in [
+        ("web_train", web_train),
+        ("web_val", np.concatenate(web_val)),
+        ("web_test", np.concatenate(web_test)),
+        ("chat_train", chat_train),
+        ("chat_test", chat_test),
+    ]:
+        arr = new_id[arr]
+        np.save(os.path.join(args.out, f"{name}.npy"), arr)
+        unk = float((arr == UNK).mean())
+        print(f"{name}: {len(arr):,} tokens, unk {unk:.2%}", flush=True)
+    with open(os.path.join(args.out, "vocab.txt"), "w", encoding="utf-8") as f:
+        f.write("\n".join(vocab) + "\n")
+    total = counts[len(SPECIALS):].sum()
+    sorted_counts = np.sort(counts[len(SPECIALS):])[::-1]
+    for k in (5_000, 10_000, 20_000, 30_000):
+        print(f"top-{k} words cover {sorted_counts[:k].sum() / total:.2%} of in-vocab tokens")
+    print(json.dumps({"vocab_size": vocab_size, "chat_train_msgs": len(chat_train_txt),
+                      "chat_test_msgs": len(chat_test_txt)}))
+
+
+if __name__ == "__main__":
+    main()

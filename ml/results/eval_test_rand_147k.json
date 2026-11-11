@@ -1,0 +1,456 @@
+{
+  "summary": {
+    "rows": 4000,
+    "greedy_top1": 0.741,
+    "beam_top1": 0.89375,
+    "beam_top3": 0.95025,
+    "beam_top5": 0.959,
+    "beam": 120,
+    "alpha": 0.8,
+    "beta": 0.0,
+    "lexicon": "/tmp/en_full.txt",
+    "ckpt": "../work/run_400k/best.pt"
+  },
+  "examples": [
+    {
+      "word": "hardy",
+      "greedy": "hardy",
+      "beam": [
+        "hardy",
+        "harry",
+        "hard",
+        "gary",
+        "hary"
+      ]
+    },
+    {
+      "word": "attempt",
+      "greedy": "atemor",
+      "beam": [
+        "attempt",
+        "armor",
+        "amor",
+        "armour",
+        "amour"
+      ]
+    },
+    {
+      "word": "regular",
+      "greedy": "regular",
+      "beam": [
+        "regular",
+        "regula",
+        "regulars",
+        "regulate",
+        "result"
+      ]
+    },
+    {
+      "word": "the",
+      "greedy": "the",
+      "beam": [
+        "the",
+        "th",
+        "thy",
+        "thee",
+        "tho"
+      ]
+    },
+    {
+      "word": "chevrolet",
+      "greedy": "chenroley",
+      "beam": [
+        "chevrolet",
+        "cherokee",
+        "cheveley",
+        "crikey",
+        "cecile"
+      ]
+    },
+    {
+      "word": "horus",
+      "greedy": "horus",
+      "beam": [
+        "horus",
+        "hors",
+        "hours",
+        "horses",
+        "horse"
+      ]
+    },
+    {
+      "word": "are",
+      "greedy": "are",
+      "beam": [
+        "are",
+        "art",
+        "aren",
+        "ares",
+        "arre"
+      ]
+    },
+    {
+      "word": "mokranjacs",
+      "greedy": "moranacs",
+      "beam": [
+        "moran",
+        "moans",
+        "morand",
+        "morans",
+        "moana"
+      ]
+    },
+    {
+      "word": "they",
+      "greedy": "they",
+      "beam": [
+        "they",
+        "the",
+        "ther",
+        "thet",
+        "thee"
+      ]
+    },
+    {
+      "word": "schools",
+      "greedy": "schools",
+      "beam": [
+        "schools",
+        "school",
+        "scholls",
+        "schola",
+        "scholes"
+      ]
+    },
+    {
+      "word": "mostly",
+      "greedy": "mostly",
+      "beam": [
+        "mostly",
+        "most",
+        "misty",
+        "motley",
+        "mostel"
+      ]
+    },
+    {
+      "word": "is",
+      "greedy": "is",
+      "beam": [
+        "is",
+        "if",
+        "it",
+        "us",
+        "in"
+      ]
+    },
+    {
+      "word": "asheville",
+      "greedy": "ageviller",
+      "beam": [
+        "asheville",
+        "agile",
+        "ashville",
+        "albie",
+        "alvie"
+      ]
+    },
+    {
+      "word": "still",
+      "greedy": "still",
+      "beam": [
+        "still",
+        "stil",
+        "till",
+        "stills",
+        "stoll"
+      ]
+    },
+    {
+      "word": "opens",
+      "greedy": "opens",
+      "beam": [
+        "opens",
+        "open",
+        "opened",
+        "oppen",
+        "pens"
+      ]
+    },
+    {
+      "word": "by",
+      "greedy": "by",
+      "beam": [
+        "by",
+        "be",
+        "buy",
+        "my",
+        "boy"
+      ]
+    },
+    {
+      "word": "forms",
+      "greedy": "forns",
+      "beam": [
+        "forms",
+        "form",
+        "firms",
+        "for",
+        "forks"
+      ]
+    },
+    {
+      "word": "temple",
+      "greedy": "temple",
+      "beam": [
+        "temple",
+        "tempe",
+        "temper",
+        "temples",
+        "temp"
+      ]
+    },
+    {
+      "word": "banned",
+      "greedy": "bannned",
+      "beam": [
+        "banned",
+        "named",
+        "band",
+        "naked",
+        "baked"
+      ]
+    },
+    {
+      "word": "the",
+      "greedy": "the",
+      "beam": [
+        "the",
+        "they",
+        "then",
+        "thy",
+        "thee"
+      ]
+    },
+    {
+      "word": "to",
+      "greedy": "to",
+      "beam": [
+        "to",
+        "too",
+        "top",
+        "so",
+        "do"
+      ]
+    },
+    {
+      "word": "as",
+      "greedy": "as",
+      "beam": [
+        "as",
+        "at",
+        "an",
+        "ass",
+        "am"
+      ]
+    },
+    {
+      "word": "the",
+      "greedy": "the",
+      "beam": [
+        "the",
+        "they",
+        "thee",
+        "then",
+        "theo"
+      ]
+    },
+    {
+      "word": "also",
+      "greedy": "also",
+      "beam": [
+        "also",
+        "aso",
+        "als",
+        "apso",
+        "alsop"
+      ]
+    },
+    {
+      "word": "albums",
+      "greedy": "albums",
+      "beam": [
+        "albums",
+        "album",
+        "alums",
+        "alum",
+        "albus"
+      ]
+    },
+    {
+      "word": "components",
+      "greedy": "components",
+      "beam": [
+        "components",
+        "component",
+        "compliments",
+        "complements",
+        "compliment"
+      ]
+    },
+    {
+      "word": "the",
+      "greedy": "the",
+      "beam": [
+        "the",
+        "they",
+        "then",
+        "theo",
+        "te"
+      ]
+    },
+    {
+      "word": "or",
+      "greedy": "ot",
+      "beam": [
+        "it",
+        "or",
+        "out",
+        "our",
+        "of"
+      ]
+    },
+    {
+      "word": "more",
+      "greedy": "mor",
+      "beam": [
+        "more",
+        "moe",
+        "mor",
+        "mort",
+        "not"
+      ]
+    },
+    {
+      "word": "orbit",
+      "greedy": "oebit",
+      "beam": [
+        "orbit",
+        "orbot",
+        "obit",
+        "ornot",
+        "pinot"
+      ]
+    },
+    {
+      "word": "how",
+      "greedy": "hoe",
+      "beam": [
+        "how",
+        "hoe",
+        "hot",
+        "he",
+        "hour"
+      ]
+    },
+    {
+      "word": "been",
+      "greedy": "been",
+      "beam": [
+        "been",
+        "ben",
+        "bee",
+        "be",
+        "breen"
+      ]
+    },
+    {
+      "word": "of",
+      "greedy": "of",
+      "beam": [
+        "of",
+        "off",
+        "on",
+        "or",
+        "if"
+      ]
+    },
+    {
+      "word": "to",
+      "greedy": "to",
+      "beam": [
+        "to",
+        "too",
+        "top",
+        "te",
+        "toe"
+      ]
+    },
+    {
+      "word": "included",
+      "greedy": "inclided",
+      "beam": [
+        "included",
+        "include",
+        "includes",
+        "unclouded",
+        "inclined"
+      ]
+    },
+    {
+      "word": "rooms",
+      "greedy": "rooms",
+      "beam": [
+        "rooms",
+        "room",
+        "roms",
+        "roma",
+        "rims"
+      ]
+    },
+    {
+      "word": "and",
+      "greedy": "and",
+      "beam": [
+        "and",
+        "an",
+        "any",
+        "ann",
+        "ane"
+      ]
+    },
+    {
+      "word": "but",
+      "greedy": "but",
+      "beam": [
+        "but",
+        "buy",
+        "bus",
+        "butt",
+        "by"
+      ]
+    },
+    {
+      "word": "recordings",
+      "greedy": "recordings",
+      "beam": [
+        "recordings",
+        "recording",
+        "records",
+        "record",
+        "decoding"
+      ]
+    },
+    {
+      "word": "of",
+      "greedy": "of",
+      "beam": [
+        "of",
+        "off",
+        "or",
+        "if",
+        "on"
+      ]
+    }
+  ]
+}

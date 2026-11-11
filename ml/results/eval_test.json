@@ -1,0 +1,456 @@
+{
+  "summary": {
+    "rows": 4000,
+    "greedy_top1": 0.648,
+    "beam_top1": 0.86225,
+    "beam_top3": 0.9215,
+    "beam_top5": 0.932,
+    "beam": 120,
+    "alpha": 0.4,
+    "beta": 0.0,
+    "lexicon": "/tmp/en_50k.txt",
+    "ckpt": "../work/run1/best.pt"
+  },
+  "examples": [
+    {
+      "word": "brahmas",
+      "greedy": "bramms",
+      "beam": [
+        "brahms",
+        "brahma",
+        "brains",
+        "bram",
+        "bran"
+      ]
+    },
+    {
+      "word": "son",
+      "greedy": "son",
+      "beam": [
+        "son",
+        "soon",
+        "sion",
+        "don",
+        "so"
+      ]
+    },
+    {
+      "word": "was",
+      "greedy": "was",
+      "beam": [
+        "was",
+        "war",
+        "wad",
+        "wat",
+        "wa"
+      ]
+    },
+    {
+      "word": "the",
+      "greedy": "the",
+      "beam": [
+        "the",
+        "thee",
+        "they",
+        "thy",
+        "there"
+      ]
+    },
+    {
+      "word": "central",
+      "greedy": "central",
+      "beam": [
+        "central",
+        "dental",
+        "denial",
+        "cent",
+        "entrap"
+      ]
+    },
+    {
+      "word": "period",
+      "greedy": "peod",
+      "beam": [
+        "pod",
+        "prod",
+        "period",
+        "pros",
+        "pos"
+      ]
+    },
+    {
+      "word": "of",
+      "greedy": "of",
+      "beam": [
+        "of",
+        "off",
+        "on",
+        "or",
+        "if"
+      ]
+    },
+    {
+      "word": "mokranjacs",
+      "greedy": "moltranjavs",
+      "beam": [
+        "moana",
+        "moans",
+        "montana",
+        "moran",
+        "moan"
+      ]
+    },
+    {
+      "word": "output",
+      "greedy": "output",
+      "beam": [
+        "output",
+        "out",
+        "tout",
+        "put",
+        "opt"
+      ]
+    },
+    {
+      "word": "is",
+      "greedy": "is",
+      "beam": [
+        "is",
+        "us",
+        "if",
+        "it",
+        "its"
+      ]
+    },
+    {
+      "word": "mostly",
+      "greedy": "mostly",
+      "beam": [
+        "mostly",
+        "misty",
+        "most",
+        "miserly",
+        "musty"
+      ]
+    },
+    {
+      "word": "devoted",
+      "greedy": "devoed",
+      "beam": [
+        "devoted",
+        "devoured",
+        "deviled",
+        "devote",
+        "deviated"
+      ]
+    },
+    {
+      "word": "to",
+      "greedy": "to",
+      "beam": [
+        "to",
+        "too",
+        "tio",
+        "tl",
+        "top"
+      ]
+    },
+    {
+      "word": "orchestral",
+      "greedy": "ochestral",
+      "beam": [
+        "orchestral",
+        "orchestra",
+        "orchestras",
+        "overall",
+        "chest"
+      ]
+    },
+    {
+      "word": "roger",
+      "greedy": "roger",
+      "beam": [
+        "roger",
+        "roge",
+        "rodger",
+        "roe",
+        "tiger"
+      ]
+    },
+    {
+      "word": "ebert",
+      "greedy": "ever",
+      "beam": [
+        "ever",
+        "every",
+        "evert",
+        "ebert",
+        "evey"
+      ]
+    },
+    {
+      "word": "of",
+      "greedy": "of",
+      "beam": [
+        "of",
+        "if",
+        "off",
+        "it",
+        "oft"
+      ]
+    },
+    {
+      "word": "the",
+      "greedy": "the",
+      "beam": [
+        "the",
+        "they",
+        "thee",
+        "ther",
+        "them"
+      ]
+    },
+    {
+      "word": "chicago",
+      "greedy": "chicah",
+      "beam": [
+        "chica",
+        "chirag",
+        "chick",
+        "cinch",
+        "coca"
+      ]
+    },
+    {
+      "word": "spaceland",
+      "greedy": "supaceland",
+      "beam": [
+        "spaceman",
+        "pelant",
+        "spend",
+        "splat",
+        "palate"
+      ]
+    },
+    {
+      "word": "recordings",
+      "greedy": "recordings",
+      "beam": [
+        "recordings",
+        "recording",
+        "records",
+        "record",
+        "receding"
+      ]
+    },
+    {
+      "word": "occasionally",
+      "greedy": "occasinally",
+      "beam": [
+        "occasionally",
+        "occasional",
+        "casually",
+        "canal",
+        "cally"
+      ]
+    },
+    {
+      "word": "published",
+      "greedy": "pubished",
+      "beam": [
+        "published",
+        "punished",
+        "publishes",
+        "publisher",
+        "punishes"
+      ]
+    },
+    {
+      "word": "live",
+      "greedy": "live",
+      "beam": [
+        "live",
+        "love",
+        "line",
+        "lie",
+        "lived"
+      ]
+    },
+    {
+      "word": "albums",
+      "greedy": "albums",
+      "beam": [
+        "albums",
+        "album",
+        "alum",
+        "slums",
+        "albin"
+      ]
+    },
+    {
+      "word": "recorded",
+      "greedy": "recorded",
+      "beam": [
+        "recorded",
+        "recorder",
+        "decoded",
+        "decided",
+        "recorders"
+      ]
+    },
+    {
+      "word": "at",
+      "greedy": "at",
+      "beam": [
+        "at",
+        "art",
+        "as",
+        "ar",
+        "ay"
+      ]
+    },
+    {
+      "word": "the",
+      "greedy": "the",
+      "beam": [
+        "the",
+        "thee",
+        "they",
+        "thy",
+        "th"
+      ]
+    },
+    {
+      "word": "more",
+      "greedy": "mor",
+      "beam": [
+        "more",
+        "mor",
+        "moe",
+        "mort",
+        "mot"
+      ]
+    },
+    {
+      "word": "efforts",
+      "greedy": "edfors",
+      "beam": [
+        "efforts",
+        "effort",
+        "egor",
+        "forts",
+        "escorts"
+      ]
+    },
+    {
+      "word": "have",
+      "greedy": "have",
+      "beam": [
+        "have",
+        "gave",
+        "havre",
+        "hav",
+        "haven"
+      ]
+    },
+    {
+      "word": "been",
+      "greedy": "been",
+      "beam": [
+        "been",
+        "ben",
+        "bee",
+        "breen",
+        "beer"
+      ]
+    },
+    {
+      "word": "made",
+      "greedy": "made",
+      "beam": [
+        "made",
+        "mase",
+        "mae",
+        "madre",
+        "mad"
+      ]
+    },
+    {
+      "word": "to",
+      "greedy": "to",
+      "beam": [
+        "to",
+        "too",
+        "te",
+        "tu",
+        "tl"
+      ]
+    },
+    {
+      "word": "obtain",
+      "greedy": "obtain",
+      "beam": [
+        "obtain",
+        "bain",
+        "brain",
+        "basin",
+        "bin"
+      ]
+    },
+    {
+      "word": "extracellular",
+      "greedy": "extacelylar",
+      "beam": [
+        "exactly",
+        "extract",
+        "extracts",
+        "exact",
+        "extractor"
+      ]
+    },
+    {
+      "word": "and",
+      "greedy": "and",
+      "beam": [
+        "and",
+        "an",
+        "ans",
+        "ane",
+        "ant"
+      ]
+    },
+    {
+      "word": "intracellular",
+      "greedy": "intaceliular",
+      "beam": [
+        "installed",
+        "intact",
+        "install",
+        "unraveled",
+        "unravel"
+      ]
+    },
+    {
+      "word": "recordings",
+      "greedy": "recordings",
+      "beam": [
+        "recordings",
+        "recording",
+        "records",
+        "receding",
+        "recurring"
+      ]
+    },
+    {
+      "word": "ive",
+      "greedy": "ive",
+      "beam": [
+        "one",
+        "ive",
+        "ove",
+        "ine",
+        "ice"
+      ]
+    }
+  ]
+}

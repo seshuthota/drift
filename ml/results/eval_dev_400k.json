@@ -1,0 +1,456 @@
+{
+  "summary": {
+    "rows": 8000,
+    "greedy_top1": 0.729,
+    "beam_top1": 0.884875,
+    "beam_top3": 0.930375,
+    "beam_top5": 0.938,
+    "beam": 120,
+    "alpha": 0.4,
+    "beta": 0.0,
+    "lexicon": "/tmp/en_50k.txt",
+    "ckpt": "../work/run_400k/best.pt"
+  },
+  "examples": [
+    {
+      "word": "the",
+      "greedy": "the",
+      "beam": [
+        "the",
+        "they",
+        "then",
+        "thee",
+        "theo"
+      ]
+    },
+    {
+      "word": "extensive",
+      "greedy": "extensive",
+      "beam": [
+        "extensive",
+        "expensive",
+        "extension",
+        "extensions",
+        "extending"
+      ]
+    },
+    {
+      "word": "crack",
+      "greedy": "crack",
+      "beam": [
+        "crack",
+        "cracks",
+        "crank",
+        "crock",
+        "brack"
+      ]
+    },
+    {
+      "word": "networks",
+      "greedy": "networks",
+      "beam": [
+        "networks",
+        "network",
+        "meteors",
+        "meteor",
+        "newark"
+      ]
+    },
+    {
+      "word": "that",
+      "greedy": "that",
+      "beam": [
+        "that",
+        "thar",
+        "thay",
+        "what",
+        "than"
+      ]
+    },
+    {
+      "word": "develop",
+      "greedy": "develop",
+      "beam": [
+        "develop",
+        "develops",
+        "devo",
+        "devalos",
+        "deep"
+      ]
+    },
+    {
+      "word": "often",
+      "greedy": "often",
+      "beam": [
+        "often",
+        "osten",
+        "after",
+        "ten",
+        "ofthem"
+      ]
+    },
+    {
+      "word": "produce",
+      "greedy": "produce",
+      "beam": [
+        "produce",
+        "product",
+        "produces",
+        "produced",
+        "products"
+      ]
+    },
+    {
+      "word": "hexagonal",
+      "greedy": "hecaponal",
+      "beam": [
+        "heal",
+        "henna",
+        "hana",
+        "hernan",
+        "hea"
+      ]
+    },
+    {
+      "word": "columns",
+      "greedy": "colums",
+      "beam": [
+        "columns",
+        "column",
+        "colum",
+        "colm",
+        "cold"
+      ]
+    },
+    {
+      "word": "of",
+      "greedy": "of",
+      "beam": [
+        "of",
+        "if",
+        "off",
+        "or",
+        "on"
+      ]
+    },
+    {
+      "word": "in",
+      "greedy": "in",
+      "beam": [
+        "in",
+        "is",
+        "it",
+        "on",
+        "if"
+      ]
+    },
+    {
+      "word": "they",
+      "greedy": "they",
+      "beam": [
+        "they",
+        "the",
+        "thet",
+        "ther",
+        "then"
+      ]
+    },
+    {
+      "word": "did",
+      "greedy": "dis",
+      "beam": [
+        "did",
+        "dis",
+        "dios",
+        "dos",
+        "die"
+      ]
+    },
+    {
+      "word": "not",
+      "greedy": "not",
+      "beam": [
+        "not",
+        "now",
+        "nor",
+        "no",
+        "nos"
+      ]
+    },
+    {
+      "word": "carry",
+      "greedy": "cary",
+      "beam": [
+        "carry",
+        "cary",
+        "cart",
+        "car",
+        "care"
+      ]
+    },
+    {
+      "word": "the",
+      "greedy": "the",
+      "beam": [
+        "the",
+        "they",
+        "th",
+        "thr",
+        "thy"
+      ]
+    },
+    {
+      "word": "sled",
+      "greedy": "sled",
+      "beam": [
+        "sled",
+        "seed",
+        "ale",
+        "sed",
+        "speed"
+      ]
+    },
+    {
+      "word": "but",
+      "greedy": "but",
+      "beam": [
+        "but",
+        "buy",
+        "bus",
+        "bur",
+        "bt"
+      ]
+    },
+    {
+      "word": "walked",
+      "greedy": "walked",
+      "beam": [
+        "walked",
+        "walled",
+        "wales",
+        "walker",
+        "waller"
+      ]
+    },
+    {
+      "word": "next",
+      "greedy": "next",
+      "beam": [
+        "next",
+        "net",
+        "neat",
+        "nest",
+        "bet"
+      ]
+    },
+    {
+      "word": "to",
+      "greedy": "to",
+      "beam": [
+        "to",
+        "too",
+        "top",
+        "toe",
+        "te"
+      ]
+    },
+    {
+      "word": "it",
+      "greedy": "it",
+      "beam": [
+        "it",
+        "is",
+        "ot",
+        "if",
+        "in"
+      ]
+    },
+    {
+      "word": "is",
+      "greedy": "is",
+      "beam": [
+        "is",
+        "us",
+        "it",
+        "if",
+        "its"
+      ]
+    },
+    {
+      "word": "suburb",
+      "greedy": "suburb",
+      "beam": [
+        "suburb",
+        "sunburn",
+        "auburn",
+        "suburbs",
+        "subbu"
+      ]
+    },
+    {
+      "word": "of",
+      "greedy": "of",
+      "beam": [
+        "of",
+        "if",
+        "off",
+        "or",
+        "on"
+      ]
+    },
+    {
+      "word": "arriving",
+      "greedy": "arriving",
+      "beam": [
+        "arriving",
+        "arising",
+        "striving",
+        "arvin",
+        "arvind"
+      ]
+    },
+    {
+      "word": "val",
+      "greedy": "vall",
+      "beam": [
+        "ball",
+        "call",
+        "val",
+        "bal",
+        "cal"
+      ]
+    },
+    {
+      "word": "discovered",
+      "greedy": "discovered",
+      "beam": [
+        "discovered",
+        "discovers",
+        "discover",
+        "discoveries",
+        "discovery"
+      ]
+    },
+    {
+      "word": "that",
+      "greedy": "that",
+      "beam": [
+        "that",
+        "thar",
+        "tha",
+        "thay",
+        "than"
+      ]
+    },
+    {
+      "word": "his",
+      "greedy": "his",
+      "beam": [
+        "his",
+        "hid",
+        "hi",
+        "hiss",
+        "hit"
+      ]
+    },
+    {
+      "word": "mother",
+      "greedy": "mother",
+      "beam": [
+        "mother",
+        "mothers",
+        "nother",
+        "bother",
+        "other"
+      ]
+    },
+    {
+      "word": "had",
+      "greedy": "had",
+      "beam": [
+        "had",
+        "has",
+        "hat",
+        "ha",
+        "hard"
+      ]
+    },
+    {
+      "word": "this",
+      "greedy": "this",
+      "beam": [
+        "this",
+        "thi",
+        "thus",
+        "thin",
+        "his"
+      ]
+    },
+    {
+      "word": "series",
+      "greedy": "series",
+      "beam": [
+        "series",
+        "serves",
+        "saris",
+        "aries",
+        "serge"
+      ]
+    },
+    {
+      "word": "has",
+      "greedy": "has",
+      "beam": [
+        "has",
+        "had",
+        "ha",
+        "hat",
+        "han"
+      ]
+    },
+    {
+      "word": "been",
+      "greedy": "been",
+      "beam": [
+        "been",
+        "ben",
+        "bees",
+        "bee",
+        "beer"
+      ]
+    },
+    {
+      "word": "known",
+      "greedy": "known",
+      "beam": [
+        "known",
+        "know",
+        "knows",
+        "knowin",
+        "knowed"
+      ]
+    },
+    {
+      "word": "as",
+      "greedy": "as",
+      "beam": [
+        "as",
+        "ss",
+        "at",
+        "an",
+        "ad"
+      ]
+    },
+    {
+      "word": "uncut",
+      "greedy": "uncut",
+      "beam": [
+        "uncut",
+        "incur",
+        "unit",
+        "undue",
+        "unhurt"
+      ]
+    }
+  ]
+}
