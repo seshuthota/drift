@@ -114,7 +114,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         allowPossiblyOffensive: Boolean,
         isPrivateSession: Boolean,
     ): List<SuggestionCandidate> {
-        if (content.selection.isNotCollapsed()) {
+        if (!content.isTypingPosition()) {
             return emptyList()
         }
         val textBefore = content.surroundingText.textBefore

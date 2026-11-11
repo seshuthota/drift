@@ -49,6 +49,7 @@ import io.github.seshuthota.drift.ime.nlp.ClipboardSuggestionCandidate
 import io.github.seshuthota.drift.ime.nlp.GlideSuggestionCandidate
 import io.github.seshuthota.drift.ime.nlp.NlpManager
 import io.github.seshuthota.drift.ime.nlp.latin.NwpText
+import io.github.seshuthota.drift.ime.nlp.latin.isTypingPosition
 import io.github.seshuthota.drift.ime.nlp.SuggestionCandidate
 import io.github.seshuthota.drift.ime.text.key.KeyVariation
 import io.github.seshuthota.drift.lib.DriftLocale
@@ -547,22 +548,23 @@ class ImeController(
         }
 
         /**
-         * Replaces the [oldLength] characters directly before a collapsed cursor with [newText] via a single
-         * composing-region commit (a plain deleteSurroundingText would skip over an active composing region).
+         * Replaces the [oldLength] characters directly before the cursor with [newText] via a single
+         * composing-region commit (a plain deleteSurroundingText would skip over an active composing region). An
+         * editor's inline autocompletion after the cursor is replaced as well.
          */
         private fun replaceBeforeCursor(oldLength: Int, newText: String): Boolean {
             val selection = state.content.selection
-            if (selection.isNotCollapsed() || selection.start < oldLength) {
+            if (!state.content.isTypingPosition() || selection.start < oldLength) {
                 return false
             }
-            if (oldLength == 0) {
+            if (oldLength == 0 && selection.isCollapsed()) {
                 emitText(newText.asK3String())
                 return true
             }
             val start = selection.start - oldLength
             val newCursor = start + newText.length
             val newSelection = K3TextRange(start = newCursor, end = newCursor)
-            state.editor.replaceText(start until selection.start, newText, newSelection, null)
+            state.editor.replaceText(start until selection.end, newText, newSelection, null)
             resetContent(newSelection, state.editor.getSurroundingText(50, 10))
             expectedContentQueue.push(state.content)
             reevaluateInputShiftState()
@@ -595,8 +597,7 @@ class ImeController(
             val nlp = nlpManager?.takeIf { it.isInitialized() }?.value ?: return
             val glided = nlp.activeCandidates.firstNotNullOfOrNull { (it as? GlideSuggestionCandidate)?.replacesText }
                 ?: return
-            val selection = state.content.selection
-            if (selection.isNotCollapsed() || state.editor.getTextBeforeCursor(glided.length) != glided) {
+            if (!state.content.isTypingPosition() || state.editor.getTextBeforeCursor(glided.length) != glided) {
                 nlp.clearSuggestions()
             }
         }
@@ -637,7 +638,7 @@ class ImeController(
          */
         fun emitCompletion(candidate: SuggestionCandidate): Boolean {
             var text = candidate.text.toString()
-            if (text.isEmpty() || state.editor.info.isRawInputEditor || state.content.selection.isNotCollapsed()) {
+            if (text.isEmpty() || state.editor.info.isRawInputEditor || !state.content.isTypingPosition()) {
                 return false
             }
             if (state.flags.inputShiftState == InputShiftState.CAPS_LOCK) {

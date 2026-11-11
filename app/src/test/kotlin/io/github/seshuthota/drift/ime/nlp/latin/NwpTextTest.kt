@@ -66,6 +66,22 @@ class NwpTextTest : FunSpec({
         }
     }
 
+    context("isInlineAutocomplete") {
+        test("browser autocompletion after a partially typed word") {
+            NwpText.isInlineAutocomplete("this is", textSelected = " the end", textAfter = "") shouldBe true
+            NwpText.isInlineAutocomplete("goo", textSelected = "gle.com", textAfter = "") shouldBe true
+        }
+        test("a long-pressed word is a user selection") {
+            NwpText.isInlineAutocomplete("this is ", textSelected = "great", textAfter = "") shouldBe false
+        }
+        test("a selection with text after it is a user selection") {
+            NwpText.isInlineAutocomplete("this is", textSelected = " gre", textAfter = "at") shouldBe false
+        }
+        test("no selection is not an autocompletion") {
+            NwpText.isInlineAutocomplete("this is", textSelected = "", textAfter = "") shouldBe false
+        }
+    }
+
     context("isSentenceStart") {
         test("field start and after sentence punctuation") {
             NwpText.isSentenceStart("") shouldBe true

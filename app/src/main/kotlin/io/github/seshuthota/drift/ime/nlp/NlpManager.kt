@@ -26,6 +26,7 @@ import io.github.seshuthota.drift.ime.clipboard.provider.ItemType
 import io.github.seshuthota.drift.ime.core.Subtype
 import io.github.seshuthota.drift.ime.media.emoji.EmojiSuggestionProvider
 import io.github.seshuthota.drift.ime.nlp.latin.LatinLanguageProvider
+import io.github.seshuthota.drift.ime.nlp.latin.isTypingPosition
 import io.github.seshuthota.drift.inferDriftApplication
 import io.github.seshuthota.drift.lib.util.NetworkUtils
 import io.github.seshuthota.drift.subtypeManager
@@ -329,7 +330,8 @@ class NlpManager(context: Context) {
             return // We do not auto switch if a repeatable action key was last pressed or if the actions overflow
                    // menu is visible to prevent annoying UI changes
         }*/
-        val isSelection = imeController.snapshotState().content.selection.isNotCollapsed()
+        // An editor's inline autocompletion (browser address bars) is not a user selection.
+        val isSelection = !imeController.snapshotState().content.isTypingPosition()
         val isExpanded = list1.isNullOrEmpty() && list2.isNullOrEmpty() || isSelection
         scope.launch {
             prefs.smartbar.sharedActionsExpandWithAnimation.set(false)

@@ -16,6 +16,8 @@
 
 package io.github.seshuthota.drift.ime.nlp.latin
 
+import org.k3lp.runtime.K3Content
+
 /**
  * Text handling for the next-word model. Pure Kotlin, mirrors `ml/nwp/prepare.py` exactly: lowercase, curly
  * apostrophes normalized, words of `[a-z0-9]+('[a-z]+)?` (anything with a digit is `<unk>`), sentence ends and
@@ -74,6 +76,15 @@ object NwpText {
     fun partialWord(textBefore: CharSequence): String =
         PARTIAL_WORD_RE.find(textBefore)?.value ?: ""
 
+    /**
+     * True if a selection is an editor's inline autocompletion rather than a user selection: browsers' address
+     * bars (Chromium omnibox) append the rest of a match as selected text after the word being typed. Such a
+     * selection starts inside a partially typed word and runs to the end of the text; a user selection (e.g. a
+     * long-pressed word) starts at a word boundary.
+     */
+    fun isInlineAutocomplete(textBefore: CharSequence, textSelected: CharSequence, textAfter: CharSequence): Boolean =
+        textSelected.isNotEmpty() && textAfter.isEmpty() && partialWord(textBefore).isNotEmpty()
+
     /** True if a new word here starts a sentence (empty field or after `.`, `!`, `?`, newline). */
     fun isSentenceStart(textBefore: CharSequence): Boolean {
         val trimmed = textBefore.trimEnd { it == ' ' || it == '\t' }
@@ -94,4 +105,9 @@ object NwpText {
             else -> base
         }
     }
+}
+
+/** True if the selection is collapsed or only an editor's inline autocompletion (see [NwpText.isInlineAutocomplete]). */
+fun K3Content.isTypingPosition(): Boolean = selection.isCollapsed() || surroundingText.let {
+    NwpText.isInlineAutocomplete(it.textBefore, it.textSelected, it.textAfter)
 }
