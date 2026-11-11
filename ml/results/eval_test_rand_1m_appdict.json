@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "rows": 4000,
+    "split": "test_rand.npz",
+    "ckpt": "ml/work/run_1m/best.pt",
+    "train_rows": 786540,
+    "train_lines_scanned": 939550,
+    "dict": "app/src/main/assets/ime/dict/data.json",
+    "prior": "log",
+    "k": 0.4,
+    "beam": 120,
+    "top1": 0.90325,
+    "top3": 0.9467,
+    "len2_top1": 0.9861,
+    "len3_top1": 0.9672,
+    "len_ge4_top1": 0.8548,
+    "baseline_ckpt": "ml/work/run_400k/best.pt",
+    "baseline_top1": 0.89375,
+    "only_1m_correct": 83,
+    "only_400k_correct": 45,
+    "mcnemar_exact_p": 0.000996,
+    "dev_greedy_best": 0.758375,
+    "dev_beam_top1": 0.8998,
+    "not_in_app": true
+  }
+}

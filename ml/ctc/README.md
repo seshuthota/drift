@@ -62,6 +62,13 @@ and tuning.
 | 400k | ch128 | dev 8k (head) | 72.9% | 88.5% | 93.0% | 93.8% |
 | 400k | ch128 | test 4k (random) | 74.1% | **88.7%** | 93.6% | 94.5% |
 | 400k | ch128 | test 4k (random), 147k lexicon | 74.1% | **89.4%** | 95.0% | 95.9% |
+| 786,540 (full `train.jsonl`) | ch128 | test 4k, shipping dictionary, k=0.4 | 75.8% dev greedy | **90.33%** | 94.67% | — |
+
+The 90.33% row uses the app dictionary and the log prior, so it is not on the same scale as the
+50k/147k rows above. The 400k checkpoint on that same setup is 89.38% / 94.17%. McNemar exact
+p = 0.001 (83 rows only the full split got right, 45 only the 400k checkpoint). Length ≥ 4
+top-1 moved from 84.06% to 85.48%. Length 2 and 3 are 98.61% and 96.72% (were 98.19% and
+96.61%). The app loads this ONNX. Checkpoint: `ml/work/run_1m/best.pt`.
 
 Beam width 200 changes nothing (88.7% top-1), so width 120 is not the bottleneck.
 ONNX export of the ch128 model is 1.08 MB with argmax parity 100%
@@ -81,7 +88,11 @@ head-to-head benchmark.
 
 ## Caveats
 
-- 400k of ~1M train rows; full-split training is the next accuracy lever.
+- The official train file is 939,550 lines (786,540 kept). Adding distance-filtered `swipe-2/3/4`
+  did not move dev beam top-1 (90.11 / 89.99 / 90.01 % against about 90.08 % for the full split).
+- A linear shape reranker on acoustic top-16 did not clear the dev gate (89.48% at L2 = 1 against
+  90.09% for the shipping score). Loosening L2 to 1e-4 gained overall top-1 and lost length 2.
+  Details: `ml/results/rerank_shape_dev.json`.
 - English QWERTY only; no layout-agnostic slot permutation yet.
 - Lexicon size matters: 50k entries leaves 3.8% of test words out of vocabulary; a
   147k trie (top entries of the MIT `en_full` list, alpha=0.8) lifts test top-1 from

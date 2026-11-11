@@ -73,8 +73,24 @@ def row_feature(obj):
     return w, feat
 
 
-def stream(url, want, seen, stats, tag, log_every=20000, max_lines=None):
-    """Collect up to `want` accepted rows, skipping hashes already in `seen`."""
+def content_hash(feat, word):
+    rounded = np.round(np.asarray(feat, dtype=np.float32), 4)
+    return hashlib.blake2b(rounded.tobytes() + str(word).encode(), digest_size=8).hexdigest()
+
+
+def exclude_npz(path, seen):
+    data = np.load(path, allow_pickle=True)
+    words = [str(w) for w in data["words"]]
+    for feat, word in zip(data["feats"], words):
+        seen.add(content_hash(feat, word))
+    print(f"excluded {len(words)} hashes from {path} (seen={len(seen)})", flush=True)
+
+
+def stream(url, want, seen, stats, tag, log_every=20000, max_lines=None, max_distance=None):
+    """Collect up to `want` accepted rows, skipping hashes already in `seen`.
+
+    `want` of None reads the split until EOF.
+    """
     feats, words = [], []
     t0 = time.time()
     n = 0
@@ -88,22 +104,31 @@ def stream(url, want, seen, stats, tag, log_every=20000, max_lines=None):
         except json.JSONDecodeError:
             stats["bad_json"] += 1
             continue
+        if max_distance is not None:
+            dist = obj.get("distance")
+            if dist is None or float(dist) > max_distance:
+                stats["distance_dropped"] += 1
+                continue
         got = row_feature(obj)
         if got is None:
             stats["filtered"] += 1
             continue
         w, feat = got
-        h = hashlib.blake2b(
-            np.round(feat, 4).tobytes() + w.encode(), digest_size=8
-        ).hexdigest()
+        h = content_hash(feat, w)
         if h in seen:
             stats["dedup"] += 1
             continue
         seen.add(h)
         feats.append(feat.astype(np.float16))
         words.append(w)
+        if "distance" in obj:
+            stats["distance_n"] += 1
+            stats["distance_sum"] += float(obj["distance"])
+            dist = float(obj["distance"])
+            if dist > stats["distance_max"]:
+                stats["distance_max"] = dist
         stats["kept"] += 1
-        if len(feats) >= want:
+        if want is not None and len(feats) >= want:
             break
         if n % log_every == 0:
             el = time.time() - t0
@@ -129,22 +154,55 @@ def main():
     ap.add_argument("--dev-rows", type=int, default=8_000)
     ap.add_argument("--test-rows", type=int, default=4_000)
     ap.add_argument("--train-max-lines", type=int, default=None)
+    ap.add_argument("--splits", default="train,dev,test",
+                    help="comma-separated subset of train,dev,test")
+    ap.add_argument("--all-train", action="store_true",
+                    help="read the train split until EOF instead of --train-rows")
+    ap.add_argument("--exclude", action="append", default=[],
+                    help="npz whose trajectories are skipped (hold out dev and test)")
+    ap.add_argument("--out-file", default=None,
+                    help="exact output path when building a single split")
+    ap.add_argument("--url", default=None, help="stream this jsonl instead of a named split")
+    ap.add_argument("--max-distance", type=float, default=None,
+                    help="drop rows whose distance is missing or above this")
     args = ap.parse_args()
 
     seen = set()
-    stats = {"kept": 0, "filtered": 0, "dedup": 0, "bad_json": 0}
-    for split, want, max_lines in (
-        ("train", args.train_rows, args.train_max_lines),
-        ("dev", args.dev_rows, None),
-        ("test", args.test_rows, None),
-    ):
-        if want <= 0:
+    for path in args.exclude:
+        exclude_npz(path, seen)
+    stats = {
+        "kept": 0, "filtered": 0, "dedup": 0, "bad_json": 0,
+        "distance_n": 0, "distance_sum": 0.0, "distance_max": 0.0,
+        "distance_dropped": 0,
+    }
+    wanted = [s.strip() for s in args.splits.split(",") if s.strip()]
+    plan = []
+    if "train" in wanted:
+        plan.append(("train", None if args.all_train else args.train_rows, args.train_max_lines))
+    if "dev" in wanted:
+        plan.append(("dev", args.dev_rows, None))
+    if "test" in wanted:
+        plan.append(("test", args.test_rows, None))
+    if args.url:
+        if not args.out_file:
+            raise SystemExit("--url requires --out-file")
+        plan = [("url", None if args.all_train else args.train_rows, args.train_max_lines)]
+    if args.out_file and len(plan) != 1:
+        raise SystemExit("--out-file requires exactly one split")
+    for split, want, max_lines in plan:
+        if want is not None and want <= 0:
             continue
-        feats, words = stream(URLS[split], want, seen, stats, split, max_lines=max_lines)
-        path = f"{args.out}/{split}.npz"
+        url = args.url or URLS[split]
+        feats, words = stream(
+            url, want, seen, stats, split, max_lines=max_lines, max_distance=args.max_distance,
+        )
+        path = args.out_file or f"{args.out}/{split}.npz"
         np.savez(path, feats=feats, words=words)
         print(f"saved {path}: feats={feats.shape} words={len(words)}", flush=True)
-    print(json.dumps(stats), flush=True)
+    printable = dict(stats)
+    if stats["distance_n"]:
+        printable["distance_mean"] = stats["distance_sum"] / stats["distance_n"]
+    print(json.dumps(printable), flush=True)
 
 
 if __name__ == "__main__":

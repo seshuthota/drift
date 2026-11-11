@@ -1,6 +1,6 @@
 """Tune glide + next-word LM fusion on FUTO swipes with their sentence context.
 
-score(word) = ln P_ctc(word) + K * freq(word)/255 + lam * ln P_lm(word | words before it)
+score(word) = ln P_ctc(word) + K * ln(1+count) / ln(1+maxCount) + lam * ln P_lm(word | words before it)
 
 Words outside the LM's 20k vocabulary get ln P_lm = --floor. lam/floor are tuned on dev rows, then
 reported on a random test sample.
@@ -10,6 +10,7 @@ reported on a random test sample.
 
 import argparse
 import json
+import math
 import os
 import random
 import re
@@ -29,7 +30,8 @@ from model import SwipeCtc  # noqa: E402
 import prepare  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
-K_FREQ = 16.0
+# 0.4 * ln(1 + max count) on the shipping list. The prior is K * ln(1+count) / ln(1+max).
+K_FREQ = 6.87
 
 
 def collect(split, rows, seed=None):
@@ -75,6 +77,7 @@ def main():
 
     raw = json.load(open(os.path.join(ROOT, "app/src/main/assets/ime/dict/data.json")))
     usable = {w: v for w, v in raw.items() if re.fullmatch(r"[a-z]{2,26}", w)}
+    log_max = math.log1p(max(usable.values()))
     lex = {}
     for w in usable:
         for i in range(1, len(w)):
@@ -116,7 +119,7 @@ def main():
                 word, ac = item
                 i = freq_id.get(word)
                 lmv = lmlp[r, i] if i is not None else -floor
-                return ac + kf * usable[word] / 255.0 + lam * lmv
+                return ac + kf * math.log1p(usable[word]) / log_max + lam * lmv
             top = [x for x, _ in sorted(ranked, key=s, reverse=True)[:3]]
             t1 += bool(top) and top[0] == w
             t3 += w in top
