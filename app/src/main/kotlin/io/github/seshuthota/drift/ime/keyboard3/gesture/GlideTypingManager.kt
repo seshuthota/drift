@@ -56,7 +56,8 @@ class GlideTypingManager(context: Context) {
 
         /**
          * Glide + next-word LM fusion: each candidate gets `LM_WEIGHT * ln P_lm(word | text before cursor)`, or
-         * `-LM_WEIGHT * LM_FLOOR` if the word is outside the LM vocabulary. Tuned with `ml/nwp/fuse_eval.py`.
+         * `-LM_WEIGHT * LM_FLOOR` if the word is outside the LM vocabulary. Tuned with `ml/nwp/fuse_eval.py`,
+         * re-measured with the shipping artifacts in `ml/nwp/fuse_shipping.py` (λ 0.4 is still the optimum).
          */
         private const val LM_WEIGHT = 0.4
         private const val LM_FLOOR = 10.0

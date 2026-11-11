@@ -59,17 +59,24 @@ cd ../../nwp && python export_onnx.py --ckpt ../work/nwp/lstm_v20k_h512/best.pt 
   --out ../work/nwp/nwp_lstm_h512   # needs protobuf: run without -I in the llm env
 ```
 
-## Glide + LM fusion (`fuse_eval.py`)
+## Glide + LM fusion (`fuse_shipping.py`)
 
-FUTO swipes with their sentence context (`word_idx`): 3,000 head-of-dev rows for tuning, 3,000 reservoir-sampled
-test rows (seed 42). Score = `ln P_ctc + K * freq/255 + λ * ln P_lm(word | previous words)`, out-of-vocabulary
-LM words get `-floor`.
+Re-measured 2026-11-11 with the shipping artifacts: full-split CTC (`run_1m`), h256 LSTM (`lstm_v20k`), the
+60,564-word dictionary with raw counts, prior 6.87, endpoint weight 20, LM floor 10.
+Score = `ln P_ctc + 6.87 * ln(1+count)/ln(1+max) - 20 * endpoint + λ * ln P_lm(word | context)`.
 
-| Setting | dev top-1 / top-3 | test top-1 / top-3 |
-|---|---|---|
-| λ = 0 (K = 16, frequency only) | 90.00 / 94.40 | 89.17 / 93.40 |
-| **λ = 0.4, floor 10, K = 16** (shipped) | 90.73 / 94.63 | **89.87 / 93.57** |
+| Context | n | λ = 0 top-1 | λ = 0.4 top-1 | Δ | McNemar p |
+|---|---|---|---|---|---|
+| FUTO dev | 3,000 | 90.93 | **91.40** | +0.47 | 0.029 |
+| FUTO test | 3,000 | 89.00 | **89.87** | +0.87 | 0.0009 |
+| OASST chat | 3,000 | 94.07 | **95.33** | +1.26 | 1e-8 |
 
-λ ≥ 0.7 hurts; jointly re-tuning K moves dev by ≤ 0.2 pt (noise). The gain is small on FUTO's Wikipedia
-sentences; homophone/function-word confusions are more frequent in chat, where the effect should be larger
-(unmeasured).
+λ = 0.4 is still the FUTO peak (dev at 0.6 / 0.8: 91.27 / 90.97; test: 89.60 / 89.43). Chat prefers
+λ = 0.6–0.8 (95.60 / 96.57), so the single shipped λ trades some chat gain for FUTO safety.
+
+FUTO rows use their own sentence as the context. Chat pairs OASST prompts with a real FUTO dev swipe of the
+next word: the acoustic score is real, the context is chat-style, so this measures fusion ranking rather than
+end-to-end chat accuracy. Report: `ml/results/fuse_shipping.json`.
+
+The previous run (`fuse_eval.py`, 400k checkpoint, h512 LSTM, old 128–255 dictionary, K = 16) gave +0.7 pt on
+FUTO with no endpoint term; λ = 0.4 carried over unchanged.
