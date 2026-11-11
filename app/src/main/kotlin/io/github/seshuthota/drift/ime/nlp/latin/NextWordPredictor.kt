@@ -111,6 +111,11 @@ class NextWordPredictor(private val context: Context) {
      */
     fun predict(textBefore: CharSequence, truncated: Boolean, prefix: String, maxCount: Int): List<Prediction> {
         val logProbs = nextWordLogProbs(textBefore, truncated) ?: return emptyList()
+        return predict(logProbs, prefix, maxCount)
+    }
+
+    /** As [predict], over log-probabilities already computed by [nextWordLogProbs]. */
+    fun predict(logProbs: FloatArray, prefix: String, maxCount: Int): List<Prediction> {
         val p = NwpText.normalize(prefix)
         val best = ArrayList<Prediction>(maxCount + 1)
         for (i in NwpText.N_SPECIAL until logProbs.size.coerceAtMost(vocab.size)) {

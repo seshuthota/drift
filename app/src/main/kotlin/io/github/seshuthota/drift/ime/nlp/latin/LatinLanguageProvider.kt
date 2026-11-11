@@ -44,6 +44,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
         /** The editor context window ([org.k3lp.runtime.K3SurroundingText.textBefore]) is ~50 chars at most. */
         private const val TRUNCATION_HINT_CHARS = 48
+
+        /** Shorter typed text is too ambiguous to correct. */
+        private const val MIN_CORRECTION_LENGTH = 2
+        private const val MAX_CORRECTIONS = 3
     }
 
     private val appContext by context.appContext()
@@ -51,6 +55,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
     private val wordData = guardedByLock { mutableMapOf<String, Int>() }
     private val wordDataSerializer = MapSerializer(String.serializer(), Int.serializer())
+
+    /** Built once [wordData] is loaded; null until then. */
+    @Volatile
+    private var corrector: TypoCorrector? = null
 
     override val providerId = ProviderId
 
@@ -82,6 +90,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 val jsonData = Json.decodeFromString(wordDataSerializer, rawData)
                 wordData.putAll(jsonData)
             }
+            if (corrector == null) {
+                corrector = TypoCorrector(wordData)
+            }
         }
         predictor.ensureLoaded()
         Unit
@@ -96,15 +107,19 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         allowPossiblyOffensive: Boolean,
         isPrivateSession: Boolean,
     ): SpellingResult {
-        return when (word.lowercase()) {
-            // Use typo for typing errors
-            "typo" -> SpellingResult.typo(arrayOf("typo1", "typo2", "typo3"))
-            // Use grammar error if the algorithm can detect this. On Android 11 and lower grammar errors are visually
-            // marked as typos due to a lack of support
-            "gerror" -> SpellingResult.grammarError(arrayOf("grammar1", "grammar2", "grammar3"))
-            // Use valid word for valid input
-            else -> SpellingResult.validWord()
+        val corrector = corrector ?: return SpellingResult.unspecified()
+        val normalized = NwpText.normalize(word).trim('\'')
+        // Only plain words are checked: numbers, names with symbols, URLs and the like are left alone.
+        if (normalized.isEmpty() || !normalized.all { it in 'a'..'z' || it == '\'' }) {
+            return SpellingResult.validWord()
         }
+        if (corrector.contains(normalized) || corrector.contains(normalized.removeSuffix("'s"))) {
+            return SpellingResult.validWord()
+        }
+        val corrections = corrector.correct(normalized, maxSuggestionCount)
+        val suggestions = corrections.map { NwpText.displayForm(it.word, word, sentenceStart = false) }
+        val confident = corrections.firstOrNull()?.let { it.cost <= TypoCorrector.SUB_NEAR_COST } == true
+        return SpellingResult.typo(suggestions.toTypedArray(), isHighConfidenceResult = confident)
     }
 
     override suspend fun suggest(
@@ -122,31 +137,46 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val contextText = textBefore.subSequence(0, textBefore.length - prefix.length)
         val truncated = textBefore.length >= TRUNCATION_HINT_CHARS
         val sentenceStart = NwpText.isSentenceStart(contextText)
-        val predictions = predictor.predict(contextText, truncated, prefix, maxCandidateCount)
-
-        val seen = HashSet<String>()
-        val candidates = ArrayList<SuggestionCandidate>(maxCandidateCount)
+        val logProbs = predictor.nextWordLogProbs(contextText, truncated)
+        val predictions = logProbs?.let { predictor.predict(it, prefix, maxCandidateCount) } ?: emptyList()
+        val confidence = HashMap<String, Double>()
         for (prediction in predictions) {
-            if (seen.add(prediction.word)) {
-                candidates.add(candidate(prediction.word, prefix, sentenceStart, exp(prediction.logProb.toDouble())))
-            }
+            confidence.putIfAbsent(prediction.word, exp(prediction.logProb.toDouble()))
         }
+        val completions = predictions.mapTo(ArrayList()) { it.word }
         // Words outside the model's vocabulary: complete from the full dictionary, most frequent first.
-        if (prefix.isNotEmpty() && candidates.size < maxCandidateCount) {
-            val p = NwpText.normalize(prefix)
-            val extra = wordData.withLock { data ->
+        val p = NwpText.normalize(prefix)
+        if (p.isNotEmpty() && completions.size < maxCandidateCount) {
+            val seen = completions.toHashSet()
+            completions += wordData.withLock { data ->
                 data.entries.asSequence()
                     .filter { it.key.startsWith(p) && it.key !in seen }
                     .sortedByDescending { it.value }
-                    .take(maxCandidateCount - candidates.size)
+                    .take(maxCandidateCount - completions.size)
                     .map { it.key }
                     .toList()
             }
-            for (word in extra) {
-                candidates.add(candidate(word, prefix, sentenceStart, 0.0))
-            }
         }
-        return candidates
+        if (p.isEmpty()) {
+            return completions.map { candidate(it, prefix, sentenceStart, confidence[it] ?: 0.0) }
+        }
+
+        val corrector = corrector
+        val typedIsWord = corrector?.contains(p) ?: true
+        val corrections = if (corrector == null || typedIsWord || p.length < MIN_CORRECTION_LENGTH) {
+            emptyList()
+        } else {
+            val lm: ((String) -> Float?)? = logProbs?.let { lp -> { word -> predictor.idOf(word)?.let { lp[it] } } }
+            corrector.correct(p, MAX_CORRECTIONS, lm).map { it.word }
+        }
+        val words = TypingSuggestions.merge(
+            corrections = corrections,
+            completions = completions,
+            typedIsWord = typedIsWord,
+            isPrefix = corrector?.hasCompletion(p) ?: true,
+            maxCount = maxCandidateCount,
+        )
+        return words.map { candidate(it, prefix, sentenceStart, confidence[it] ?: 0.0) }
     }
 
     private fun candidate(word: String, prefix: String, sentenceStart: Boolean, confidence: Double) =
