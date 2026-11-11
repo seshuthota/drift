@@ -1,216 +1,183 @@
-# Swipe decoder — future plan for review
+# Drift typing intelligence — status and plan
 
-**Date:** 2026-11-08
-**Baseline:** 89.4 % test top-1 (269k params, 1.08 MB ONNX, 400k MIT rows, 147k lexicon)
-**Companion document:** `ml/REPORT.md` (what was built and measured)
-
----
-
-## 0. Status and framing
-
-The dataset-only route is viable: a 400k-row, 269k-parameter CTC model is at parity
-with the best public from-scratch model (89.31 %), which used 5.6× the parameters and
-~3× the data. Remaining gains are engineering and data, not a licensing dead end.
-
-Two independent levers are already identified by measurement:
-
-1. **Lexicon coverage** — 50k → 147k words gave +0.65 pt; 3.8 % of test words were OOV at 50k.
-2. **Shape-confusable errors** — 60.5 % of current beam errors have the predicted
-   word in FUTO's shape hard-negative list for the target word.
-
-What is *not* yet known: how far full-split data goes, how much a reranker recovers,
-how much a context LM recovers, and what multilingual/layout-agnostic training costs
-in accuracy.
+**Last updated:** 2026-11-11 (first version 2026-11-08)
+**Scope:** glide decoder, next-word prediction, typo correction/autocorrect, and the input pipeline around them
+**Companion documents:** `ml/REPORT.md` (swipe CTC prototype), `ml/nwp/README.md` (next-word model)
 
 ---
 
-## 1. Decisions needed from reviewer
+## 0. Where we are
 
-1. **Accuracy bar.** Is 89–91 % test top-1 enough to ship dataset-only, or is ≥92 %
-   required? FUTO's published QWERTY number is 92.9/93.5 % top-1 (their split, their
-   3.9 MB model pair); reaching it is plausible but unproven for us.
-2. **Language/layout order.** English QWERTY only first, then which: German, French,
-   Spanish, Italian? (Drift is currently English.)
-3. **Lexicon strategy.** Ship our app dictionary, bundle a 147k AOSP-style trie
-   (Apache-2.0), or a FrequencyWords-derived list (MIT)? This changes both accuracy and
-   decode cost.
-4. **FUTO weights as fallback.** Accept the attribution notice only if the accuracy bar
-   is missed? Recommendation: stay dataset-only and revisit only if we fail the bar.
-5. **Context-LM scope.** Build our own (ODC-By/CC BY-SA corpora) or reuse FUTO's
-   English context LM (notice + English-only)?
-6. **Device data collection.** Is opt-in capture of swipe traces (no text logging) allowed?
-   This is the only way to measure and close domain shift.
-7. **Priority.** Data scale, reranker, or multilingual first? Recommendation: data
-   scale, then reranker, then context LM, then multilingual.
+### Shipped in the app (branch `drift/glide-and-next-word`)
 
----
+| Area | What is in the app | Measured |
+|---|---|---|
+| Glide decoder | 269k-param CTC encoder (`assets/swipe/ctc_swipe.onnx`, 1.08 MB) + Kotlin lexicon beam over the app dictionary, frequency prior k = 16, statistical decoder as fallback | 89.4 % top-1 / 95.0 % top-3 (Python, 4k FUTO test rows); 89.87 % top-1 with LM fusion (3k test rows) |
+| Glide + context | Next-word LM scores glide candidates, λ = 0.4, OOV floor 10 | +0.7 pt top-1 on FUTO sentences |
+| Next-word prediction | LSTM h256, 20k vocab, int8 (`assets/nwp/nwp_lstm.int8.onnx`, 3.08 MB), completions while typing | web 16.2 / 26.7 % top-1/top-3, chat 21.4 / 34.4 % |
+| Typo correction | `TypoCorrector`: keyboard-aware weighted Damerau-Levenshtein over a trie of the app dictionary, ranked with frequency + next-word LM | 89.1 % top-1 / 96.9 % top-3 on synthetic single typos, ~0.25 ms/word (laptop JVM) |
+| Suggestion bar | Corrections and completions on one score scale; best one leads (`thw` → the, `hel` → help, `dont` → don't, `recieve` → receive) | verified on device |
+| Spell checker | `spell()` flags unknown words and likely dictionary misspellings, with suggestions | unit-tested only |
+| Autocorrect | On space / punctuation, only when confident: non-words with margin ≥ 2.5 over the runner-up, dictionary words only for apostrophes. Backspace right after undoes it and the word is not corrected again. Bold candidate = will autocorrect. Pref `correction__auto_correct` (default on), quick action toggles it | 98.1 % precision / 71.5 % recall on synthetic typos; verified on device |
+| Browser omnibox | Inline autocompletion is no longer treated as a user selection, so suggestions keep working in address bars | unit-tested; device run did not trigger an inline completion |
+| Short glides | Two-letter words on neighbouring keys (`we`, `as`, `re`) are recognized on release; vertical moves stay taps | verified on device |
 
-## 2. Evaluation protocol (do before any new training)
+### Device check (Vivo I2401, Android 16, injected gestures)
 
-- **Sealed test:** keep `test_rand.npz` (seed 42) untouched. Before the next model
-  family, expand to a **10,000-row random sample** (95 % CI ≈ ±0.6 pt instead of ±1.1).
-- **Seeds:** 3 seeds for every comparative claim; report mean ± sd.
-- **Paired tests:** McNemar on identical rows for any claimed +accuracy.
-- **Report always:** top-1/3/5, per-length, OOV rate, per-lexicon accuracy, encoder
-  latency (ORT CPU), model size.
-- **Freeze the baseline:** 400k/ch128/147k/α0.8 = 89.38 % top-1, 95.03 % top-3,
-  95.90 % top-5 on `test_rand.npz`.
+- Typed corrections and autocorrect behave as above, including fast bursts (the autocorrect candidate is computed
+  synchronously on the separator, so there is no race with async suggestions).
+- Glide sentences: 34/34 words on four sentences; one more sentence failed only because the glide started on `q` at
+  the screen edge (see issue 4).
+- Injected gestures are slow (~57 ms per point), so this checks correctness, not real-finger feel.
+
+### Commits this round
+
+`99732acd` omnibox fix · `920556e5` ML code · `d5fd3bf0` typo correction · `48abdf57` ranking vs completions and
+dictionary misspellings · `5852bbbf` autocorrect · `2d286bde` + `7d42e9cc` short glides.
 
 ---
 
-## 3. Phase 1 — data scale and lexicon (highest expected value, ~1–2 days)
+## 1. Issues found
 
-**Goal:** find the data ceiling before adding complexity.
+Ordered by impact on users.
 
-- Train on the full ~1 M-row train split (5.16 GB JSONL) with a `distance`-based
-  validity filter; compare 100k / 400k / 1M at fixed architecture and lexicon.
-- Add the collection runs with filtering:
-  - `swipe-2`: informal text (Amazon reviews, TV dialogue) — ~28k swipes.
-  - `swipe-3`: unique words, Urban Dictionary/OpenWebText, misspellings — ~38k.
-  - `swipe-4`: deliberately QWERTY-confusable words — ~50k.
-  - Ablate each corpus's contribution; prior evidence says mix dominates size.
-- Lexicon sweep: 50k / 147k / 200k; then the actual app dictionary.
-- **Gates:** ≥ +0.5 pt over 89.4 % with McNemar p < 0.05; no regression on 2–3-char
-  words. Target 90–91 %.
-- **Effort:** prep ~1 h, 15–25 min per training run, 1–2 days total.
-
----
-
-## 4. Phase 2 — shape-aware reranker (~3–5 days)
-
-**Goal:** attack the measured 60.5 % of errors that are shape-confusable words.
-
-- Candidate generation: beam top-K (K = 8–16) instead of top-1.
-- Reranker features (start simple, then learned):
-  - acoustic log-prob / beam score,
-  - word length and unigram log-frequency,
-  - shape similarity between the swipe path and candidate word geometry,
-  - FUTO `swipe-negatives` hard-negative similarity (`neg_sims`) — Apache-2.0 data,
-  - optionally a context term.
-- Two implementation options:
-  - **(a) Linear / GBDT reranker** over the features above — fast, interpretable,
-    easy to ship in Kotlin.
-  - **(b) Small MLP/transformer** over candidate embeddings — higher ceiling, more work.
-- Training signal: real swipes as positives; negatives from the FUTO hard-negative
-  table plus beam confusions. **Do not use FUTO model outputs** (license contamination).
-- **Gates:** recover ≥ 25 % of residual beam errors; +0.5–1.0 pt test top-1; no loss on
-  short words. Evaluate on the sealed sample.
-- **Risks:** vocabulary skew (Wikipedia), QWERTY-only negatives, reranker overfitting
-  to the 4k test — mitigate with seeds and dev-only tuning.
+1. **The app dictionary is noisy.** `ime/dict/data.json` (49,981 words) contains misspellings and junk (`teh`,
+   `recieve`, `definately`, `untill`, `thier`, `cna`, `igf`, `thr`, `yoy`) and apostrophe-less forms (`dont`, `im`).
+   Its frequencies are all 128–255, so the prior is weak. Effects:
+   - glide can output those misspellings;
+   - autocorrect cannot fix them, because the rule that spots them (rare, not in the LM vocabulary, beaten by a
+     common neighbour by > 2.5) also catches ~600 rare real words (`pout` → put), so they only lead the bar;
+   - `spell()` uses that same rule and will underline some rare real words.
+   This is the single biggest quality lever left and ties into decision 3 below.
+2. **Short glides favour frequent words.** `op` and `ok` both decoded as `of` on device. Very short paths carry
+   little shape information and the frequency prior (k = 16) dominates. The intended word is in the bar.
+3. **Real typing data is missing.** Typo numbers come from a synthetic error model (neighbour keys, omissions,
+   doubles, swaps, apostrophes). Real error rates, and names or slang outside the dictionary (which autocorrect
+   could mangle), are unmeasured. Mitigations in place: no autocorrect of capitalized-mid-sentence or all-caps
+   words, backspace undo, "not again" memory per field.
+4. **Edge back gesture on this phone.** A glide starting on `q`/`p` (≈ 21 dp from the edge) hides the keyboard on
+   the Vivo, with Gboard too. Drift already requests a gesture exclusion; Vivo's gesture handler seems to ignore
+   it. Seen with injected touches only — confirm with a real finger before acting.
+5. **The shipped Kotlin glide decoder has no laptop test.** Accuracy is measured with the Python copy; the Kotlin
+   path is only exercised on device. A JVM test would need the desktop ONNX Runtime on the test classpath plus
+   stand-ins for `Context`/`Log` — deferred as not worth it yet.
+6. **Smaller bugs noticed:**
+   - "Double-space period" pref is shown in settings but not implemented in the K3 input pipeline.
+   - The auto-space feedback link points to `github.com/seshuthota/drift/discussions/1935` — an upstream discussion
+     number carried over by the rename; the page likely does not exist.
+   - `:app:lintDebug` fails with 52 pre-existing errors (mostly `ImpliedQuantity` / `StringFormatInvalid` in
+     translated strings); CI does not run lint.
+   - The autocorrect switch has no icon, unlike its neighbours.
+7. **Licensing/attribution** (deferred by choice): MIT FUTO dataset attribution and the FineWeb (ODC-By) /
+   OASST (Apache-2.0) notices need to go into About before a release.
 
 ---
 
-## 5. Phase 3 — context / next-word LM (~1–2 weeks)
+## 2. What to focus on next
 
-**Goal:** fix homophones and short function words (`four/for`, `its/is`, `three/the`).
+In recommended order. Each item says what it fixes.
 
-- Baseline: n-gram (KenLM or a backoff model) trained on permissive corpora;
-  extend to a small transformer (4–8 M params, quantized) if the n-gram plateaus.
-- Data (license-verified):
-  - `HuggingFaceFW/fineweb`, `fineweb-2` (multilingual) — ODC-By,
-  - `allenai/dolma`, `HuggingFaceTB/smollm-corpus` — ODC-By,
-  - `roneneldan/TinyStories` — CDLA-Sharing-1.0,
-  - `wikimedia/wikipedia` — CC BY-SA 3.0 + GFDL.
-- Fusion in the beam: `score = acoustic + α·logfreq + λ·log P_lm(word | history)`.
-  Tune α/λ on dev only.
-- **Gates:** +1–2 pt top-1; added decode latency < 5 ms; LM ≤ 30 MB quantized.
-- Note: FUTO's context LM is English-only and adds the weights-license notice;
-  training our own keeps the dataset-only position and supports other languages.
-
----
-
-## 6. Phase 4 — layout-agnostic and multilingual (~1–2 weeks)
-
-**Goal:** one model family for Drift's layouts and languages.
-
-- Implement **slot permutation** training: randomly permute key slots per sample and
-  feed key centers from layout JSONs, so the encoder learns layout geometry rather
-  than a fixed alphabet order.
-- Data: `swipe-5` (59,247 swipes) with `language`, `layout`, `dual_finger` columns:
-  - layouts: `qwerty`, `azerty`, `qwertz`, `german`, `spanish`, `dvorak`,
-    `lithuanian_qwerty`, `shavian`, `toki_pona`, `clearflow`, `kasroz`;
-  - languages: en, de, es, fr, lt, pl, shavian, toki pona;
-  - exclude `dual_finger != 0` initially; revisit two-finger swipes later.
-- Per-language alphabets and diacritics (de: ä ö ü ß; fr: é è ê à ç; es: ñ; pl/lt
-  diacritics); per-layout lexicon tries.
-- **Gates:** AZERTY/QWERTZ/Dvorak within ~3 pt of QWERTY; de/es/fr initial ≥ 80–85 %
-  top-1; no QWERTY regression.
-- **Risks:** sparse per-language data, larger class sets, layout metadata only in
-  `swipe-5` (the official splits are English QWERTY).
+1. **Shipping lexicon (fixes issues 1, 2, part of 3).** Build one cleaned word list with real frequencies and use
+   it for glide, corrections, completions and spell check:
+   - start from FrequencyWords (MIT) or an AOSP-style list (Apache-2.0), intersect with a spell-checked source,
+     drop entries that are one cheap edit from a far more frequent word unless they are attested in the LM corpus;
+   - store real log-frequencies (not 128–255) and re-tune the glide prior k and corrector weights on dev;
+   - then enable autocorrect for dictionary misspellings that the clean list no longer contains.
+   Measurable: glide top-1 on FUTO test, synthetic typo top-1, false-flag rate of `spell()` on a word sample.
+2. **Glide data scale (Phase 1 below).** Full 1M-row train split + `swipe-2/3/4`; cheap and still rising.
+   Gate: ≥ +0.5 pt over 89.4 % on a 10k sealed sample.
+3. **Short-word handling in glide.** Measure top-1 on 2–3-letter words separately; try a length-aware prior or a
+   smaller k for short paths. Small, targeted, directly visible to users.
+4. **Personal learning (opt-in, on device).** Learn words the user types repeatedly and words they reject via
+   autocorrect undo; add them to the lexicon. Biggest lever for chat-style next-word quality per
+   `ml/nwp/README.md`, and the safety net for names/slang (issue 3).
+5. **Shape-aware reranker (Phase 2).** Targets the 60.5 % of glide errors that are shape-confusable.
+6. **Quick fixes:** double-space period, the feedback link, the autocorrect icon.
+7. **Later:** multilingual/layout-agnostic glide (Phase 4), licensing notices (issue 7).
 
 ---
 
-## 7. Phase 5 — Android integration (~1–2 weeks)
+## 3. Decisions needed
 
-- **Runtime:** ONNX Runtime Mobile + XNNPACK (MIT/Apache-2.0); the model already
-  exports with dynamic batch and 100 % argmax parity. ExecuTorch remains an option if
-  we later want FUTO `.pte` compatibility.
-- **Decoder:** Kotlin trie + CTC prefix beam, clean-room from the validated algorithm
-  (not the GPL `swipe-library`); golden tests against Python emission/beam outputs.
-- **Budgets:** encoder ≤ 5 ms on mid-range devices, decode ≤ 10 ms, model ≤ 2 MB,
-  memory ≤ 30 MB.
-- **Fallback:** current template/geometric decoder for unsupported layouts/languages;
-  feature flag for rollout.
-- **Instrumentation:** opt-in latency and error proxies; no keystroke/text logging.
-
----
-
-## 8. Phase 6 — hardening and product (~1 week + ongoing)
-
-- Real-device evaluation on opt-in traces; domain adaptation if the gap is real.
-- Autocorrect integration (optional): `simonko912/autocorrect-16M` is Apache-2.0 but
-  synthetic; validate quality before trusting it.
-- Regression suite: golden traces, per-length and per-layout accuracy, latency.
-- Licensing/notices: MIT dataset attribution in About; Apache-2.0 notice for the
-  hard-negative table if shipped.
+1. **Accuracy bar.** Is 89–91 % glide top-1 enough to ship dataset-only, or is ≥ 92 % required? FUTO's published
+   QWERTY number is 92.9/93.5 % top-1 (their split, 3.9 MB model pair).
+2. **Lexicon source.** Clean the current app dictionary, or replace it with FrequencyWords (MIT) / an AOSP-style
+   list (Apache-2.0)? Now the most important open decision (issue 1).
+3. **Autocorrect default.** Keep it on by default (current), or off until the lexicon is cleaned?
+4. **Personal learning.** Is on-device learning of typed words acceptable, and should it respect incognito mode
+   only, or also be off by default?
+5. **Language/layout order** after English QWERTY.
+6. **FUTO weights as fallback** if the accuracy bar is missed. Recommendation: stay dataset-only.
+7. **Device data collection.** Opt-in capture of swipe traces (no text) to measure domain shift.
 
 ---
 
-## 9. Risk register
+## 4. Evaluation protocol
+
+- **Sealed test:** keep `test_rand.npz` (seed 42) untouched; expand to a 10,000-row random sample before the next
+  model family (95 % CI ≈ ±0.6 pt instead of ±1.1).
+- **Seeds:** 3 seeds per comparative claim; McNemar on identical rows for any claimed gain.
+- **Report:** top-1/3/5, per-length (especially 2–3 letters), OOV rate, latency, model size.
+- **Typo/autocorrect:** `TypoCorrectorTest` synthetic benchmark (seed 7) is a regression guard, not a real-world
+  number; add a real typo set when one with a usable licence is found.
+- **Device:** re-run the guarded glide sentence check after decoder changes (see project memory for the setup).
+- **Frozen baselines:** glide 400k/ch128/147k = 89.38 / 95.03 / 95.90 % top-1/3/5; app-dictionary decoder with
+  LM λ 0.4 = 89.87 % top-1; typo corrector 89.1 / 96.9 % top-1/3.
+
+---
+
+## 5. Phases (glide decoder)
+
+### Phase 1 — data scale and lexicon · **next**
+
+- Train on the full ~1M-row split with a `distance`-based validity filter; compare 100k / 400k / 1M.
+- Add `swipe-2` (informal text, ~28k), `swipe-3` (unique words/misspellings, ~38k), `swipe-4` (QWERTY-confusable,
+  ~50k); ablate each.
+- Lexicon sweep on the cleaned shipping list (focus item 1).
+- Gates: ≥ +0.5 pt with McNemar p < 0.05; no regression on 2–3-char words. Target 90–91 %.
+
+### Phase 2 — shape-aware reranker · planned
+
+- Beam top-K (8–16) → reranker over acoustic score, length, log-frequency, path-to-word shape similarity, FUTO
+  `swipe-negatives` similarity (Apache-2.0), context term.
+- Start linear/GBDT (easy in Kotlin); MLP only if it plateaus. Never train on FUTO model outputs.
+- Gates: recover ≥ 25 % of residual errors; +0.5–1.0 pt top-1; no loss on short words.
+
+### Phase 3 — context LM · **done (v1)**
+
+- LSTM next-word model trained on FineWeb (ODC-By) + OASST (Apache-2.0), shipped int8, fused into glide (λ 0.4)
+  and used for completions and correction ranking.
+- Remaining: more conversational text, personal learning (focus item 4), measure the fusion gain on chat-style
+  sentences.
+
+### Phase 4 — layout-agnostic and multilingual · later
+
+- Slot-permutation training with key centers from layout JSONs; `swipe-5` data (en, de, es, fr, lt, pl…; QWERTY,
+  AZERTY, QWERTZ, Dvorak…), single-finger only at first; per-language alphabets and tries.
+- Gates: AZERTY/QWERTZ/Dvorak within ~3 pt of QWERTY; de/es/fr ≥ 80–85 % top-1; no QWERTY regression.
+
+### Phase 5 — Android integration · **done (v1)**
+
+- ONNX Runtime on device, Kotlin trie + CTC prefix beam, statistical fallback, LM fusion. Training and app
+  normalization match (FUTO's canvas is the letter-key box, as in `NeuralGlideTypingClassifier.featurize`).
+- Remaining: on-device latency numbers on a mid-range phone; a Kotlin-path accuracy test (issue 5).
+
+### Phase 6 — hardening and product · in progress
+
+- Done: typo correction, autocorrect with undo, short-glide recognition, omnibox fix.
+- Remaining: real-device evaluation, regression suite of golden traces, licensing notices.
+
+---
+
+## 6. Risk register
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Web-volunteer vs Drift-user domain shift | unknown accuracy drop | opt-in device traces, evaluate early |
+| Noisy app dictionary | misspellings in glide/suggestions, weak autocorrect | cleaned shipping lexicon (focus 1) |
+| Autocorrect mangles names/slang | user frustration | conservative margins, undo + memory, personal learning |
+| Synthetic-only typo evaluation | numbers do not match real typing | real typo set; opt-in metrics |
+| Web-volunteer vs Drift-user domain shift (glide) | unknown accuracy drop | opt-in device traces |
 | Test subset bias (4k) | false progress | 10k sample, 3 seeds, McNemar |
-| Lexicon mismatch with app dictionary | accuracy/UX | sweep app dictionary before shipping |
-| Multilingual data sparsity | poor non-English accuracy | prioritize by market, targeted collection |
-| License contamination (FUTO weights/outputs) | legal | enforce data-only rule; review every artifact |
-| Prototype beam ≠ device latency | bad UX | Kotlin port + device benchmarks early |
-| ONNX op coverage on phones | deployment failure | validate ORT/XNNPACK on target devices |
-| Overfitting reranker/LM to dev | inflated numbers | sealed test, dev-only tuning |
-
----
-
-## 10. Rough milestones
-
-| Milestone | Contents | Effort (estimate) |
-|---|---|---|
-| M1 | 1 M-row model, lexicon sweep, corpus mix | 1–2 days |
-| M2 | shape reranker | 3–5 days |
-| M3 | context LM | 1–2 weeks |
-| M4 | layout-agnostic + multilingual | 1–2 weeks |
-| M5 | Android runtime + Kotlin decoder + benchmarks | 1–2 weeks |
-
-Effort estimates exclude review/QA iterations and are measured in working days, not
-calendar weeks.
-
----
-
-## 11. Immediate next actions (if approved)
-
-1. Expand the sealed test sample to 10k random rows; freeze the 89.4 % baseline.
-2. Pull the full 1 M train split + `swipe-2/3/4` with distance filtering; run the
-   learning-curve ablation.
-3. Lexicon sweep (50k / 147k / 200k); decide the shipping lexicon.
-4. Build the reranker dataset from beam top-K + FUTO hard negatives; prototype (a).
-5. Decide the accuracy bar and the FUTO-fallback question in §1.
-
----
-
-## 12. Recommendation
-
-Proceed with **Phase 1 then Phase 2** before the context LM: data scale is cheap and
-still rising, and the reranker targets a measured 60 % of remaining errors with
-already-licensed data. The LM is the largest single accuracy lever but also the most
-expensive to build and ship; it should follow once the swipe emissions and reranker
-are stable.
+| License contamination (FUTO weights/outputs) | legal | data-only rule; review every artifact |
+| OEM gesture handling (edge back) | glides from edge keys cancelled | confirm with real touches; document if OEM-only |
+| Multilingual data sparsity | poor non-English accuracy | prioritize by market |
