@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-11",
+  "device": {
+    "model": "vivo I2401",
+    "android": "16",
+    "soc": "SM8750 (Snapdragon 8 Elite)",
+    "build": "debug (not minified)"
+  },
+  "decoder": "assets/swipe/ctc_swipe.onnx, Kotlin lexicon beam width 120, 60,564-word dictionary",
+  "method": "GlideDecodeLatencyTest, synthetic traces through the key centers, 5 warm-up runs, 30 measured runs",
+  "cold_start_ms": 472.7,
+  "words": {
+    "the": {"letters": 3, "mean_ms": 16.2, "p50_ms": 15.8, "p90_ms": 19.1, "top3": ["the", "thee", "they"]},
+    "world": {"letters": 5, "mean_ms": 33.1, "p50_ms": 32.9, "p90_ms": 35.5, "top3": ["world", "would", "word"]},
+    "keyboard": {"letters": 8, "mean_ms": 66.8, "p50_ms": 66.4, "p90_ms": 70.4, "top3": ["keyboard", "keyboards", "keypad"]}
+  },
+  "notes": [
+    "Cold start covers ONNX session creation and the 60,564-word trie build; it runs off the main thread on subtype load.",
+    "Debug builds and a flagship SoC: mid-range phones will be slower, so treat these as a lower bound.",
+    "Decode time grows roughly linearly with word length (~7-8 ms per letter)."
+  ]
+}

@@ -30,6 +30,8 @@
 - Glide sentences: 34/34 words on four sentences; one more sentence failed only because the glide started on `q` at
   the screen edge (see issue 4).
 - Injected gestures are slow (~57 ms per point), so this checks correctness, not real-finger feel.
+- Decoder latency (debug build, instrumented test): cold start 473 ms; p50 15.8 / 32.9 / 66.4 ms for 3 / 5 /
+  8-letter words, p90 19 / 36 / 70 ms. The SoC is a Snapdragon 8 Elite, so this is a lower bound for mid-range.
 
 ### Commits this round
 
@@ -160,6 +162,10 @@ In recommended order. Each item says what it fixes.
    web_test 16.23 / 26.73 → 16.55 / 27.40 % top-1/3, but chat_test 21.43 / 34.41 → 19.27 / 31.22 %.
    A 5M-token UltraChat cap with a 25 % chat share still lost 1.1 pt of chat top-1. Not worth a model
    swap on the only chat benchmark; a real-user corpus or a broader benchmark is the next attempt.
+12. **On-device decode latency — done.** `GlideDecodeLatencyTest` on the I2401 (Snapdragon 8 Elite,
+   Android 16, debug build): cold start 473 ms, p50 15.8 ms for 3 letters, 32.9 ms for 5, 66.4 ms for 8
+   (p90 70.4 ms). Roughly 7–8 ms per letter. Mid-range phones will be slower; the long-word tail is the
+   one to watch. Report: `ml/results/latency_i2401.json`.
 
 ---
 
@@ -195,6 +201,9 @@ In recommended order. Each item says what it fixes.
 - **Fusion (2026-11-11), shipping artifacts:** λ = 0.4 vs λ = 0 gives FUTO dev 90.93 → 91.40 % top-1,
   FUTO test (3k) 89.00 → 89.87 %, chat contexts 94.07 → 95.33 %. McNemar p = 0.029 / 0.0009 / 1e-8.
   λ = 0.6 and 0.8 are lower on FUTO. `ml/results/fuse_shipping.json`.
+- **Latency (2026-11-11):** `GlideDecodeLatencyTest` via `:app:connectedDebugAndroidTest` with a class
+  filter, 5 warm-ups + 30 decodes per word. I2401 (Snapdragon 8 Elite, debug): cold start 473 ms, p50
+  15.8 / 32.9 / 66.4 ms for 3 / 5 / 8-letter words. Re-run after decoder changes and on a mid-range phone.
 - **Frozen baselines:** glide 400k/ch128/147k = 89.38 / 95.03 / 95.90 % top-1/3/5; previous app-dictionary
   decoder with LM λ 0.4 = 89.87 % top-1; typo corrector on the 128–255 dictionary = 89.1 / 96.9 % top-1/3.
 - **Wired lexicon (2026-11-11):** same 400k checkpoint, log prior k = 0.4, 60,564-word list = 89.38 / 94.17 %
@@ -257,7 +266,8 @@ In recommended order. Each item says what it fixes.
 - ONNX Runtime on device, Kotlin trie + CTC prefix beam, statistical fallback, LM fusion. Training and app
   normalization match (FUTO's canvas is the letter-key box, as in `NeuralGlideTypingClassifier.featurize`).
 - Remaining: on-device latency numbers on a mid-range phone. The Kotlin-path accuracy test is done
-  (issue 5).
+  (issue 5), and `GlideDecodeLatencyTest` measures 15.8 / 32.9 / 66.4 ms p50 for 3 / 5 / 8-letter words on
+  the I2401 (Snapdragon 8 Elite, debug build). A mid-range device still needs a run.
 
 ### Phase 6 — hardening and product · in progress
 
@@ -284,4 +294,5 @@ In recommended order. Each item says what it fixes.
 | Kotlin decoder drifts from the Python evaluation | published numbers no longer describe the app | `NeuralGlideAccuracyTest` (200 real traces, 98.5 % top-1 parity, 100 % top-3 parity) |
 | License contamination (FUTO weights/outputs) | legal | data-only rule; review every artifact |
 | OEM gesture handling (edge back) | glides from edge keys cancelled | confirm with real touches; document if OEM-only |
+| Long-word glide decode latency | ~67 ms p50 on a flagship debug build; slower phones may hitch | run on a mid-range phone; tune beam width / top chars if needed |
 | Multilingual data sparsity | poor non-English accuracy | prioritize by market |
