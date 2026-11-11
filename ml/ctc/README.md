@@ -36,7 +36,15 @@ python3 sample_test.py --out work/test_rand.npz --rows 4000
 # 4. export + parity check
 /home/curious/miniconda3/envs/llm/bin/python export_onnx.py \
     --ckpt work/run_400k/best.pt --out work/ctc_swipe_ch128.onnx
+
+# 5. regenerate the JVM regression fixture (writes app/src/test/resources/glide/neural_dev200.json)
+/home/curious/miniconda3/envs/llm/bin/python export_kotlin_fixture.py --rows 200 --seed 20261111
 ```
+
+`export_kotlin_fixture.py` replays a fixed dev sample through the checkpoint with the app dictionary,
+the 6.87 log prior, the endpoint term and the same layout as
+`app/src/test/kotlin/.../gesture/NeuralGlideAccuracyTest.kt`. It records the ONNX model hash, so a
+model update without a fixture update fails the test instead of testing a stale expectation.
 
 `data.py` filters targets to `[a-z]{2,26}` and enforces CTC feasibility
 (`len + adjacent repeats <= 32`); ~17% of raw rows are dropped. Trajectories are

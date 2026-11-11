@@ -140,6 +140,8 @@ configure<ApplicationExtension> {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
+            // The glide classifier logs through android.util.Log; its JVM test has no Android runtime.
+            isReturnDefaultValues = true
         }
         unitTests.all {
             it.useJUnitPlatform()
@@ -223,8 +225,18 @@ dependencies {
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
+    // The unit tests run on the desktop JVM and need the desktop native library.
+    testImplementation(libs.onnxruntime.desktop)
     androidTestImplementation(libs.androidx.test.ext)
     androidTestImplementation(libs.androidx.test.espresso.core)
+}
+
+// `onnxruntime-android` and the desktop `onnxruntime` ship the same `ai.onnxruntime` classes. The JVM
+// tests use the desktop artifact's native library, so drop the Android one from their classpaths.
+configurations.configureEach {
+    if (name.contains("UnitTestCompileClasspath") || name.contains("UnitTestRuntimeClasspath")) {
+        exclude(group = "com.microsoft.onnxruntime", module = "onnxruntime-android")
+    }
 }
 
 fun getGitCommitHash(short: Boolean = false): Provider<String> {

@@ -34,7 +34,12 @@ import kotlin.math.sqrt
  * All state is guarded by the caller's lock (see [GlideTypingManager]); no Android UI APIs are
  * touched. The ONNX session is created lazily off the main thread.
  */
-internal class NeuralGlideTypingClassifier(private val context: Context) : GlideTypingClassifier {
+internal class NeuralGlideTypingClassifier internal constructor(
+    private val modelBytes: () -> ByteArray,
+) : GlideTypingClassifier {
+    constructor(context: Context) : this({
+        context.assets.open(MODEL_ASSET).use { it.readBytes() }
+    })
     private companion object {
         const val TAG = "DriftGlide"
         const val ALPHABET = "abcdefghijklmnopqrstuvwxyz"
@@ -164,7 +169,7 @@ internal class NeuralGlideTypingClassifier(private val context: Context) : Glide
             return null
         }
         return try {
-            val bytes = context.assets.open(MODEL_ASSET).use { it.readBytes() }
+            val bytes = modelBytes()
             val options = OrtSession.SessionOptions()
             val created = environment.createSession(bytes, options)
             session = created
