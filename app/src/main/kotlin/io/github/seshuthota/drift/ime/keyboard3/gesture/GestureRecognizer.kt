@@ -163,7 +163,27 @@ class GestureRecognizer {
             }
         }
 
+        if (pointer.isShortGlide(x, y, timeMillis)) {
+            for (sample in pointer.samples) {
+                pointer.acceptGlidePoint(sample)
+            }
+            return GestureOutcome.Glide(pointer.glidePoints.toList())
+        }
+
         return GestureOutcome.Tap
+    }
+
+    /**
+     * A glide between neighbouring keys (`we`, `as`, `op`) ends before the finger is a full key width away, so it
+     * never started in [onMove]. On release (after flicks were taken as swipes) it still counts as a glide when the
+     * finger ended at least [GestureConfig.shortGlideFraction] key widths away, quickly enough.
+     */
+    private fun Pointer.isShortGlide(x: Float, y: Float, timeMillis: Long): Boolean {
+        if (!glideEligible || !config.glideEnabled) return false
+        val duration = timeMillis - downTimeMillis
+        if (duration <= 0L || duration > config.glideMaxDurationMillis) return false
+        val distance = hypot(x - downX, y - downY)
+        return distance >= keyWidthPx * config.shortGlideFraction && distance / duration > config.glideMinVelocityPxPerMs
     }
 
     /**

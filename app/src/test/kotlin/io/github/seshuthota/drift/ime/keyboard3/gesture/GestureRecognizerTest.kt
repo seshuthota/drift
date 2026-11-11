@@ -131,6 +131,29 @@ class GestureRecognizerTest : FunSpec({
             glide.points.size shouldBe 4
         }
 
+        test("a short glide to the neighbouring key completes on release") {
+            val recognizer = GestureRecognizer()
+            recognizer.press()
+            recognizer.onMove(1L, 50f, 0f, 60L) shouldHaveSize 0
+            recognizer.onMove(1L, 100f, 0f, 120L) shouldHaveSize 0
+            val glide = recognizer.onUp(1L, 100f, 0f, 150L).shouldBeInstanceOf<GestureOutcome.Glide>()
+            glide.points.first() shouldBe GesturePoint(0f, 0f, 0L)
+            glide.points.last().x shouldBe 100f
+        }
+
+        test("a fast flick of the same length stays a swipe") {
+            val recognizer = GestureRecognizer()
+            recognizer.press()
+            recognizer.onMove(1L, 40f, 0f, 20L)
+            recognizer.onUp(1L, 90f, 0f, 40L).shouldBeInstanceOf<GestureOutcome.Swipe>()
+        }
+
+        test("a slide that stays within the down key is a tap") {
+            val recognizer = GestureRecognizer()
+            recognizer.press()
+            recognizer.onUp(1L, 40f, 0f, 100L) shouldBe GestureOutcome.Tap
+        }
+
         test("never starts on an ineligible key") {
             val recognizer = GestureRecognizer()
             recognizer.press(glideEligible = false)

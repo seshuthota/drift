@@ -383,6 +383,7 @@ class PointerTracker(
             trackedPointer.repeatJob?.cancel()
             trackedPointer.keyActionJob?.cancel()
 
+            val wasGliding = gestureRecognizer.isGliding(up.id.value)
             val gestureOutcome = gestureRecognizer.onUp(up.id.value, up.position.x, up.position.y, up.uptimeMillis)
             val isTap = gestureOutcome == GestureOutcome.Tap
             if (!isTap) {
@@ -405,9 +406,11 @@ class PointerTracker(
                 output?.let { emit(it) }
             }
             when (gestureOutcome) {
-                is GestureOutcome.Glide -> gestureListener?.onGlideComplete(
-                    gestureOutcome.points.map { it.normalized(size) },
-                )
+                is GestureOutcome.Glide -> gestureListener?.let { listener ->
+                    // A short glide between neighbouring keys is only recognized on release.
+                    if (!wasGliding) listener.onGlideStart()
+                    listener.onGlideComplete(gestureOutcome.points.map { it.normalized(size) })
+                }
                 is GestureOutcome.Swipe -> gestureListener?.onSwipe(
                     gestureOutcome.direction,
                     gestureOutcome.unitCountX,

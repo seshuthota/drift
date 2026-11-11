@@ -85,6 +85,11 @@ data class GestureConfig(
     val glideMaxDurationMillis: Long,
     /** Minimum distance between accepted glide points, as a fraction of the down key's width. */
     val glideMinPointSpacingFraction: Float = 0.25f,
+    /**
+     * Minimum release distance, as a fraction of the down key's width, for a press that never started gliding to
+     * still count as a short glide between neighbouring keys. Past half a key width the finger is on another key.
+     */
+    val shortGlideFraction: Float = 0.6f,
     /** Time window used to estimate the release velocity. */
     val velocityWindowMillis: Long = 100L,
 ) {
