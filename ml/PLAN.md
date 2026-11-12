@@ -171,8 +171,9 @@ In recommended order. Each item says what it fixes.
    `PointerTracker.handleDown/handleUp` through the real `ImeController` and `ImeEditor` into a recording
    `InputConnection` for taps, space, backspace, double-space period, raw-editor tail commits
    (`a`/`b`/`U+007F`), autocorrect (`teh` → `the`) and a real neural glide commit (`the`) via
-   `GlideTypingManager` with an injected controller provider. 7/7 on the I2401; the first three traces were
-   3/3 on the API 35 emulator. Completion selection and the suggestion bar are still open.
+   `GlideTypingManager` with an injected controller provider. 7/7 on the I2401; the full instrumented
+   suite (including the latency and app-context tests) is 9/9 on the API 35 emulator. Completion selection
+   and the suggestion bar are still open.
 
 ---
 
@@ -215,8 +216,8 @@ In recommended order. Each item says what it fixes.
 - **End to end (2026-11-12):** `PointerTextGoldenTest` sends pointer down/up through `PointerTracker`, the
   real `ImeController` and `ImeEditor` into a recording `InputConnection`. It asserts committed text for
   `hello`, `hello world`, backspace, double-space period, raw-editor tail commits, autocorrect
-  (`teh` → `the`) and a glide commit (`the`); 7/7 on the I2401. Completion selection and the suggestion
-  bar are not covered yet.
+  (`teh` → `the`) and a glide commit (`the`); 7/7 on the I2401 and the full instrumented suite is 9/9 on
+  the API 35 emulator. Completion selection and the suggestion bar are not covered yet.
 - **Frozen baselines:** glide 400k/ch128/147k = 89.38 / 95.03 / 95.90 % top-1/3/5; previous app-dictionary
   decoder with LM λ 0.4 = 89.87 % top-1; typo corrector on the 128–255 dictionary = 89.1 / 96.9 % top-1/3.
 - **Wired lexicon (2026-11-11):** same 400k checkpoint, log prior k = 0.4, 60,564-word list = 89.38 / 94.17 %
