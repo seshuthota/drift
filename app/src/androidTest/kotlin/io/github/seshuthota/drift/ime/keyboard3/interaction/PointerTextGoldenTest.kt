@@ -36,11 +36,15 @@ import androidx.compose.ui.unit.IntSize
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.seshuthota.drift.DriftApplication
+import io.github.seshuthota.drift.app.DriftPreferenceStore
 import io.github.seshuthota.drift.ime.editor.DriftEditorInfo
 import io.github.seshuthota.drift.ime.keyboard3.ImeActions
 import io.github.seshuthota.drift.ime.keyboard3.ImeController
 import io.github.seshuthota.drift.ime.keyboard3.ImeLayerIds
 import io.github.seshuthota.drift.ime.keyboard3.gesture.GestureConfig
+import io.github.seshuthota.drift.ime.keyboard3.gesture.GesturePoint
+import io.github.seshuthota.drift.ime.keyboard3.gesture.GlideKey
+import io.github.seshuthota.drift.ime.keyboard3.gesture.GlideTypingManager
 import io.github.seshuthota.drift.ime.keyboard3.hint.LongPressKeyHintPlacement
 import io.github.seshuthota.drift.ime.keyboard3.touch.TouchKey
 import io.github.seshuthota.drift.ime.keyboard3.touch.TouchKeyboard
@@ -49,6 +53,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -58,6 +63,9 @@ import org.k3lp.lib.text.asK3String
 import org.k3lp.model.key.K3Key
 import org.k3lp.model.key.K3KeyId
 import java.lang.ref.WeakReference
+import kotlin.math.PI
+import kotlin.math.hypot
+import kotlin.math.sin
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -72,6 +80,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @RunWith(AndroidJUnit4::class)
 class PointerTextGoldenTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
+    private val prefs by DriftPreferenceStore
     private lateinit var controller: ImeController
     private lateinit var tracker: PointerTracker
     private lateinit var connection: RecordingInputConnection
@@ -80,6 +89,14 @@ class PointerTextGoldenTest {
     fun setUp() {
         val application = context.applicationContext as DriftApplication
         controller = application.imeController
+        if (!preloaded) {
+            runBlocking {
+                application.nlpManager.value.ensureSuggestionProviderPreloaded(
+                    application.subtypeManager.value.activeSubtype,
+                )
+            }
+            preloaded = true
+        }
         connection = RecordingInputConnection()
         controller.updateStateBlocking {
             handleStartInputView(
@@ -131,6 +148,40 @@ class PointerTextGoldenTest {
         assertEquals("ab", connection.text.toString())
     }
 
+    @Test
+    fun autocorrectsTypoBeforeSpace() {
+        assumeTrue(prefs.correction.autoCorrect.get())
+        "teh".forEach(::tap)
+        tap(' ')
+        assertEquals("the ", connection.text.toString())
+    }
+
+    @Test
+    fun glideCommitsTheDecodedWord() {
+        assumeTrue(prefs.glide.enabled.get())
+        val application = context.applicationContext as DriftApplication
+        val subtype = application.subtypeManager.value.activeSubtype
+        val manager = GlideTypingManager(context) { controller }
+        manager.setLayout(glideLayout(), subtype)
+        val points = glidePoints("the")
+        var committed = ""
+        // prepareWords() runs off the main thread; retry until the classifier has its word list and
+        // the ONNX session is warm.
+        for (attempt in 1..4) {
+            manager.onGlideStart()
+            points.forEach(manager::onGlidePoint)
+            manager.onGlideComplete(points)
+            val deadline = System.currentTimeMillis() + 5_000
+            while (System.currentTimeMillis() < deadline) {
+                committed = connection.text.toString()
+                if (committed.isNotEmpty()) break
+                Thread.sleep(50)
+            }
+            if (committed.isNotEmpty()) break
+        }
+        assertEquals("the ", committed)
+    }
+
     private fun tap(char: Char) {
         val key = keyboardKeys.getValue(char)
         val center = Offset(
@@ -167,17 +218,25 @@ class PointerTextGoldenTest {
         isInitiallyConsumed = false,
     )
 
+    /** Letter geometry shared by the touch keys and the glide trace; staggered like the real QWERTY. */
+    private fun letterRects(): Map<Char, Rect> {
+        val rows = listOf("qwertyuiop" to 0.5f, "asdfghjkl" to 1.0f, "zxcvbnm" to 2.0f)
+        return buildMap {
+            rows.forEachIndexed { row, (letters, offset) ->
+                letters.forEachIndexed { index, char ->
+                    val left = (index + offset) / 10f
+                    val top = row / 4f
+                    put(char, Rect(left, top, left + 0.1f, top + 0.25f))
+                }
+            }
+        }
+    }
+
     private fun keyboard(): TouchKeyboard {
         val keys = mutableListOf<TouchKey>()
-        val rows = listOf("qwertyuiop", "asdfghjkl", "zxcvbnm")
-        rows.forEachIndexed { row, letters ->
-            letters.forEachIndexed { index, char ->
-                val left = index / 10f
-                val top = row / 4f
-                val bounds = Rect(left, top, left + 0.1f, top + 0.25f)
-                keys += touchKey(bounds, char.toString().asK3String(), "key_$char")
-                keyboardKeys[char] = keys.last()
-            }
+        for ((char, bounds) in letterRects()) {
+            keys += touchKey(bounds, char.toString().asK3String(), "key_$char")
+            keyboardKeys[char] = keys.last()
         }
         val space = Rect(0.1f, 0.75f, 0.7f, 1f)
         keys += touchKey(space, " ".asK3String(), "key_space")
@@ -190,6 +249,48 @@ class PointerTextGoldenTest {
             rowCount = 4,
             minDeviceWidthMm = 0,
         )
+    }
+
+    private fun glideLayout(): List<GlideKey> = letterRects().map { (char, bounds) ->
+        GlideKey(
+            code = char.code,
+            centerX = (bounds.left + bounds.right) / 2f,
+            centerY = (bounds.top + bounds.bottom) / 2f,
+            width = bounds.width,
+            height = bounds.height,
+        )
+    }
+
+    private fun glidePoints(word: String): List<GesturePoint> {
+        val rects = letterRects()
+        fun center(char: Char): Offset = rects.getValue(char).let {
+            Offset((it.left + it.right) / 2f, (it.top + it.bottom) / 2f)
+        }
+
+        val points = mutableListOf<GesturePoint>()
+        var time = 0L
+        var previous = center(word[0])
+        points += GesturePoint(previous.x, previous.y, time)
+        for (letter in word.drop(1)) {
+            val target = center(letter)
+            val deltaX = target.x - previous.x
+            val deltaY = target.y - previous.y
+            val length = hypot(deltaX, deltaY)
+            val normalX = -deltaY / length
+            val normalY = deltaX / length
+            for (step in 1..8) {
+                val fraction = step / 8f
+                val bow = sin(fraction * PI.toFloat()) * 0.03f * length
+                time += 16
+                points += GesturePoint(
+                    previous.x + deltaX * fraction + normalX * bow,
+                    previous.y + deltaY * fraction + normalY * bow,
+                    time,
+                )
+            }
+            previous = target
+        }
+        return points
     }
 
     private fun touchKey(bounds: Rect, output: K3StringOrDescriptor, id: String): TouchKey {
@@ -240,6 +341,7 @@ class PointerTextGoldenTest {
         val SIZE = IntSize(1000, 1000)
         const val BACKSPACE = '\b'
         val keyboardKeys = HashMap<Char, TouchKey>()
+        var preloaded = false
         val TIMING = InteractionTimingOptions(
             keyRepeatTimeout = 400.milliseconds,
             keyRepeatDelay = 50.milliseconds,

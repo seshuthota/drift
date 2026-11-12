@@ -20,6 +20,7 @@ import android.content.Context
 import io.github.seshuthota.drift.DriftImeService
 import io.github.seshuthota.drift.app.DriftPreferenceStore
 import io.github.seshuthota.drift.ime.core.Subtype
+import io.github.seshuthota.drift.ime.keyboard3.ImeController
 import io.github.seshuthota.drift.ime.keyboard3.touch.InputShiftState
 import io.github.seshuthota.drift.ime.nlp.GlideSuggestionCandidate
 import io.github.seshuthota.drift.ime.nlp.latin.NwpText
@@ -47,7 +48,14 @@ import java.util.concurrent.atomic.AtomicBoolean
  * All classifier access is serialized through [classifierLock] because points arrive on the
  * pointer-event thread while classification runs on [scope].
  */
-class GlideTypingManager(context: Context) {
+class GlideTypingManager(
+    context: Context,
+    /**
+     * The controller that receives committed glides. The default is the live IME service; tests inject
+     * the application controller so a glide can be traced into a recording input connection.
+     */
+    private val imeControllerProvider: () -> ImeController? = { DriftImeService.imeControllerOrNull() },
+) {
     companion object {
         private const val MAX_SUGGESTION_COUNT = 8
 
@@ -166,7 +174,7 @@ class GlideTypingManager(context: Context) {
      * moving (one model call, ~1 ms); a glide that finishes first is decoded without context.
      */
     private fun prepareContextScorer(forGlide: Int) {
-        val textBefore = DriftImeService.imeControllerOrNull()?.snapshotState()?.content?.surroundingText?.textBefore
+        val textBefore = imeControllerProvider()?.snapshotState()?.content?.surroundingText?.textBefore
             ?.toString() ?: return
         scope.launch {
             val logProbs = predictor.nextWordLogProbs(textBefore, textBefore.length >= TRUNCATION_HINT_CHARS)
@@ -273,7 +281,7 @@ class GlideTypingManager(context: Context) {
                 }
                 if (commit) {
                     withContext(Dispatchers.Main) {
-                        val imeController = DriftImeService.imeControllerOrNull() ?: return@withContext
+                        val imeController = imeControllerProvider() ?: return@withContext
                         var alternatives = emptyList<GlideSuggestionCandidate>()
                         imeController.updateState {
                             val shiftState = state.flags.inputShiftState

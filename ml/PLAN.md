@@ -169,9 +169,10 @@ In recommended order. Each item says what it fixes.
    Report: `ml/results/latency_i2401.json`.
 13. **End-to-end golden traces — first version done.** `PointerTextGoldenTest` drives
    `PointerTracker.handleDown/handleUp` through the real `ImeController` and `ImeEditor` into a recording
-   `InputConnection`. Covers `hello`, `hello world` (space) and backspace. 3/3 on the I2401 and on the
-   `medium_phone_api35` emulator; the full instrumented suite is 5/5 on the phone. Glide commits and
-   autocorrect are not in it yet.
+   `InputConnection` for taps, space and backspace; it also covers autocorrect (`teh` → `the`) and a real
+   neural glide commit (`the`) via `GlideTypingManager` with an injected controller provider. 5/5 on the
+   I2401; the tap traces were 3/3 on the API 35 emulator before the last two were added. Raw-editor
+   traces, double-space period and completion selection are still open.
 
 ---
 
@@ -213,8 +214,8 @@ In recommended order. Each item says what it fixes.
   mid-range phone.
 - **End to end (2026-11-12):** `PointerTextGoldenTest` sends pointer down/up through `PointerTracker`, the
   real `ImeController` and `ImeEditor` into a recording `InputConnection`. It asserts committed text for
-  `hello`, `hello world` and backspace; 3/3 on the I2401 and the API 35 emulator. Glide commits and
-  autocorrect are not covered yet.
+  `hello`, `hello world`, backspace, autocorrect (`teh` → `the`) and a glide commit (`the`); 5/5 on the
+  I2401. Raw editors, double-space period and completion selection are not covered yet.
 - **Frozen baselines:** glide 400k/ch128/147k = 89.38 / 95.03 / 95.90 % top-1/3/5; previous app-dictionary
   decoder with LM λ 0.4 = 89.87 % top-1; typo corrector on the 128–255 dictionary = 89.1 / 96.9 % top-1/3.
 - **Wired lexicon (2026-11-11):** same 400k checkpoint, log prior k = 0.4, 60,564-word list = 89.38 / 94.17 %
@@ -285,12 +286,12 @@ In recommended order. Each item says what it fixes.
 - Done: typo correction, autocorrect with undo, short-glide recognition, omnibox fix, personal learning
   (focus item 4), About licensing (issue 7), double-space period, Termux raw input (focus item 8), the
   decoder-level golden-trace test (issue 5, focus item 9), and the first end-to-end pointer → text traces
-  (focus item 13).
-- Remaining: glide commits and autocorrect in the end-to-end suite. Real-finger confirmation of the
-  edge-back gesture (issue 4) is still deferred. Phase 3 still wants a conversational corpus that
-  transfers to the chat benchmark (UltraChat did not). Phase 4 (multilingual glide) has not started.
-  Decisions still open: language order (5), opt-in device traces (7). The sealed set stays at 4,000 rows
-  until the next model family.
+  (focus item 13: taps, space, backspace, autocorrect and a glide commit).
+- Remaining: more end-to-end traces (raw editors, double-space period, completion selection). Real-finger
+  confirmation of the edge-back gesture (issue 4) is still deferred. Phase 3 still wants a conversational
+  corpus that transfers to the chat benchmark (UltraChat did not). Phase 4 (multilingual glide) has not
+  started. Decisions still open: language order (5), opt-in device traces (7). The sealed set stays at
+  4,000 rows until the next model family.
 
 ---
 
