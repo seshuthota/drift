@@ -184,6 +184,11 @@ In recommended order. Each item says what it fixes.
    The first R8 release crashed the IME immediately: ONNX Runtime's JNI bridge looks members up by
    name and the AAR ships no consumer rules. `-keep class ai.onnxruntime.** { *; }` in
    `app/proguard-rules.pro` fixes it; the keyboard shows and predicts on the release build.
+15. **First real-use capture — done.** I2401, release build, diagnostics on: 123 rich glides and 1 raw
+   Termux glide over ~69 minutes. Decode p50 15 ms, p90 22 ms, max 33 ms. `gfxinfo` over 10,628 frames:
+   1.67 % janky, p50 5 ms, p90 8 ms, p99 22 ms. A short glide in Termux committed `we`, showed the
+   alternatives (`we` / `wee` / `wa`) and recorded `raw: true`; the earlier “glide does not work in
+   Termux” was not reproducible on the fixed release. Raw data stays on the phone, not in the repo.
 
 ---
 
