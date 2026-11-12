@@ -178,12 +178,19 @@ fun DevtoolsScreen() {
             }
 
             SegmentedListColumn(title = stringRes(R.string.devtools__group_ime_window_tools__title)) {
-                val count = 2
+                val count = 3
                 SwitchPreference(
                     prefs.devtools.showWindowResizeHandleBoundaries,
                     shapes = ListItemDefaults.segmentedShapes(0, count),
                     title = stringRes(R.string.devtools__show_window_resize_handle_boundaries__label),
                     summary = stringRes(R.string.devtools__show_window_resize_handle_boundaries__summary),
+                    enabledIf = { prefs.devtools.enabled isEqualTo true },
+                )
+                SwitchPreference(
+                    prefs.devtools.glideDiagnostics,
+                    shapes = ListItemDefaults.segmentedShapes(1, count),
+                    title = stringRes(R.string.devtools__glide_diagnostics__label),
+                    summary = stringRes(R.string.devtools__glide_diagnostics__summary),
                     enabledIf = { prefs.devtools.enabled isEqualTo true },
                 )
                 val successMsg = stringRes(R.string.devtools__reset_window_config__toast_success)
@@ -204,7 +211,7 @@ fun DevtoolsScreen() {
                             )
                         }
                     },
-                    shapes = ListItemDefaults.segmentedShapes(1, count),
+                    shapes = ListItemDefaults.segmentedShapes(2, count),
                     title = stringRes(R.string.devtools__reset_window_config__label),
                     summary = stringRes(R.string.devtools__reset_window_config__summary),
                     enabledIf = { prefs.devtools.enabled isEqualTo true },

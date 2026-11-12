@@ -56,6 +56,7 @@ class GlideTypingManager(
      */
     private val imeControllerProvider: () -> ImeController? = { DriftImeService.imeControllerOrNull() },
 ) {
+    private val appContext = context.applicationContext
     companion object {
         private const val MAX_SUGGESTION_COUNT = 8
 
@@ -82,6 +83,8 @@ class GlideTypingManager(
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val classifier: GlideTypingClassifier = HybridGlideTypingClassifier(context)
     private val classifierLock = Any()
+    /** Guards the point stream only, so a preview decode never blocks pointer samples. */
+    private val pointsLock = Any()
     private val frequencyCache = HashMap<String, Double>()
     private val requestInFlight = AtomicBoolean(false)
 
@@ -156,10 +159,10 @@ class GlideTypingManager(
         val currentGlide = synchronized(classifierLock) {
             glideId++
             suppressPreview = false
-            classifier.clear()
             classifier.setContextScorer(null)
             glideId
         }
+        synchronized(pointsLock) { classifier.clear() }
         if (LM_WEIGHT > 0.0) {
             prepareContextScorer(currentGlide)
         }
@@ -195,7 +198,7 @@ class GlideTypingManager(
         if (!prefs.glide.enabled.get()) {
             return
         }
-        synchronized(classifierLock) { classifier.addGesturePoint(point) }
+        synchronized(pointsLock) { classifier.addGesturePoint(point) }
         addedPointCount++
 
         val now = System.currentTimeMillis()
@@ -217,7 +220,7 @@ class GlideTypingManager(
             _trail.value = emptyList()
             return
         }
-        synchronized(classifierLock) {
+        synchronized(pointsLock) {
             // Pointer moves already fed the classifier; the outcome list is only a fallback for
             // streams that delivered no move samples at all.
             if (addedPointCount == 0) {
@@ -231,8 +234,8 @@ class GlideTypingManager(
         synchronized(classifierLock) {
             glideId++
             suppressPreview = true
-            classifier.clear()
         }
+        synchronized(pointsLock) { classifier.clear() }
         addedPointCount = 0
         _trail.value = emptyList()
     }
@@ -267,9 +270,12 @@ class GlideTypingManager(
         }
         scope.launch {
             try {
+                val snapshot = synchronized(pointsLock) { classifier.snapshotPoints() }
+                val startedAt = System.nanoTime()
                 val suggestions = synchronized(classifierLock) {
-                    classifier.getSuggestions(MAX_SUGGESTION_COUNT)
+                    classifier.getSuggestionsFor(snapshot, MAX_SUGGESTION_COUNT)
                 }
+                val decodeMs = (System.nanoTime() - startedAt) / 1_000_000
                 if (suggestions.isEmpty()) {
                     return@launch
                 }
@@ -280,6 +286,8 @@ class GlideTypingManager(
                     return@launch
                 }
                 if (commit) {
+                    val rawEditor = imeControllerProvider()?.snapshotState()?.editor?.info?.isRawInputEditor == true
+                    GlideDiagnostics.record(appContext, snapshot, decodeMs, suggestions, rawEditor)
                     withContext(Dispatchers.Main) {
                         val imeController = imeControllerProvider() ?: return@withContext
                         var alternatives = emptyList<GlideSuggestionCandidate>()

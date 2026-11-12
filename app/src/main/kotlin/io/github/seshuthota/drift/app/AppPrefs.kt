@@ -205,6 +205,10 @@ abstract class DriftPreferenceModel : PreferenceModel() {
             key = "devtools__show_window_resize_handle_boundaries",
             default = false,
         )
+        val glideDiagnostics = boolean(
+            key = "devtools__glide_diagnostics",
+            default = false,
+        )
     }
 
     val dictionary = Dictionary()

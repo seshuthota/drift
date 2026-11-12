@@ -53,6 +53,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Test
@@ -159,23 +160,36 @@ class PointerTextGoldenTest {
 
     @Test
     fun rawEditorReceivesTailOnlyCommits() {
-        connection = RecordingInputConnection()
-        controller.updateStateBlocking {
-            handleStartInputView(
-                WeakReference(connection),
-                DriftEditorInfo.wrap(
-                    EditorInfo().apply {
-                        inputType = InputType.TYPE_NULL
-                        initialSelStart = 0
-                        initialSelEnd = 0
-                    },
-                ),
-            )
-        }
+        bindRawEditor()
         "ab".forEach(::tap)
         assertEquals(listOf("a", "b"), connection.commits)
         tap(BACKSPACE)
         assertEquals("\u007F", connection.commits.last())
+    }
+
+    @Test
+    fun rawEditorReceivesGlideCommit() {
+        assumeTrue(prefs.glide.enabled.get())
+        bindRawEditor()
+        runGlide("the")
+        assertTrue(connection.commits.joinToString("").contains("the"))
+    }
+
+    @Test
+    fun glideDiagnosticsRecordsACommit() {
+        assumeTrue(prefs.glide.enabled.get())
+        val directory = context.getExternalFilesDir("diagnostics")
+        val file = directory?.resolve("glide.jsonl")
+        val original = prefs.devtools.glideDiagnostics.get()
+        try {
+            file?.delete()
+            runBlocking { prefs.devtools.glideDiagnostics.set(true) }
+            runGlide("the")
+            assertTrue(file != null && file.length() > 0)
+        } finally {
+            runBlocking { prefs.devtools.glideDiagnostics.set(original) }
+            file?.delete()
+        }
     }
 
     @Test
@@ -189,27 +203,43 @@ class PointerTextGoldenTest {
     @Test
     fun glideCommitsTheDecodedWord() {
         assumeTrue(prefs.glide.enabled.get())
+        runGlide("the")
+        assertEquals("the ", connection.text.toString())
+    }
+
+    private fun bindRawEditor() {
+        connection = RecordingInputConnection()
+        controller.updateStateBlocking {
+            handleStartInputView(
+                WeakReference(connection),
+                DriftEditorInfo.wrap(
+                    EditorInfo().apply {
+                        inputType = InputType.TYPE_NULL
+                        initialSelStart = 0
+                        initialSelEnd = 0
+                    },
+                ),
+            )
+        }
+    }
+
+    /** Runs one glide through the app's manager; prepareWords() is async, so retry while it warms up. */
+    private fun runGlide(word: String) {
         val application = context.applicationContext as DriftApplication
         val subtype = application.subtypeManager.value.activeSubtype
         val manager = GlideTypingManager(context) { controller }
         manager.setLayout(glideLayout(), subtype)
-        val points = glidePoints("the")
-        var committed = ""
-        // prepareWords() runs off the main thread; retry until the classifier has its word list and
-        // the ONNX session is warm.
+        val points = glidePoints(word)
         for (attempt in 1..4) {
             manager.onGlideStart()
             points.forEach(manager::onGlidePoint)
             manager.onGlideComplete(points)
             val deadline = System.currentTimeMillis() + 5_000
             while (System.currentTimeMillis() < deadline) {
-                committed = connection.text.toString()
-                if (committed.isNotEmpty()) break
+                if (connection.commits.isNotEmpty()) return
                 Thread.sleep(50)
             }
-            if (committed.isNotEmpty()) break
         }
-        assertEquals("the ", committed)
     }
 
     private fun tap(char: Char) {

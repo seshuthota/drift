@@ -53,6 +53,13 @@ interface GlideTypingClassifier {
 
     fun getSuggestions(maxSuggestionCount: Int): List<String>
 
+    /** Snapshot of the collected samples, so decoding can run without blocking [addGesturePoint]. */
+    fun snapshotPoints(): List<GesturePoint> = emptyList()
+
+    /** Decodes a previously taken [snapshotPoints] snapshot. Implementations without one ignore it. */
+    fun getSuggestionsFor(points: List<GesturePoint>, maxSuggestionCount: Int): List<String> =
+        getSuggestions(maxSuggestionCount)
+
     /**
      * Optional extra score per candidate word (e.g. a weighted next-word language-model log-probability given
      * the text before the cursor). Implementations that cannot use it ignore it.

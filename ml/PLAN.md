@@ -1,6 +1,6 @@
 # Drift typing intelligence — status and plan
 
-**Last updated:** 2026-11-11 (Kotlin-path accuracy test; Termux raw-editor input; first version 2026-11-08)
+**Last updated:** 2026-11-12 (glide diagnostics and daily-use release build; first version 2026-11-08)
 **Scope:** glide decoder, next-word prediction, typo correction/autocorrect, and the input pipeline around them
 **Companion documents:** `ml/REPORT.md` (swipe CTC prototype), `ml/nwp/README.md` (next-word model)
 
@@ -18,6 +18,7 @@
 | Typo correction | `TypoCorrector`: keyboard-aware weighted Damerau-Levenshtein over a trie of the app dictionary, ranked with `ln(1+count)/2` + next-word LM | 87.8 % top-1 / 95.5 % top-3 on synthetic single typos (seed 7, 3,000 words), 0.21 ms/word (laptop JVM) |
 | Suggestion bar | Corrections and completions on one score scale; best one leads (`thw` → the, `hel` → help, `dont` → don't, `recieve` → receive) | verified on device |
 | Spell checker | `spell()` flags unknown words and likely dictionary misspellings, with suggestions | unit-tested only |
+| Glide diagnostics | DevTools toggle writes one JSON line per committed glide (trace, top 3, decode ms, raw editor) to `Android/data/<id>/files/diagnostics/glide.jsonl` | tested on the emulator; off by default |
 | Autocorrect | On space / punctuation, only when confident. Unknown words need margin ≥ 2.5 over the runner-up. A fix that only adds apostrophes (`dont` → `don't`) needs margin ≥ 0.8 against the runner-up, or against the typed word when that word is in the dictionary. Other dictionary words are left as typed. Backspace right after undoes it and the word is not corrected again. Bold candidate = will autocorrect. Pref `correction__auto_correct` (default on), quick action toggles it | Unit tests: `recieve`, `teh`, `dont` correct; `ill`, `id`, `were`, `its`, `pout` stay. The 98.1 % precision / 71.5 % recall figure is from the previous 128–255 dictionary |
 | Browser omnibox | Inline autocompletion is no longer treated as a user selection, so suggestions keep working in address bars | unit-tested; device run did not trigger an inline completion |
 | Short glides | Two-letter words on neighbouring keys (`we`, `as`, `re`) are recognized on release; vertical moves stay taps. A real finger stroke from `o` to `k` still commits `on` after the endpoint term (preview had `ok` second). Parked | synthetic + one device retest |
@@ -174,6 +175,12 @@ In recommended order. Each item says what it fixes.
    `GlideTypingManager` with an injected controller provider. 7/7 on the I2401; the full instrumented
    suite (including the latency and app-context tests) is 9/9 on the API 35 emulator. Completion selection
    and the suggestion bar are still open.
+14. **Daily-use build and real-use data — done.** Signed release APK (debug key) built and smoke-tested;
+   DevTools has a new "Glide diagnostics" toggle (off by default) that records committed glide traces,
+   top candidates, decode time and raw/rich editor to `Android/data/io.github.seshuthota.drift/files/
+   diagnostics/glide.jsonl`. Preview decodes no longer hold the point lock, so pointer samples are not
+   blocked by a 20–35 ms decode. A TYPE_NULL glide trace was added; glide commits work in raw editors,
+   but regular suggestions are still skipped there by design.
 
 ---
 
@@ -288,7 +295,8 @@ In recommended order. Each item says what it fixes.
 - Done: typo correction, autocorrect with undo, short-glide recognition, omnibox fix, personal learning
   (focus item 4), About licensing (issue 7), double-space period, Termux raw input (focus item 8), the
   decoder-level golden-trace test (issue 5, focus item 9), and the first end-to-end pointer → text traces
-  (focus item 13: taps, space, backspace, double-space period, raw editor, autocorrect, glide).
+  (focus item 13: taps, space, backspace, double-space period, raw editor, autocorrect, glide). Real-use
+  diagnostics and the release build are focus item 14.
 - Remaining: completion selection and other suggestion-bar traces. Real-finger confirmation of the
   edge-back gesture (issue 4) is still deferred. Phase 3 still wants a conversational corpus that
   transfers to the chat benchmark (UltraChat did not). Phase 4 (multilingual glide) has not started.

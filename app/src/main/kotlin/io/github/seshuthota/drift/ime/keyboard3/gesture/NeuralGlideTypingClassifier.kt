@@ -81,6 +81,7 @@ internal class NeuralGlideTypingClassifier internal constructor(
         contextScorer = scorer
     }
     private val points = ArrayList<GesturePoint>(256)
+    private val pointsLock = Any()
 
     override val ready: Boolean
         get() = keys.isNotEmpty() && trie != null
@@ -123,28 +124,36 @@ internal class NeuralGlideTypingClassifier internal constructor(
     }
 
     override fun addGesturePoint(point: GesturePoint) {
-        if (points.isNotEmpty()) {
-            val last = points[points.size - 1]
-            val dx = point.x - last.x
-            val dy = point.y - last.y
-            if (dx * dx + dy * dy < 1e-6f) {
-                return
+        synchronized(pointsLock) {
+            if (points.isNotEmpty()) {
+                val last = points[points.size - 1]
+                val dx = point.x - last.x
+                val dy = point.y - last.y
+                if (dx * dx + dy * dy < 1e-6f) {
+                    return
+                }
             }
+            points.add(point)
         }
-        points.add(point)
     }
 
     override fun clear() {
-        points.clear()
+        synchronized(pointsLock) { points.clear() }
     }
 
-    override fun getSuggestions(maxSuggestionCount: Int): List<String> {
+    override fun snapshotPoints(): List<GesturePoint> =
+        synchronized(pointsLock) { points.toList() }
+
+    override fun getSuggestions(maxSuggestionCount: Int): List<String> =
+        getSuggestionsFor(snapshotPoints(), maxSuggestionCount)
+
+    override fun getSuggestionsFor(points: List<GesturePoint>, maxSuggestionCount: Int): List<String> {
         val trie = trie ?: return emptyList()
         if (points.size < 2) {
             return emptyList()
         }
         val session = ensureSession() ?: return emptyList()
-        val features = featurize() ?: return emptyList()
+        val features = featurize(points) ?: return emptyList()
         val startedAt = System.nanoTime()
         val logProbs = runModel(session, features) ?: return emptyList()
         val result = beamSearch(
@@ -205,7 +214,7 @@ internal class NeuralGlideTypingClassifier internal constructor(
     }
 
     /** Resamples the collected path to 64 arc-length points in the [0,1] keyboard box. */
-    private fun featurize(): FloatArray? {
+    private fun featurize(points: List<GesturePoint>): FloatArray? {
         val count = points.size
         if (count < 2) {
             return null
@@ -502,7 +511,13 @@ internal class HybridGlideTypingClassifier(context: Context) : GlideTypingClassi
     }
 
     override fun getSuggestions(maxSuggestionCount: Int): List<String> {
-        val neuralSuggestions = neural.getSuggestions(maxSuggestionCount)
+        return getSuggestionsFor(snapshotPoints(), maxSuggestionCount)
+    }
+
+    override fun snapshotPoints(): List<GesturePoint> = neural.snapshotPoints()
+
+    override fun getSuggestionsFor(points: List<GesturePoint>, maxSuggestionCount: Int): List<String> {
+        val neuralSuggestions = neural.getSuggestionsFor(points, maxSuggestionCount)
         if (neuralSuggestions.isNotEmpty()) {
             return neuralSuggestions
         }
