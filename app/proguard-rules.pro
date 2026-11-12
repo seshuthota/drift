@@ -1,6 +1,11 @@
 # Disable obfuscation (we use Proguard exclusively for optimization)
 -dontobfuscate
 
+# ONNX Runtime 1.22 ships no consumer rules. R8 removes members that the JNI bridge looks up by
+# name/signature, which crashes the native runtime on release builds (next-word inference).
+-keep class ai.onnxruntime.** { *; }
+-dontwarn ai.onnxruntime.**
+
 # Keep `Companion` object fields of serializable classes.
 # This avoids serializer lookup through `getDeclaredClasses` as done for named companion objects.
 -if @kotlinx.serialization.Serializable class **

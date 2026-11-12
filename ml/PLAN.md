@@ -181,6 +181,9 @@ In recommended order. Each item says what it fixes.
    diagnostics/glide.jsonl`. Preview decodes no longer hold the point lock, so pointer samples are not
    blocked by a 20–35 ms decode. A TYPE_NULL glide trace was added; glide commits work in raw editors,
    but regular suggestions are still skipped there by design.
+   The first R8 release crashed the IME immediately: ONNX Runtime's JNI bridge looks members up by
+   name and the AAR ships no consumer rules. `-keep class ai.onnxruntime.** { *; }` in
+   `app/proguard-rules.pro` fixes it; the keyboard shows and predicts on the release build.
 
 ---
 
