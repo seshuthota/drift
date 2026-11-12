@@ -20,7 +20,7 @@ f0186af96cf414c2f76f1c95a5119b221023e601eb33f5c2106caf4b6d26665c  6893  ml/resul
 f249f3b44a1316ecdbbdfb3e76c46f2a4867ad5c8b04261eac96719c9d63c97f  93359  ml/results/dev_preds_100k.txt
 114a079daf03df0360f5b094c543321a7a5e07649114b52f90daa7c463e35cd5  93373  ml/results/dev_preds_400k.txt
 d85bd6db615594dd6c77e2396572ebc4d9584410a688c326e4cac74bffb23ff3  15890  ml/REPORT.md
-fc224a7efc3245eaee99a6930b53b11478d886dd455a78099980580ed7de8420  26930  ml/PLAN.md
+77a538c9a70ac01a352ef258873716f100e3cefdf989c0dba358643ba4f0809f  27022  ml/PLAN.md
 00d3f099561262ee8e60b87833eecb2095f45e7bc68fbeb8bd608d30d4904d3c  2916  ml/ctc/beam.py
 1d7ba291833d97243524af465e367a854c309567efc6cc0569c30219da4c98af  7130  ml/ctc/data.py
 015a95894e890a91d6594e79dd50d84250ab4bd7c8fffb7dca426022244e1ad3  3029  ml/ctc/eval_beam.py
@@ -40,7 +40,7 @@ de59a4a9c36efabc51fbb1d702cc63b504cb4cccfd48b3f99d8b74e52926002b  95280224  ml/w
 fbabe3ff430144947b23b2f73d81dc9d517aef8d4824202ffa33eb9d7a57810c  11963968  ml/work/nwp_chat/chat_train_mix.npy
 f8810af224b64a57143084740049fb3219ca34ef65afbc84818e10c03529f771  12035704  ml/work/nwp/lstm_chat_h256/best.pt
 fc690362cc44cad48d95ae008e8be581e06b8859a1d4b7fd3367bc8b37dc496f  12035768  ml/work/nwp/lstm_mix_h256/best.pt
-ee882a9023ed5a9038718417e23910cc4cd1c71905919783d2f0f214e9378b3c  1105  ml/results/latency_i2401.json
+608c2778095ec30de34035df555b75a6c8e8eb2cf5930802319240e24f0214db  1307  ml/results/latency_i2401.json
 1287f5444a7b091d0c2dc9a0fd103824b6e6a8483a9b8437eb3a796d5021da88  6038  app/src/androidTest/kotlin/io/github/seshuthota/drift/ime/keyboard3/gesture/GlideDecodeLatencyTest.kt
 095f6b24703706002c8e903506cb11d22de21dad542b342ddb0d23b6d4b2e3bb  1299  app/src/androidTest/kotlin/io/github/seshuthota/drift/ExampleInstrumentedTest.kt
 5d46375198e9d12e1ab36aa5a00c836f92b1a2e6b62186a3cb6af82109c11efb  14144  app/src/androidTest/kotlin/io/github/seshuthota/drift/ime/keyboard3/interaction/PointerTextGoldenTest.kt
