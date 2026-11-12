@@ -149,6 +149,36 @@ class PointerTextGoldenTest {
     }
 
     @Test
+    fun doubleSpaceBecomesPeriod() {
+        assumeTrue(prefs.correction.doubleSpacePeriod.get())
+        "abc".forEach(::tap)
+        tap(' ')
+        tap(' ')
+        assertEquals("abc. ", connection.text.toString())
+    }
+
+    @Test
+    fun rawEditorReceivesTailOnlyCommits() {
+        connection = RecordingInputConnection()
+        controller.updateStateBlocking {
+            handleStartInputView(
+                WeakReference(connection),
+                DriftEditorInfo.wrap(
+                    EditorInfo().apply {
+                        inputType = InputType.TYPE_NULL
+                        initialSelStart = 0
+                        initialSelEnd = 0
+                    },
+                ),
+            )
+        }
+        "ab".forEach(::tap)
+        assertEquals(listOf("a", "b"), connection.commits)
+        tap(BACKSPACE)
+        assertEquals("\u007F", connection.commits.last())
+    }
+
+    @Test
     fun autocorrectsTypoBeforeSpace() {
         assumeTrue(prefs.correction.autoCorrect.get())
         "teh".forEach(::tap)
@@ -356,6 +386,7 @@ class PointerTextGoldenTest {
 /** Minimal editor behind the IME: enough of [InputConnection] for text, composing and selection. */
 private class RecordingInputConnection : InputConnection {
     val text = SpannableStringBuilder()
+    val commits = mutableListOf<String>()
     private var selStart = 0
     private var selEnd = 0
     private var composingStart = -1
@@ -405,6 +436,7 @@ private class RecordingInputConnection : InputConnection {
     }
 
     override fun commitText(t: CharSequence, newCursorPosition: Int): Boolean {
+        commits += t.toString()
         replaceComposing(t, keepComposing = false)
         moveCursor(newCursorPosition)
         return true
