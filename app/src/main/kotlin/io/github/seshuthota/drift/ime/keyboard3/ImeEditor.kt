@@ -92,11 +92,37 @@ open class ImeEditor(
             replaceTextRaw(ic, range, text)
             return
         }
+        if (isTextUntrusted) {
+            replaceTextRelative(ic, range, text)
+            return
+        }
         ic.beginBatchEdit()
         ic.setComposingRegion(range.first, range.last + 1)
         ic.commitText(text, 1)
         ic.setSelection(newSelection.start, newSelection.end)
         setComposition(newComposition)
+        ic.endBatchEdit()
+    }
+
+    /**
+     * True once this field has reported its on-screen text and positions instead of its stored ones (see
+     * [ImeController.isSurroundingTextTrustworthy]). ChatGPT does this for pasted links shown as chips. Offsets
+     * k3 derives then point past the end of the stored text, and Compose text fields crash on an out-of-range
+     * setComposingRegion or setSelection, so every edit is made relative to the cursor instead.
+     */
+    @Volatile
+    var isTextUntrusted: Boolean = false
+
+    /**
+     * Replaces the [range] k3 edits, which ends at the cursor, without naming any position: deletes its length
+     * before the cursor and commits [text] there. No composing region is kept.
+     */
+    private fun replaceTextRelative(ic: InputConnection, range: IntRange, text: String) {
+        ic.beginBatchEdit()
+        ic.finishComposingText()
+        val deletes = rawInputDeleteBefore(range)
+        if (deletes > 0) ic.deleteSurroundingText(deletes, 0)
+        if (text.isNotEmpty()) ic.commitText(text, 1)
         ic.endBatchEdit()
     }
 
@@ -317,7 +343,7 @@ open class ImeEditor(
 
     override fun setComposition(newComposition: K3TextRange?) {
         val ic = ic.get() ?: return
-        if (newComposition == null || newComposition.isCollapsed()) {
+        if (newComposition == null || newComposition.isCollapsed() || isTextUntrusted) {
             ic.finishComposingText()
         } else {
             ic.setComposingRegion(newComposition.start, newComposition.end)

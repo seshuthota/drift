@@ -28,7 +28,6 @@ import android.util.Size
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
-import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InlineSuggestionsRequest
 import android.view.inputmethod.InlineSuggestionsResponse
@@ -370,7 +369,6 @@ class DriftImeService : LifecycleInputMethodService() {
         flogInfo { "info=${info?.debugSummarize()} restarting=$restarting" }
         super.onStartInputView(info, restarting)
         if (info == null) return
-        currentInputConnection?.requestCursorUpdates(ImeEditor.CURSOR_UPDATES)
         // A recording belongs to the field it started in; never commit it into the next one.
         DriftApplication.getHack().asrController.value.cancel()
         val ic = WeakReference(currentInputConnection)
@@ -387,14 +385,14 @@ class DriftImeService : LifecycleInputMethodService() {
             || prefs.physicalKeyboard.showOnScreenKeyboard.get()
     }
 
-    override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
-        if (cursorAnchorInfo == null) {
-            return
-        }
-        val newSelection = K3TextRange(
-            start = cursorAnchorInfo.selectionStart,
-            end = cursorAnchorInfo.selectionEnd,
-        )
+    override fun onUpdateSelection(
+        oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candStart: Int, candEnd: Int,
+    ) {
+        super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candStart, candEnd)
+        // The selection comes from here, not from CursorAnchorInfo: Compose text fields with an output
+        // transformation (ChatGPT's link chips) report the anchor selection in on-screen positions, which can run
+        // past the end of the stored text and reversed (start > end). Every edit built on those crashed the app.
+        val newSelection = K3TextRange(start = newSelStart, end = newSelEnd)
         flogInfo { "new=$newSelection" }
         imeController.updateStateBlocking {
             handleUpdateSelection(newSelection)
@@ -404,7 +402,6 @@ class DriftImeService : LifecycleInputMethodService() {
     override fun onFinishInputView(finishingInput: Boolean) {
         flogInfo { "finishing=$finishingInput" }
         super.onFinishInputView(finishingInput)
-        currentInputConnection?.requestCursorUpdates(0)
         DriftApplication.getHack().asrController.value.cancel()
         imeController.updateStateBlocking {
             handleFinishInputView()

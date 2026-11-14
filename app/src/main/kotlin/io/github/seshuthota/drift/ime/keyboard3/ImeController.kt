@@ -109,6 +109,9 @@ class ImeController(
     private var lastAutocorrection: Autocorrection? = null
     /** A word whose autocorrection the user reverted; it is not corrected again in this field. */
     private var rejectedAutocorrection: String? = null
+    /** The selection the field last reported through onUpdateSelection, in stored-text positions. */
+    @Volatile
+    private var lastEditorSelection: K3TextRange? = null
 
     val activeTouchModelOptions = combine<Any, TouchModelOptions>(
         prefs.keyboard.numberRow.asFlow(),
@@ -222,7 +225,9 @@ class ImeController(
     fun endExternalEdit() {
         if (!isExternalEditActive) return
         isExternalEditActive = false
-        val selection = activeState.value.editor.currentSelection() ?: return
+        // The extracted-text selection is in on-screen positions for some fields (see handleUpdateSelection's
+        // caller), so prefer the last selection the field reported through onUpdateSelection.
+        val selection = lastEditorSelection ?: activeState.value.editor.currentSelection() ?: return
         updateStateBlocking { handleUpdateSelection(selection) }
     }
 
@@ -344,6 +349,13 @@ class ImeController(
                         }
                     )
             )
+            lastEditorSelection = null
+            if (!info.isRawInputEditor) {
+                // EditorInfo carries only 20 characters each side, which can miss a link chip's placeholder. One
+                // live read catches fields that report on-screen text before k3 builds anything on them.
+                val live = state.editor.getSurroundingText(50, 10)
+                if (!isSurroundingTextTrustworthy(initialSelection, live)) state.editor.isTextUntrusted = true
+            }
             resetContent(initialSelection, initialSurrounding)
             expectedContentQueue.clear()
             lastAutocorrection = null
@@ -352,6 +364,7 @@ class ImeController(
         }
 
         fun handleUpdateSelection(newSelection: K3TextRange) {
+            lastEditorSelection = newSelection
             if (isExternalEditActive) return
             val content = expectedContentQueue.popUntilOrNull { it.selection == newSelection }
             if (content != null) {
@@ -616,6 +629,15 @@ class ImeController(
                 ) {
                     state.editor.commitRawBackspace()
                 }
+            } else if (state.editor.isTextUntrusted) {
+                // k3 holds no reliable text for this field. A DEL key event lets the field delete by its own rules,
+                // which also removes a link chip as one unit. k3 forgets its text so the next key cannot delete more.
+                state.editor.sendDownUpKeyEvent(KeyEvent.KEYCODE_DEL)
+                super.resetContent(state.content.selection, K3SurroundingText.Empty)
+                expectedContentQueue.clear()
+                reevaluateInputShiftState()
+                requestSuggestions()
+                return
             } else {
                 super.emitBackspace()
             }
@@ -919,7 +941,13 @@ class ImeController(
         }
 
         override fun resetContent(newSelection: K3TextRange, newSurrounding: K3SurroundingText) {
-            super.resetContent(newSelection, newSurrounding)
+            val editor = state.editor
+            if (editor !== ImeEditor.Disconnected && !isSurroundingTextTrustworthy(newSelection, newSurrounding)) {
+                // Sticky for this field: its reports cannot be told apart from good ones once a chip is gone.
+                editor.isTextUntrusted = true
+            }
+            // k3 gets no text from an untrusted field, so it never writes the field's on-screen text back into it.
+            super.resetContent(newSelection, if (editor.isTextUntrusted) K3SurroundingText.Empty else newSurrounding)
             reevaluateInputShiftState()
         }
 
@@ -931,6 +959,7 @@ class ImeController(
         fun handleFinishInputView() {
             resetContent()
             state = state.copy(editor = ImeEditor.Disconnected)
+            lastEditorSelection = null
             expectedContentQueue.clear()
             nlpManager?.takeIf { it.isInitialized() }?.value?.clearSuggestions()
         }
@@ -968,6 +997,28 @@ class ImeController(
 
     companion object {
         private val NEWLINE_SEQ = "\n".asK3String()
+
+        /** U+FFFC OBJECT REPLACEMENT CHARACTER, which editors put in their on-screen text for inline objects. */
+        private const val OBJECT_REPLACEMENT = '\uFFFC'
+
+        /**
+         * Whether [surrounding] is the field's stored text, so that k3 may rewrite it at offsets taken from [selection].
+         *
+         * Some editors return their on-screen text instead. ChatGPT shows a pasted link as a chip: its text reads
+         * `U+2066 U+FFFC U+00A0 https://example.com/a… U+2069` while the field stores `https://example.com/abc`.
+         * Building edits on that text replaced the link with its label, and offsets past the end of the stored
+         * text crash Compose text fields. Text longer than the cursor position cannot end at the cursor, and U+FFFC
+         * stands for an object rather than a character, so either means the text is not the stored text.
+         */
+        internal fun isSurroundingTextTrustworthy(selection: K3TextRange, surrounding: K3SurroundingText): Boolean {
+            val cursor = minOf(selection.start, selection.end)
+            if (cursor < 0) return true
+            if (surrounding.textBefore.length > cursor) return false
+            if (surrounding.textSelected.length > maxOf(selection.start, selection.end) - cursor) return false
+            return OBJECT_REPLACEMENT !in surrounding.textBefore &&
+                OBJECT_REPLACEMENT !in surrounding.textSelected &&
+                OBJECT_REPLACEMENT !in surrounding.textAfter
+        }
     }
 }
 
