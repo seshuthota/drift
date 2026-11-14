@@ -30,6 +30,7 @@ import io.github.seshuthota.drift.app.DriftPreferenceModel
 import io.github.seshuthota.drift.app.DriftPreferenceStore
 import io.github.seshuthota.drift.app.NoBackupPreferenceModel
 import io.github.seshuthota.drift.app.NoBackupPreferenceStore
+import io.github.seshuthota.drift.ime.asr.AsrModelManager
 import io.github.seshuthota.drift.ime.clipboard.ClipboardManager
 import io.github.seshuthota.drift.ime.core.SubtypeManager
 import io.github.seshuthota.drift.ime.dictionary.DictionaryManager
@@ -55,6 +56,7 @@ import kotlinx.coroutines.launch
 import io.github.seshuthota.drift.lib.kotlin.io.deleteContentsRecursively
 import io.github.seshuthota.drift.lib.kotlin.tryOrNull
 import io.github.seshuthota.drift.libnative.dummyAdd
+import java.io.File
 import java.lang.ref.WeakReference
 
 /**
@@ -86,6 +88,7 @@ class DriftApplication : Application() {
     lateinit var imeController: ImeController
     lateinit var themeController: ThemeController
 
+    val asrModelManager = lazy { AsrModelManager(File(filesDir, "asr")) }
     val clipboardManager = lazy { ClipboardManager(this) }
     val glideTypingManager = lazy { GlideTypingManager(this) }
     val nlpManager = lazy { NlpManager(this) }
@@ -202,6 +205,8 @@ fun Context.appContext() = lazyOf(this.inferDriftApplication())
 fun Context.clipboardManager() = this.inferDriftApplication().clipboardManager
 
 fun Context.glideTypingManager() = this.inferDriftApplication().glideTypingManager
+
+fun Context.asrModelManager() = this.inferDriftApplication().asrModelManager
 
 fun Context.nlpManager() = this.inferDriftApplication().nlpManager
 

@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import io.github.seshuthota.drift.app.settings.theme.ColorPreferenceSerializer
 import io.github.seshuthota.drift.app.settings.theme.DisplayKbdAfterDialogs
 import io.github.seshuthota.drift.app.settings.theme.SnyggLevel
+import io.github.seshuthota.drift.ime.asr.AsrModelRegistry
 import io.github.seshuthota.drift.ime.clipboard.CLIPBOARD_HISTORY_NUM_GRID_COLUMNS_AUTO
 import io.github.seshuthota.drift.ime.clipboard.ClipboardSyncBehavior
 import io.github.seshuthota.drift.ime.core.DisplayLanguageNamesIn
@@ -68,6 +69,26 @@ val DriftPreferenceStore = jetprefDataStoreOf(DriftPreferenceModel::class)
 abstract class DriftPreferenceModel : PreferenceModel() {
     companion object {
         const val NAME = "drift-app-prefs"
+    }
+
+    val voice = Voice()
+    inner class Voice {
+        val modelId = string(
+            key = "voice__model_id",
+            default = AsrModelRegistry.DEFAULT_MODEL_ID,
+        )
+        val engineId = string(
+            key = "voice__engine_id",
+            default = AsrModelRegistry.WHISPER_CPP,
+        )
+        val maxDurationSeconds = int(
+            key = "voice__max_duration_seconds",
+            default = 30,
+        )
+        val keepModelLoaded = boolean(
+            key = "voice__keep_model_loaded",
+            default = false,
+        )
     }
 
     val clipboard = Clipboard()
