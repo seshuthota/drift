@@ -113,6 +113,7 @@ internal class NeuralGlideTypingClassifier internal constructor(
             }
             forms.add(displayForm(word))
         }
+        trie.trimToSize()
         this.surfaceForms = surfaceForms
         this.trie = trie
         // Warm the session up while the caller is still on a background thread.
@@ -572,6 +573,15 @@ internal class SwipeTrie {
         terminal[node] = true
     }
 
+    /** Drops the spare capacity left by doubling growth; call once all words are inserted. */
+    fun trimToSize() {
+        terminal = terminal.copyOf(nodeCount)
+        firstEdge = firstEdge.copyOf(nodeCount)
+        edgeChar = edgeChar.copyOf(edgeCount)
+        edgeTo = edgeTo.copyOf(edgeCount)
+        edgeNext = edgeNext.copyOf(edgeCount)
+    }
+
     fun contains(text: CharSequence): Boolean {
         var node = 0
         for (i in text.indices) {
@@ -616,7 +626,7 @@ internal class SwipeTrie {
     }
 
     private fun growEdges() {
-        val size = edgeChar.size * 2
+        val size = maxOf(edgeChar.size * 2, INITIAL_CAPACITY)
         edgeChar = edgeChar.copyOf(size)
         edgeTo = edgeTo.copyOf(size)
         edgeNext = edgeNext.copyOf(size)

@@ -34,7 +34,24 @@ import kotlin.math.ln
  * Candidates are ranked by `-EDIT_WEIGHT * cost + ln(1 + count) / FREQ_DIVISOR + lmWeight * lmLogProb`, where count
  * is the dictionary's raw frequency and lmLogProb an optional next-word log-probability.
  */
-class TypoCorrector(words: Map<String, Int>, keyCenters: Map<Char, Pair<Float, Float>> = QWERTY_CENTERS) {
+class TypoCorrector private constructor(
+    private val wordList: Array<String>,
+    private val wordFreq: IntArray,
+    private val keyCenters: Map<Char, Pair<Float, Float>>,
+) {
+    /** Builds the corrector from word counts. Empty words are ignored. */
+    constructor(words: Map<String, Int>, keyCenters: Map<Char, Pair<Float, Float>> = QWERTY_CENTERS) : this(
+        words.keys.filter { it.isNotEmpty() }.sorted().toTypedArray(),
+        keyCenters,
+        words,
+    )
+
+    private constructor(
+        sorted: Array<String>,
+        keyCenters: Map<Char, Pair<Float, Float>>,
+        words: Map<String, Int>,
+    ) : this(sorted, IntArray(sorted.size) { words.getValue(sorted[it]) }, keyCenters)
+
     data class Correction(val word: String, val cost: Float, val score: Float)
 
     // Trie as parallel arrays; children of a node are a linked list (firstChild / nextSibling) sorted by char.
@@ -42,8 +59,6 @@ class TypoCorrector(words: Map<String, Int>, keyCenters: Map<Char, Pair<Float, F
     private val firstChild: IntArray
     private val nextSibling: IntArray
     private val nodeWord: IntArray // index into [wordList] or -1
-    private val wordList: Array<String>
-    private val wordFreq: IntArray
 
     private val keyX = FloatArray(128) { Float.NaN }
     private val keyY = FloatArray(128) { Float.NaN }
@@ -55,19 +70,14 @@ class TypoCorrector(words: Map<String, Int>, keyCenters: Map<Char, Pair<Float, F
                 keyY[c.code] = xy.second
             }
         }
-        val sorted = words.keys.filter { it.isNotEmpty() }.sorted()
-        wordList = sorted.toTypedArray()
-        wordFreq = IntArray(sorted.size) { words.getValue(sorted[it]) }
-        val chars = ArrayList<Char>()
-        val first = ArrayList<Int>()
-        val next = ArrayList<Int>()
-        val word = ArrayList<Int>()
-        fun newNode(c: Char): Int {
-            chars.add(c); first.add(-1); next.add(-1); word.add(-1)
-            return chars.size - 1
-        }
-        newNode('\u0000')
-        for ((index, w) in sorted.withIndex()) {
+        // Upper bound on nodes: one per character plus the root. Trimmed to the real count below.
+        val capacity = wordList.sumOf { it.length } + 1
+        val chars = CharArray(capacity)
+        val first = IntArray(capacity) { -1 }
+        val next = IntArray(capacity) { -1 }
+        val word = IntArray(capacity) { -1 }
+        var count = 1
+        for ((index, w) in wordList.withIndex()) {
             var node = 0
             for (c in w) {
                 var child = first[node]
@@ -77,20 +87,68 @@ class TypoCorrector(words: Map<String, Int>, keyCenters: Map<Char, Pair<Float, F
                     child = next[child]
                 }
                 if (child == -1) {
-                    child = newNode(c)
+                    child = count++
+                    chars[child] = c
                     if (last == -1) first[node] = child else next[last] = child
                 }
                 node = child
             }
             word[node] = index
         }
-        nodeChar = chars.toCharArray()
-        firstChild = first.toIntArray()
-        nextSibling = next.toIntArray()
-        nodeWord = word.toIntArray()
+        nodeChar = chars.copyOf(count)
+        firstChild = first.copyOf(count)
+        nextSibling = next.copyOf(count)
+        nodeWord = word.copyOf(count)
+    }
+
+    /** Every word, sorted. A read-only view of the corrector's own array, not a copy. */
+    val words: List<String> get() = wordList.asList()
+
+    /** The highest count of any word, or 0 when empty. */
+    val maxFrequency: Int = wordFreq.maxOrNull() ?: 0
+
+    /**
+     * A corrector that also knows the words of [extra] with their counts, or this one when all of them are already
+     * known. Words already present keep their count. Rebuilds the trie once, however many words are added.
+     */
+    fun withWords(extra: Map<String, Int>): TypoCorrector {
+        val added = extra.keys.filter { it.isNotEmpty() && !contains(it) }.sorted()
+        if (added.isEmpty()) return this
+        val size = wordList.size + added.size
+        val newWords = arrayOfNulls<String>(size)
+        val newFreq = IntArray(size)
+        var i = 0
+        var j = 0
+        for (k in 0 until size) {
+            if (j >= added.size || (i < wordList.size && wordList[i] < added[j])) {
+                newWords[k] = wordList[i]
+                newFreq[k] = wordFreq[i++]
+            } else {
+                newWords[k] = added[j]
+                newFreq[k] = extra.getValue(added[j++])
+            }
+        }
+        @Suppress("UNCHECKED_CAST")
+        return TypoCorrector(newWords as Array<String>, newFreq, keyCenters)
     }
 
     val size: Int get() = wordList.size
+
+    /**
+     * Up to [limit] dictionary words starting with [prefix], most frequent first, skipping [exclude]. The words
+     * with a prefix form one run of the sorted list, so this is a binary search plus that run.
+     */
+    fun completions(prefix: String, limit: Int, exclude: Set<String> = emptySet()): List<String> {
+        if (limit <= 0) return emptyList()
+        val found = wordList.binarySearch(prefix)
+        var i = if (found >= 0) found else -(found + 1)
+        val matches = ArrayList<Int>()
+        while (i < wordList.size && wordList[i].startsWith(prefix)) {
+            if (wordList[i] !in exclude) matches.add(i)
+            i++
+        }
+        return matches.sortedByDescending { wordFreq[it] }.take(limit).map { wordList[it] }
+    }
 
     fun contains(word: String): Boolean = find(word) >= 0
 

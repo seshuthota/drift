@@ -63,14 +63,18 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     private val predictor by context.nextWordPredictor()
     private val prefs by DriftPreferenceStore
 
-    private val wordData = guardedByLock { mutableMapOf<String, Int>() }
+    /**
+     * Serialises lexicon changes (load, learning). Reads go straight to [corrector], an immutable snapshot.
+     * The corrector is the only copy of the word list: a sorted array, counts and a trie, no per-word map.
+     */
+    private val lexiconLock = guardedByLock { Unit }
     private val wordDataSerializer = MapSerializer(String.serializer(), Int.serializer())
 
     /** `ln(1 + maxCount)`, so [getFrequencyForWord] returns a 0–1 log-frequency. */
     @Volatile
     private var logFreqDenom = 1.0
 
-    /** Built once [wordData] is loaded; null until then. */
+    /** The lexicon; null until the asset dictionary is loaded. */
     @Volatile
     private var corrector: TypoCorrector? = null
 
@@ -97,19 +101,13 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         // The subtype we get here contains a lot of data, however we are only interested in subtype.primaryLocale and
         // subtype.secondaryLocales.
 
-        wordData.withLock { wordData ->
-            if (wordData.isEmpty()) {
-                // Here we use readText() because the test dictionary is a json dictionary
-                val rawData = appContext.assets.readText("ime/dict/data.json")
-                val jsonData = Json.decodeFromString(wordDataSerializer, rawData)
-                wordData.putAll(jsonData)
-                val maxCount = wordData.values.maxOrNull() ?: 0
-                logFreqDenom = ln(1.0 + maxCount).coerceAtLeast(1.0)
-            }
-            // Rebuilding the corrector walks the whole word list, so only do it when something changed.
-            if (absorbUserDictionary(wordData) || corrector == null) {
-                corrector = TypoCorrector(wordData)
-            }
+        lexiconLock.withLock {
+            // The decoded map only lives until the corrector is built from it.
+            val loaded = corrector ?: TypoCorrector(
+                Json.decodeFromString(wordDataSerializer, appContext.assets.readText("ime/dict/data.json")),
+            ).also { logFreqDenom = ln(1.0 + it.maxFrequency).coerceAtLeast(1.0) }
+            // withWords returns the same instance when nothing is new, so the trie is only rebuilt on change.
+            corrector = loaded.withWords(userDictionaryWords())
         }
         predictor.ensureLoaded()
         Unit
@@ -160,9 +158,8 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val predictions = if (logProbs == null) {
             emptyList()
         } else {
-            wordData.withLock { data ->
-                predictor.predict(logProbs, prefix, maxCandidateCount) { word -> word in data }
-            }
+            val lexicon = corrector
+            predictor.predict(logProbs, prefix, maxCandidateCount) { word -> lexicon?.contains(word) == true }
         }
         val confidence = HashMap<String, Double>()
         for (prediction in predictions) {
@@ -173,14 +170,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val p = NwpText.normalize(prefix)
         if (p.isNotEmpty() && completions.size < maxCandidateCount) {
             val seen = completions.toHashSet()
-            completions += wordData.withLock { data ->
-                data.entries.asSequence()
-                    .filter { it.key.startsWith(p) && it.key !in seen }
-                    .sortedByDescending { it.value }
-                    .take(maxCandidateCount - completions.size)
-                    .map { it.key }
-                    .toList()
-            }
+            completions += corrector?.completions(p, maxCandidateCount - completions.size, seen).orEmpty()
         }
         if (p.isEmpty()) {
             return completions.map { candidate(it, prefix, sentenceStart, confidence[it] ?: 0.0) }
@@ -253,49 +243,41 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     }
 
     /** True once the asset dictionary has been read. Learning before that would hide the asset list. */
-    suspend fun isLexiconReady(): Boolean = wordData.withLock { corrector != null }
+    fun isLexiconReady(): Boolean = corrector != null
 
-    suspend fun knowsWord(word: String): Boolean = wordData.withLock { word in it }
+    fun knowsWord(word: String): Boolean = corrector?.contains(word) == true
 
     /**
      * Adds [word] to the in-memory lexicon and rebuilds the corrector. False when it is already
      * present or the lexicon is not loaded yet.
      */
-    suspend fun addLearnedWord(word: String): Boolean = wordData.withLock { data ->
-        if (corrector == null || word in data) return@withLock false
-        data[word] = LEARNED_COUNT
-        corrector = TypoCorrector(data)
+    suspend fun addLearnedWord(word: String): Boolean = lexiconLock.withLock {
+        val current = corrector ?: return@withLock false
+        val updated = current.withWords(mapOf(word to LEARNED_COUNT))
+        if (updated === current) return@withLock false
+        corrector = updated
         true
     }
 
-    override suspend fun getListOfWords(subtype: Subtype): List<String> {
-        return wordData.withLock { it.keys.toList() }
-    }
+    /** The lexicon's own sorted word array as a read-only list; empty until loaded. Not a copy. */
+    override suspend fun getListOfWords(subtype: Subtype): List<String> = corrector?.words ?: emptyList()
 
     override suspend fun getFrequencyForWord(subtype: Subtype, word: String): Double {
-        val count = wordData.withLock { it.getOrDefault(word, 0) }
+        val count = corrector?.frequencyOf(word) ?: 0
         if (count <= 0) return 0.0
         return ln(1.0 + count) / logFreqDenom
     }
 
-    /** Adds internal user-dictionary words missing from [data]. True when any word was added. */
-    private fun absorbUserDictionary(data: MutableMap<String, Int>): Boolean {
+    /** Words of the internal user dictionary, each with [LEARNED_COUNT]. Known words are skipped by withWords. */
+    private fun userDictionaryWords(): Map<String, Int> {
         val manager = try {
             DictionaryManager.default()
         } catch (_: UninitializedPropertyAccessException) {
-            return false
+            return emptyMap()
         }
         manager.loadUserDictionariesIfNecessary()
-        val dao = manager.driftUserDictionaryDao() ?: return false
-        var added = false
-        for (entry in dao.queryAll()) {
-            val key = PersonalLearning.keyOf(entry.word) ?: continue
-            if (key !in data) {
-                data[key] = LEARNED_COUNT
-                added = true
-            }
-        }
-        return added
+        val dao = manager.driftUserDictionaryDao() ?: return emptyMap()
+        return dao.queryAll().mapNotNull { PersonalLearning.keyOf(it.word) }.associateWith { LEARNED_COUNT }
     }
 
     override suspend fun destroy() {

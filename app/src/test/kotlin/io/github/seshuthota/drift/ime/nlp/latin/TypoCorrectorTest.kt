@@ -23,6 +23,8 @@ import io.kotest.matchers.doubles.shouldBeGreaterThanOrEqual
 import io.kotest.matchers.ints.shouldBeLessThan
 import io.kotest.matchers.longs.shouldBeLessThan
 import io.kotest.matchers.shouldBe
+import io.kotest.matchers.shouldNotBe
+import io.kotest.matchers.types.shouldBeSameInstanceAs
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
@@ -42,6 +44,48 @@ class TypoCorrectorTest : FunSpec({
             corrector.contains("don't") shouldBe true
             corrector.contains("thw") shouldBe false
             corrector.size shouldBe dict.size
+        }
+
+        test("the word list is sorted and counts match the dictionary") {
+            corrector.words shouldBe dict.keys.filter { it.isNotEmpty() }.sorted()
+            corrector.frequencyOf("the") shouldBe dict.getValue("the")
+            corrector.maxFrequency shouldBe dict.values.max()
+        }
+    }
+
+    context("completions") {
+        test("prefix completions are the most frequent words with that prefix") {
+            val expected = dict.entries.filter { it.key.startsWith("hel") }
+                .sortedByDescending { it.value }.take(3).map { it.key }
+            corrector.completions("hel", 3) shouldBe expected
+        }
+
+        test("excluded words are skipped and an unknown prefix gives nothing") {
+            val first = corrector.completions("hel", 1).single()
+            corrector.completions("hel", 1, setOf(first)).single() shouldNotBe first
+            corrector.completions("qqzx", 5) shouldBe emptyList()
+        }
+    }
+
+    context("adding words") {
+        test("withWords adds unknown words in sorted position with their count") {
+            val updated = corrector.withWords(mapOf("zzdrift" to 100, "aadrift" to 50))
+            updated.size shouldBe corrector.size + 2
+            updated.contains("zzdrift") shouldBe true
+            updated.frequencyOf("aadrift") shouldBe 50
+            updated.words shouldBe updated.words.sorted()
+            updated.contains("the") shouldBe true
+            corrector.contains("zzdrift") shouldBe false
+        }
+
+        test("withWords keeps the same instance and counts when nothing is new") {
+            corrector.withWords(mapOf("the" to 1)) shouldBeSameInstanceAs corrector
+            corrector.withWords(emptyMap()) shouldBeSameInstanceAs corrector
+        }
+
+        test("a learned word can be corrected towards") {
+            val updated = corrector.withWords(mapOf("drifty" to 1_000_000))
+            updated.correct("drifyt", 3).map { it.word } shouldContain "drifty"
         }
     }
 
