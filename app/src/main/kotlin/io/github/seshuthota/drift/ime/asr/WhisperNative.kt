@@ -25,7 +25,13 @@ package io.github.seshuthota.drift.ime.asr
 internal object WhisperNative {
     @JvmStatic external fun nativeLoad(modelPath: String): Long
 
-    @JvmStatic external fun nativeTranscribe(handle: Long, pcm: ShortArray, languageTag: String): String?
+    @JvmStatic external fun nativeTranscribe(
+        handle: Long,
+        pcm: ShortArray,
+        languageTag: String,
+        prompt: String,
+        partial: Boolean,
+    ): String?
 
     @JvmStatic external fun nativeFree(handle: Long)
 }

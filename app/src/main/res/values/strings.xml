@@ -478,6 +478,7 @@
     <!-- Voice input strings -->
     <string name="settings__voice__title" comment="Title of the Voice input settings screen">Voice input</string>
     <string name="voice_input__listening" comment="Shown while the microphone is recording">Listening…</string>
+    <string name="voice_input__tap_to_finish" comment="Shown under the big microphone button while recording">Listening… tap to stop</string>
     <string name="voice_input__transcribing" comment="Shown while the model turns the recording into text">Transcribing…</string>
     <string name="voice_input__stop" comment="Content description of the stop button">Stop and transcribe</string>
     <string name="voice_input__cancel" comment="Content description of the cancel button">Cancel recording</string>

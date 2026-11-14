@@ -29,9 +29,17 @@ interface AsrEngine {
 
     /**
      * Transcribes 16 kHz mono PCM16 [pcm]. Empty strings are a valid result (silence or no speech); callers must
-     * not commit anything in that case.
+     * not commit anything in that case. [prompt] is the text that came right before this audio, used as context.
+     * [partial] marks a live preview that a full transcription replaces later. [language] is the language the
+     * user is expected to speak (e.g. the keyboard's), used when the model itself is not tied to one language.
      */
-    suspend fun transcribe(pcm: ShortArray, sampleRate: Int): AsrResult
+    suspend fun transcribe(
+        pcm: ShortArray,
+        sampleRate: Int,
+        prompt: String = "",
+        partial: Boolean = false,
+        language: String? = null,
+    ): AsrResult
 
     /** Releases the native model and any buffers. Safe to call twice. */
     fun close()

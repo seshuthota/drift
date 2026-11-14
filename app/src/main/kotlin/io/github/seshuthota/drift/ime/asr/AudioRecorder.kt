@@ -23,9 +23,11 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import androidx.core.content.ContextCompat
+import io.github.seshuthota.drift.lib.devtools.flogInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlin.math.log10
 import kotlin.math.sqrt
 
 /**
@@ -36,13 +38,14 @@ import kotlin.math.sqrt
  */
 class AudioRecorder(private val context: Context) {
     data class Config(
-        val maxDurationMs: Long = 30_000,
         val sampleRate: Int = SAMPLE_RATE,
+        /** When set, the capture is handed out in pieces at the cutter's boundaries while it keeps running. */
+        val cutter: SegmentCutter? = null,
     )
 
     private val _amplitude = MutableStateFlow(0f)
 
-    /** Recent RMS level, 0..1. Updated about every 100 ms while recording, reset to 0 on stop. */
+    /** Recent level, 0..1 on a decibel scale. Updated about every 100 ms while recording, reset to 0 on stop. */
     val amplitude: StateFlow<Float> = _amplitude.asStateFlow()
 
     private val lock = Any()
@@ -51,6 +54,17 @@ class AudioRecorder(private val context: Context) {
     private var record: AudioRecord? = null
     private var thread: Thread? = null
     private var config = Config()
+
+    /** Called from the capture thread when the capture ends without [stop], e.g. another app took the microphone. */
+    @Volatile
+    var onInterrupted: (() -> Unit)? = null
+
+    /**
+     * Called from the capture thread with each finished piece and how many ms of it were speech. Must not block or
+     * call [stop].
+     */
+    @Volatile
+    var onSegment: ((pcm: ShortArray, speechMs: Long) -> Unit)? = null
 
     @Volatile
     private var recording = false
@@ -110,36 +124,32 @@ class AudioRecorder(private val context: Context) {
         }
     }
 
-    /** Stops the capture and returns everything recorded, or null when nothing was captured. */
+    /**
+     * Stops the capture and returns what was recorded since the last piece, or null when nothing is left or, with a
+     * cutter, when what is left holds no speech. Synchronized: the IME thread may cancel while a stop is running.
+     */
+    @Synchronized
     fun stop(): ShortArray? {
-        if (!recording) return null
+        // The capture loop may already have ended (the microphone was taken away); the buffer is still ours.
+        val audioRecord = record ?: return null
         recording = false
-        val audioRecord = record
         record = null
         try {
-            audioRecord?.stop()
+            audioRecord.stop()
         } catch (_: Exception) {
             // A stopped or uninitialised record throws; the buffer below is still valid.
         }
         thread?.let { runCatching { it.join(1_000) } }
         thread = null
-        runCatching { audioRecord?.release() }
+        runCatching { audioRecord.release() }
         _amplitude.value = 0f
-        return synchronized(lock) {
-            if (recordedSamples == 0) {
-                null
-            } else {
-                val out = ShortArray(recordedSamples)
-                var offset = 0
-                for (chunk in chunks) {
-                    chunk.copyInto(out, offset)
-                    offset += chunk.size
-                }
-                chunks.clear()
-                recordedSamples = 0
-                out
-            }
+        val rest = synchronized(lock) { takeBuffered() }
+        val cutter = config.cutter
+        if (cutter == null || cutter.hasPendingSpeech) return rest
+        if (rest != null) {
+            flogInfo { "voice: dropped last ${rest.size * 1_000L / config.sampleRate}ms, only ${cutter.pendingSpeechMs}ms speech" }
         }
+        return null
     }
 
     /** Stops the capture and drops the buffer. */
@@ -147,9 +157,47 @@ class AudioRecorder(private val context: Context) {
         stop()
     }
 
+    /**
+     * Copy of the audio buffered since the last piece, without consuming it, for a live preview. Null when not
+     * recording, or when a cutter is set and the buffer holds no speech yet.
+     */
+    fun snapshot(): ShortArray? {
+        if (!recording) return null
+        val cutter = config.cutter
+        if (cutter != null && !cutter.hasPendingSpeech) return null
+        return synchronized(lock) {
+            if (recordedSamples == 0) return null
+            val out = ShortArray(recordedSamples)
+            var offset = 0
+            for (chunk in chunks) {
+                chunk.copyInto(out, offset)
+                offset += chunk.size
+            }
+            out
+        }
+    }
+
+    /** The cutter's current speech threshold in dBFS, or null without a cutter. */
+    val speechThresholdDb: Float? get() = config.cutter?.thresholdDb
+
+    /** Returns and clears everything buffered, or null when empty. Caller holds [lock]. */
+    private fun takeBuffered(): ShortArray? {
+        if (recordedSamples == 0) return null
+        val out = ShortArray(recordedSamples)
+        var offset = 0
+        for (chunk in chunks) {
+            chunk.copyInto(out, offset)
+            offset += chunk.size
+        }
+        chunks.clear()
+        recordedSamples = 0
+        return out
+    }
+
     private fun readLoop(audioRecord: AudioRecord, config: Config) {
         val buffer = ShortArray(READ_SAMPLES)
-        val maxSamples = (config.maxDurationMs * config.sampleRate / 1_000L).toInt().coerceAtLeast(READ_SAMPLES)
+        var peakDb = -120f
+        var peakChunks = 0
         while (recording) {
             val read = try {
                 audioRecord.read(buffer, 0, buffer.size)
@@ -163,21 +211,48 @@ class AudioRecorder(private val context: Context) {
                 val value = sample.toDouble() / Short.MAX_VALUE
                 sum += value * value
             }
-            _amplitude.value = sqrt(sum / chunk.size).toFloat().coerceIn(0f, 1f)
-            val full = synchronized(lock) {
+            val rms = sqrt(sum / chunk.size).toFloat()
+            val db = if (rms <= 1e-6f) -120f else 20f * log10(rms)
+            // Speech sits around -40..-15 dBFS, so raw RMS (0.01..0.2) would leave the level meter nearly flat.
+            _amplitude.value = ((db - METER_FLOOR_DB) / (METER_CEIL_DB - METER_FLOOR_DB)).coerceIn(0f, 1f)
+            val cutter = config.cutter
+            val action = cutter?.onChunk(db, read * 1_000L / config.sampleRate) ?: SegmentCutter.Action.KEEP
+            peakDb = maxOf(peakDb, db)
+            if (++peakChunks == LEVEL_LOG_CHUNKS) {
+                val threshold = cutter?.thresholdDb
+                flogInfo { "voice: level peak %.1f dBFS, speech threshold %.1f".format(peakDb, threshold ?: Float.NaN) }
+                peakDb = -120f
+                peakChunks = 0
+            }
+            if (action == SegmentCutter.Action.DROP && (cutter?.lastSpeechMs ?: 0L) > 0L) {
+                flogInfo { "voice: dropped ${cutter?.lastSpeechMs}ms speech as too little" }
+            }
+            val segment = synchronized(lock) {
                 chunks.addLast(chunk)
                 recordedSamples += read
-                recordedSamples >= maxSamples
+                when (action) {
+                    SegmentCutter.Action.KEEP -> null
+                    SegmentCutter.Action.CUT -> takeBuffered()
+                    SegmentCutter.Action.DROP -> {
+                        takeBuffered()
+                        null
+                    }
+                }
             }
-            if (full) break
+            if (segment != null) onSegment?.invoke(segment, cutter?.lastSpeechMs ?: 0L)
         }
+        val interrupted = recording
         recording = false
         _amplitude.value = 0f
+        if (interrupted) onInterrupted?.invoke()
     }
 
     companion object {
         const val SAMPLE_RATE = 16_000
         private const val READ_SAMPLES = 1_600
+        private const val LEVEL_LOG_CHUNKS = 10
+        private const val METER_FLOOR_DB = -55f
+        private const val METER_CEIL_DB = -15f
     }
 }
 

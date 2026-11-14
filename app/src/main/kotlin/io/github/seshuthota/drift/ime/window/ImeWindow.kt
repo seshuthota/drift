@@ -39,6 +39,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.Dp
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,7 +62,8 @@ import androidx.compose.ui.unit.roundToIntRect
 import io.github.seshuthota.drift.R
 import io.github.seshuthota.drift.app.devtools.DevtoolsOverlay
 import io.github.seshuthota.drift.ime.ImeUiMode
-import io.github.seshuthota.drift.ime.asr.AsrOverlay
+import io.github.seshuthota.drift.ime.asr.AsrPanel
+import io.github.seshuthota.drift.ime.asr.isAsrActive
 import io.github.seshuthota.drift.ime.clipboard.ClipboardInputLayout
 import io.github.seshuthota.drift.ime.keyboard.ProvideKeyboardRowBaseHeight
 import io.github.seshuthota.drift.ime.keyboard3.LocalImeController
@@ -125,7 +130,6 @@ fun ImeRootWindow() {
     ) {
         DevtoolsOverlay()
         ImeWindow()
-        AsrOverlay()
         BottomSheetWindow()
         ImeSystemUi()
     }
@@ -189,6 +193,8 @@ fun BoxScope.ImeWindow() {
     }
 }
 
+private val DefaultVoicePanelHeight: Dp = 260.dp
+
 @Composable
 private fun ImeInnerWindow() {
     val imeController = LocalImeController.current
@@ -231,10 +237,23 @@ private fun ImeInnerWindow() {
         allowClip = false,
     ) {
         Column {
-            when (activeImeUiMode) {
-                ImeUiMode.TEXT -> TextInputLayout()
-                ImeUiMode.MEDIA -> ProvideActualLayoutDirection { MediaInputLayout() }
-                ImeUiMode.CLIPBOARD -> ProvideActualLayoutDirection { ClipboardInputLayout() }
+            val asrActive = isAsrActive()
+            val density = LocalDensity.current
+            var keyboardHeight by remember { mutableStateOf(DefaultVoicePanelHeight) }
+            if (asrActive) {
+                AsrPanel(height = keyboardHeight)
+            } else {
+                Box(
+                    modifier = Modifier.onSizeChanged { size ->
+                        if (size.height > 0) keyboardHeight = with(density) { size.height.toDp() }
+                    },
+                ) {
+                    when (activeImeUiMode) {
+                        ImeUiMode.TEXT -> TextInputLayout()
+                        ImeUiMode.MEDIA -> ProvideActualLayoutDirection { MediaInputLayout() }
+                        ImeUiMode.CLIPBOARD -> ProvideActualLayoutDirection { ClipboardInputLayout() }
+                    }
+                }
             }
             ImeSystemUiFloating()
         }

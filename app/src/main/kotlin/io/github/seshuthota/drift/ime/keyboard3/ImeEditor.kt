@@ -177,6 +177,31 @@ open class ImeEditor(
         return ic.performContextMenuAction(android.R.id.paste)
     }
 
+    /** Whether [setLivePreview] can show text that is still changing; raw editors such as Termux cannot. */
+    val supportsLivePreview: Boolean get() = !info.isRawInputEditor
+
+    /** Ends any composing region, so a live preview never replaces a word typed before it. */
+    fun finishComposing() {
+        ic.get()?.finishComposingText()
+    }
+
+    /** Shows [text] as composing text, replacing the previous preview. Empty clears it. */
+    fun setLivePreview(text: String) {
+        val ic = ic.get() ?: return
+        ic.setComposingText(text, 1)
+        if (text.isEmpty()) ic.finishComposingText()
+    }
+
+    /** Commits [text] in place of the current preview (or at the cursor when there is none). */
+    fun commitLiveText(text: String) {
+        val ic = ic.get() ?: return
+        if (info.isRawInputEditor) {
+            commitRawBytes(text, dropTracked = true)
+        } else {
+            ic.commitText(text, 1)
+        }
+    }
+
     fun performClipboardPasteMedia(item: ClipboardItem): Boolean {
         val ic = ic.get() ?: return false
         val uri = item.uri ?: return false

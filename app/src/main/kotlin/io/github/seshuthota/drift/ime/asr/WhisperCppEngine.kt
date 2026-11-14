@@ -46,17 +46,23 @@ class WhisperCppEngine : AsrEngine {
         onProgress(1f)
     }
 
-    override suspend fun transcribe(pcm: ShortArray, sampleRate: Int): AsrResult = withContext(Dispatchers.Default) {
+    override suspend fun transcribe(
+        pcm: ShortArray,
+        sampleRate: Int,
+        prompt: String,
+        partial: Boolean,
+        language: String?,
+    ): AsrResult = withContext(Dispatchers.Default) {
         require(sampleRate == AudioRecorder.SAMPLE_RATE) {
             "whisper.cpp needs ${AudioRecorder.SAMPLE_RATE} Hz audio, got $sampleRate"
         }
         val currentHandle = handle
         check(currentHandle != 0L) { "no whisper model is loaded" }
         val startedAt = SystemClock.uptimeMillis()
-        val text = WhisperNative.nativeTranscribe(currentHandle, pcm, loadedLanguageTag ?: "")
+        val text = WhisperNative.nativeTranscribe(currentHandle, pcm, loadedLanguageTag ?: language.orEmpty(), prompt, partial)
         AsrResult(
             text = text.orEmpty().trim(),
-            languageTag = loadedLanguageTag,
+            languageTag = loadedLanguageTag ?: language,
             audioMs = pcm.size * 1_000L / sampleRate,
             inferenceMs = SystemClock.uptimeMillis() - startedAt,
         )

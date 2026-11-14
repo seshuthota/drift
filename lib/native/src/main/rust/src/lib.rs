@@ -3,7 +3,7 @@ pub mod asr;
 use asr::WhisperEngine;
 use dummy;
 use jni::objects::{JClass, JShortArray, JString};
-use jni::sys::{jint, jlong, jstring};
+use jni::sys::{jboolean, jint, jlong, jstring};
 use jni::JNIEnv;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::Path;
@@ -42,7 +42,7 @@ pub extern "system" fn Java_io_github_seshuthota_drift_ime_asr_WhisperNative_nat
     }
 }
 
-/// `WhisperNative.nativeTranscribe(handle, pcm, languageTag): String?` — throws IllegalStateException on failure.
+/// `WhisperNative.nativeTranscribe(handle, pcm, languageTag, prompt, partial): String?` — throws IllegalStateException on failure.
 #[no_mangle]
 pub extern "system" fn Java_io_github_seshuthota_drift_ime_asr_WhisperNative_nativeTranscribe(
     mut env: JNIEnv,
@@ -50,6 +50,8 @@ pub extern "system" fn Java_io_github_seshuthota_drift_ime_asr_WhisperNative_nat
     handle: jlong,
     samples: JShortArray,
     language: JString,
+    prompt: JString,
+    partial: jboolean,
 ) -> jstring {
     let result = catch_unwind(AssertUnwindSafe(|| -> Result<String, String> {
         if handle == 0 {
@@ -57,6 +59,7 @@ pub extern "system" fn Java_io_github_seshuthota_drift_ime_asr_WhisperNative_nat
         }
         let language = string_arg(&mut env, &language)?;
         let language = if language.is_empty() { None } else { Some(language) };
+        let prompt = string_arg(&mut env, &prompt)?;
         let length = env
             .get_array_length(&samples)
             .map_err(|e| format!("cannot read sample count: {e}"))? as usize;
@@ -64,7 +67,7 @@ pub extern "system" fn Java_io_github_seshuthota_drift_ime_asr_WhisperNative_nat
         env.get_short_array_region(&samples, 0, &mut pcm)
             .map_err(|e| format!("cannot read samples: {e}"))?;
         let engine = unsafe { &*(handle as *const WhisperEngine) };
-        engine.transcribe(&pcm, language.as_deref())
+        engine.transcribe(&pcm, language.as_deref(), &prompt, partial != 0)
     }));
     match result {
         Ok(Ok(text)) => match env.new_string(text) {
