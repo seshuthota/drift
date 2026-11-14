@@ -40,6 +40,8 @@ configure<LibraryExtension> {
                 targets("drift_native")
                 arguments(
                     "-DCMAKE_ANDROID_API=$minSdk",
+                    // whisper.cpp comes in through a Rust static lib and needs the shared C++ runtime.
+                    "-DANDROID_STL=c++_shared",
                 )
             }
         }

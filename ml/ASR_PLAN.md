@@ -1,6 +1,6 @@
 # Drift local voice input (ASR) — design and plan
 
-**Status:** decisions taken, milestone 1 (core) landed; Whisper engine next
+**Status:** core and Whisper engine landed and validated on a host and the emulator; IME wiring next
 **Scope:** on-device speech-to-text for the IME, Whisper Tiny first, engine and model replaceable
 **Out of scope for v1:** streaming/partial transcripts, punctuation restoration model, standalone VAD model,
   translation, hands-free/always-listening modes
@@ -118,9 +118,22 @@ Delivery is the open decision: first-use download vs bundled vs extension packag
    `AudioRecorder`, `voice` prefs and the `files/asr` root. `AsrModelManagerTest` covers registry validation,
    install/progress, checksum and offline failures, the size-based install check and delete. The controller state
    machine stays with milestone 3.
-2. **Whisper Tiny engine — next.** Cross-compile `whisper-rs`, JNI load/transcribe/free, then transcribe a WAV on
-   the host before wiring Android.
-3. **IME integration.** Mic action, overlay, permission gate, commit/cancel, lifecycle stops.
+2. **Whisper Tiny engine — done.** `whisper-rs` 0.16 (`whisper-rs-sys` 0.15) compiled from source, JNI
+   `nativeLoad`/`nativeTranscribe`/`nativeFree`, Kotlin `WhisperNative` + `WhisperCppEngine`.
+   - Host: `cargo run --release --example transcribe -- <model.bin> jfk.wav en` prints the exact JFK sentence
+     in 0.4 s. The registry SHA-256 was checked against the downloaded file and matches.
+   - Device: `WhisperCppEngineTest` loads the pushed model and transcribes `jfk.wav` (androidTest asset,
+     public-domain sample from whisper.cpp) in 3.6 s on the API 35 emulator; asserts "fellow Americans",
+     measured audio and inference time. The test skips when the model is not on the device.
+   - Build: the Rust static lib links the shared C++ runtime (`c++_shared`, packaged by AGP), the NDK
+     toolchain is passed through a generated wrapper file (`CMAKE_TOOLCHAIN_FILE_<target>`, because the
+     cmake crate reads only that variable), and bindgen gets `--sysroot`, `--target` and the clang resource
+     include for the ABI. All four ABIs build; `libdrift_native.so` is 3.6–3.8 MB per ABI.
+   - Pushing the model for the test (emulator, needs root for the external files dir ownership):
+     `adb push ggml-tiny-q5_1.bin /sdcard/Android/data/<applicationId>/files/asr-test/` then
+     `chown` to the app uid; a release device will download it through the app instead.
+3. **IME integration — next.** Mic action, overlay, permission gate, commit/cancel, lifecycle stops, and the
+   first real use of `AsrModelManager` (download UI in Settings).
 4. **Settings page.** Model management UI and permission prompt.
 5. **Device pass.** Accuracy on a few phrases, latency (record→text), RAM, airplane-mode run, Termux/shell field
    safety (raw editor: commit text only, no composing).
@@ -142,3 +155,5 @@ Delivery is the open decision: first-use download vs bundled vs extension packag
 | Network dependency for model download | SHA-256 + atomic rename + clear offline error; resume is a later improvement |
 | Whisper.cpp build per ABI in CI | start with arm64 + x86_64, add 32-bit ABIs after the device pass |
 | `RECORD_AUDIO` prompt not shown from the IME | permission lives in Settings; the action deep-links there |
+| C++ runtime mismatch from the Rust static lib | `ANDROID_STL=c++_shared` for the module and the generated whisper toolchain; AGP packages `libc++_shared.so` |
+| 32-bit bindgen needs target headers | host libclang lacks the NDK resource dir; CMake passes sysroot/target/`-isystem` per ABI |

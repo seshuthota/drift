@@ -43,10 +43,36 @@ add_custom_target(
     setup_rust_target ALL
     COMMAND ${RUSTUP_EXECUTABLE} target add ${RUST_TARGET}
 )
+# whisper.cpp is built for Android by whisper-rs-sys through the cmake crate. That build needs the NDK
+# toolchain file and the target ABI, which the cmake crate cannot be told through plain env vars, so a
+# small wrapper toolchain is generated per ABI and passed through the target-suffixed variable it reads.
+set(FL_ANDROID_C_COMPILER "${LLVM_TOOLCHAIN}/${ANDROID_TARGET}${CMAKE_ANDROID_API}-clang")
+set(FL_ANDROID_CXX_COMPILER "${LLVM_TOOLCHAIN}/${ANDROID_TARGET}${CMAKE_ANDROID_API}-clang++")
+set(FL_RUST_TOOLCHAIN_FILE "${CMAKE_CURRENT_BINARY_DIR}/rust-android-toolchain-${CMAKE_ANDROID_ARCH_ABI}.cmake")
+# bindgen needs the target sysroot and clang's own headers; the host libclang does not carry them.
+file(GLOB FL_CLANG_RESOURCE_INCLUDES "${LLVM_TOOLCHAIN}/../lib/clang/*/include")
+list(GET FL_CLANG_RESOURCE_INCLUDES 0 FL_CLANG_RESOURCE_INCLUDE)
+set(FL_BINDGEN_CLANG_ARGS
+    "--sysroot=${LLVM_TOOLCHAIN}/../sysroot --target=${ANDROID_TARGET}${CMAKE_ANDROID_API} -isystem ${FL_CLANG_RESOURCE_INCLUDE}")
+file(WRITE "${FL_RUST_TOOLCHAIN_FILE}"
+    "set(ANDROID_ABI ${CMAKE_ANDROID_ARCH_ABI})\n"
+    "set(ANDROID_PLATFORM android-${CMAKE_ANDROID_API})\n"
+    "set(ANDROID_STL c++_shared)\n"
+    "include(${CMAKE_ANDROID_NDK}/build/cmake/android.toolchain.cmake)\n"
+)
+
 add_custom_target(
     drift_native_rust_build ALL
-    COMMAND ${CARGO_EXECUTABLE} rustc --release --locked --target ${RUST_TARGET} --
-        -C linker="${LLVM_TOOLCHAIN}/${ANDROID_TARGET}${CMAKE_ANDROID_API}-clang"
+    COMMAND ${CMAKE_COMMAND} -E env
+        "CC_${RUST_TARGET}=${FL_ANDROID_C_COMPILER}"
+        "CXX_${RUST_TARGET}=${FL_ANDROID_CXX_COMPILER}"
+        "AR_${RUST_TARGET}=${LLVM_TOOLCHAIN}/llvm-ar"
+        "RANLIB_${RUST_TARGET}=${LLVM_TOOLCHAIN}/llvm-ranlib"
+        "CMAKE_TOOLCHAIN_FILE_${RUST_TARGET}=${FL_RUST_TOOLCHAIN_FILE}"
+        "BINDGEN_EXTRA_CLANG_ARGS_${RUST_TARGET}=${FL_BINDGEN_CLANG_ARGS}"
+        GGML_OPENMP=OFF
+        ${CARGO_EXECUTABLE} rustc --release --locked --target ${RUST_TARGET} --
+        -C linker="${FL_ANDROID_C_COMPILER}"
     DEPENDS setup_rust_target
     BYPRODUCTS ${FL_NATIVE_RUST_PATH}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -55,6 +81,7 @@ add_custom_target(
 add_dependencies(drift_native drift_native_rust_build)
 
 # TODO: check if there's a better way than allowing multiple symbol definitions
+# whisper.cpp is C++ and links against the shared STL (see the wrapper toolchain above).
 target_link_libraries(drift_native
-    android log -Wl,--whole-archive -Wl,--allow-multiple-definition -Wl,--build-id=none ${FL_NATIVE_RUST_PATH}
+    android log c++_shared -Wl,--whole-archive -Wl,--allow-multiple-definition -Wl,--build-id=none ${FL_NATIVE_RUST_PATH}
 )
