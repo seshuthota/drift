@@ -71,6 +71,7 @@ object ImeActions {
     val ToggleAutocorrect = flAction("toggle_autocorrect")
     val TogglePersonalizedLearning = flAction("toggle_personalized_learning")
 
+    val LocalVoiceInput = flAction("local_voice_input")
     val ExternalVoiceInput = flAction("external_voice_input")
 
     val NoopDragMarker = flAction("noop_drag_marker")
@@ -109,6 +110,7 @@ object ImeActions {
         CompactLayoutToLeft,
         CompactLayoutToRight,
         ToggleResizeMode,
+        LocalVoiceInput,
         ExternalVoiceInput,
     )
 

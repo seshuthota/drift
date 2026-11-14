@@ -371,6 +371,8 @@ class DriftImeService : LifecycleInputMethodService() {
         super.onStartInputView(info, restarting)
         if (info == null) return
         currentInputConnection?.requestCursorUpdates(ImeEditor.CURSOR_UPDATES)
+        // A recording belongs to the field it started in; never commit it into the next one.
+        DriftApplication.getHack().asrController.value.cancel()
         val ic = WeakReference(currentInputConnection)
         val editorInfo = DriftEditorInfo.wrap(info)
         imeController.updateStateBlocking {
@@ -403,6 +405,7 @@ class DriftImeService : LifecycleInputMethodService() {
         flogInfo { "finishing=$finishingInput" }
         super.onFinishInputView(finishingInput)
         currentInputConnection?.requestCursorUpdates(0)
+        DriftApplication.getHack().asrController.value.cancel()
         imeController.updateStateBlocking {
             handleFinishInputView()
         }

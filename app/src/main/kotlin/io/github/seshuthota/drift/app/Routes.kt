@@ -73,6 +73,7 @@ import io.github.seshuthota.drift.app.settings.theme.ThemeScreen
 import io.github.seshuthota.drift.app.settings.theme.ThemeSelectionScreen
 import io.github.seshuthota.drift.app.settings.theme.ThemeSelectionScreenAction
 import io.github.seshuthota.drift.app.settings.typing.TypingScreen
+import io.github.seshuthota.drift.app.settings.voice.VoiceInputScreen
 import io.github.seshuthota.drift.app.setup.SetupScreen
 import io.github.seshuthota.drift.ime.extension.ExtensionType
 import kotlinx.serialization.Serializable
@@ -155,6 +156,10 @@ object Routes {
         @Serializable
         @Deeplink("settings/typing")
         object Typing
+
+        @Serializable
+        @Deeplink("settings/voice")
+        object VoiceInput
 
         @Serializable
         @Deeplink("settings/dictionary")
@@ -308,6 +313,8 @@ object Routes {
             composableWithDeepLink(Settings.Smartbar::class) { SmartbarScreen() }
 
             composableWithDeepLink(Settings.Typing::class) { TypingScreen() }
+
+            composableWithDeepLink(Settings.VoiceInput::class) { VoiceInputScreen() }
 
             composableWithDeepLink(Settings.Dictionary::class) { DictionaryScreen() }
             composableWithDeepLink(Settings.UserDictionary::class) { navBackStack ->

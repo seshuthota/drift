@@ -11,6 +11,9 @@
     <!-- Permission needed for on-device voice input (local ASR). Requested from Settings > Voice input. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
 
+    <!-- Only used to download speech models from Settings > Voice input; audio never leaves the device. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <!-- Android 11+ only: Define that Drift requests to see all apps that
           ship with an IME or Spell Check service. This is used to guide the user
           in the Settings Ui why Drift may not be working.

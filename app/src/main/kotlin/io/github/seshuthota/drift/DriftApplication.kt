@@ -30,6 +30,7 @@ import io.github.seshuthota.drift.app.DriftPreferenceModel
 import io.github.seshuthota.drift.app.DriftPreferenceStore
 import io.github.seshuthota.drift.app.NoBackupPreferenceModel
 import io.github.seshuthota.drift.app.NoBackupPreferenceStore
+import io.github.seshuthota.drift.ime.asr.AsrController
 import io.github.seshuthota.drift.ime.asr.AsrModelManager
 import io.github.seshuthota.drift.ime.clipboard.ClipboardManager
 import io.github.seshuthota.drift.ime.core.SubtypeManager
@@ -81,6 +82,7 @@ class DriftApplication : Application() {
 
     private val mainHandler by lazy { Handler(mainLooper) }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val prefs by DriftPreferenceStore
     val preferenceStoreLoaded = MutableStateFlow(false)
 
     lateinit var storageController: AndroidStorageController
@@ -89,6 +91,14 @@ class DriftApplication : Application() {
     lateinit var themeController: ThemeController
 
     val asrModelManager = lazy { AsrModelManager(File(filesDir, "asr")) }
+    val asrController = lazy {
+        AsrController(
+            context = this,
+            modelManager = asrModelManager.value,
+            prefs = prefs,
+            imeControllerProvider = { imeController },
+        )
+    }
     val clipboardManager = lazy { ClipboardManager(this) }
     val glideTypingManager = lazy { GlideTypingManager(this) }
     val nlpManager = lazy { NlpManager(this) }
@@ -207,6 +217,8 @@ fun Context.clipboardManager() = this.inferDriftApplication().clipboardManager
 fun Context.glideTypingManager() = this.inferDriftApplication().glideTypingManager
 
 fun Context.asrModelManager() = this.inferDriftApplication().asrModelManager
+
+fun Context.asrController() = this.inferDriftApplication().asrController
 
 fun Context.nlpManager() = this.inferDriftApplication().nlpManager
 

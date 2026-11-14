@@ -1,6 +1,6 @@
 # Drift local voice input (ASR) — design and plan
 
-**Status:** core and Whisper engine landed and validated on a host and the emulator; IME wiring next
+**Status:** core, Whisper engine, IME wiring and Settings landed; device pass with a real voice next
 **Scope:** on-device speech-to-text for the IME, Whisper Tiny first, engine and model replaceable
 **Out of scope for v1:** streaming/partial transcripts, punctuation restoration model, standalone VAD model,
   translation, hands-free/always-listening modes
@@ -132,11 +132,17 @@ Delivery is the open decision: first-use download vs bundled vs extension packag
    - Pushing the model for the test (emulator, needs root for the external files dir ownership):
      `adb push ggml-tiny-q5_1.bin /sdcard/Android/data/<applicationId>/files/asr-test/` then
      `chown` to the app uid; a release device will download it through the app instead.
-3. **IME integration — next.** Mic action, overlay, permission gate, commit/cancel, lifecycle stops, and the
-   first real use of `AsrModelManager` (download UI in Settings).
-4. **Settings page.** Model management UI and permission prompt.
-5. **Device pass.** Accuracy on a few phrases, latency (record→text), RAM, airplane-mode run, Termux/shell field
-   safety (raw editor: commit text only, no composing).
+3. **IME integration — done.** `ImeActions.LocalVoiceInput` (`floris:local_voice_input`) toggles
+   `AsrController`; the recording/transcribing/error panel is `AsrOverlay` in `ImeRootWindow`; recording
+   cancels on field and input-view changes. The default sticky quick action is now the local one (existing
+   arrangements keep whatever they had; the external voice IME action is still selectable). The commit is one
+   `emitText`, with a leading space after a word and no composing region, so raw editors are safe.
+4. **Settings page — done.** `Settings > Voice input`: microphone permission prompt (plus app-settings link),
+   model list with download progress/delete/select, and "keep model in memory". `INTERNET` was added to the
+   manifest for model downloads only. Verified on the emulator: the 32 MB tiny model downloaded from Hugging
+   Face, passed the SHA-256 check, installed and was selected.
+5. **Device pass — next.** Needs a human voice: accuracy on a few phrases, record→text latency, RAM, a
+   Termux/shell field, and airplane mode after the model is installed.
 
 ## 8. Decisions
 
@@ -157,3 +163,4 @@ Delivery is the open decision: first-use download vs bundled vs extension packag
 | `RECORD_AUDIO` prompt not shown from the IME | permission lives in Settings; the action deep-links there |
 | C++ runtime mismatch from the Rust static lib | `ANDROID_STL=c++_shared` for the module and the generated whisper toolchain; AGP packages `libc++_shared.so` |
 | 32-bit bindgen needs target headers | host libclang lacks the NDK resource dir; CMake passes sysroot/target/`-isystem` per ABI |
+| New `INTERNET` permission on a privacy-focused keyboard | only the model downloader uses it; audio and transcripts stay local, and the permission is documented in the manifest next to `RECORD_AUDIO` |

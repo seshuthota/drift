@@ -180,3 +180,9 @@ class AudioRecorder(private val context: Context) {
         private const val READ_SAMPLES = 1_600
     }
 }
+
+/** True when the microphone runtime permission is granted. */
+fun Context.hasRecordAudioPermission(): Boolean {
+    return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
+        PackageManager.PERMISSION_GRANTED
+}

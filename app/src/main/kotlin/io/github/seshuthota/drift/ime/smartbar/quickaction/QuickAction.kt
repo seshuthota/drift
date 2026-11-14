@@ -110,6 +110,7 @@ fun QuickAction.computeDisplayName(imeState: ImeState): String {
             ImeActions.ToggleResizeMode -> R.string.quick_action__resize_mode
             ImeActions.Undo -> R.string.quick_action__undo
             ImeActions.Redo -> R.string.quick_action__redo
+            ImeActions.LocalVoiceInput -> R.string.quick_action__local_voice_input
             ImeActions.ExternalVoiceInput -> R.string.quick_action__voice_input
             ImeActions.NoopDragMarker -> if (imeState.flags.debugShowDragAndDropHelpers) {
                 R.string.quick_action__drag_marker
@@ -150,6 +151,7 @@ fun QuickAction.computeTooltip(imeState: ImeState): String {
             ImeActions.ToggleResizeMode -> R.string.quick_action__resize_mode__tooltip
             ImeActions.Undo -> R.string.quick_action__undo__tooltip
             ImeActions.Redo -> R.string.quick_action__redo__tooltip
+            ImeActions.LocalVoiceInput -> R.string.quick_action__local_voice_input__tooltip
             ImeActions.ExternalVoiceInput -> R.string.quick_action__voice_input__tooltip
             ImeActions.NoopDragMarker -> if (imeState.flags.debugShowDragAndDropHelpers) {
                 R.string.quick_action__drag_marker__tooltip

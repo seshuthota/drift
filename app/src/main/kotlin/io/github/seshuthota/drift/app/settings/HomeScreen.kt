@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.SentimentSatisfiedAlt
 import androidx.compose.material.icons.filled.SmartButton
 import androidx.compose.material.icons.filled.Spellcheck
@@ -71,7 +72,7 @@ fun HomeScreen() {
             }
 
             SegmentedListColumn {
-                val count = 4
+                val count = 5
                 Preference(
                     shapes = ListItemDefaults.segmentedShapes(0, count),
                     icon = Icons.Default.Language,
@@ -95,6 +96,12 @@ fun HomeScreen() {
                     icon = Icons.Default.SmartButton,
                     title = stringRes(R.string.settings__smartbar__title),
                     onClick = { navController.navigate(Routes.Settings.Smartbar) },
+                )
+                Preference(
+                    shapes = ListItemDefaults.segmentedShapes(4, count),
+                    icon = Icons.Default.Mic,
+                    title = stringRes(R.string.settings__voice__title),
+                    onClick = { navController.navigate(Routes.Settings.VoiceInput) },
                 )
             }
 

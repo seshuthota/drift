@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.roundToIntRect
 import io.github.seshuthota.drift.R
 import io.github.seshuthota.drift.app.devtools.DevtoolsOverlay
 import io.github.seshuthota.drift.ime.ImeUiMode
+import io.github.seshuthota.drift.ime.asr.AsrOverlay
 import io.github.seshuthota.drift.ime.clipboard.ClipboardInputLayout
 import io.github.seshuthota.drift.ime.keyboard.ProvideKeyboardRowBaseHeight
 import io.github.seshuthota.drift.ime.keyboard3.LocalImeController
@@ -124,6 +125,7 @@ fun ImeRootWindow() {
     ) {
         DevtoolsOverlay()
         ImeWindow()
+        AsrOverlay()
         BottomSheetWindow()
         ImeSystemUi()
     }

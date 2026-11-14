@@ -22,6 +22,7 @@ import android.text.TextUtils
 import android.view.KeyEvent
 import android.view.inputmethod.InputConnection
 import androidx.compose.runtime.staticCompositionLocalOf
+import io.github.seshuthota.drift.DriftApplication
 import io.github.seshuthota.drift.DriftImeService
 import io.github.seshuthota.drift.app.DriftPreferenceStore
 import io.github.seshuthota.drift.ime.ImeUiMode
@@ -566,6 +567,7 @@ class ImeController(
                 ImeActions.ToggleResizeMode -> windowController?.editor?.toggleEnabled()
                 ImeActions.CompactLayoutToLeft -> windowController?.actions?.compactLayoutToLeft()
                 ImeActions.CompactLayoutToRight -> windowController?.actions?.compactLayoutToRight()
+                ImeActions.LocalVoiceInput -> DriftApplication.getHack().asrController.value.toggle()
                 ImeActions.ExternalVoiceInput -> DriftImeService.switchToVoiceInputMethod()
                 else -> super.emitDescriptor(descriptor)
             }

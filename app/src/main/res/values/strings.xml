@@ -93,6 +93,8 @@
     <string name="quick_action__toggle_autocorrect__tooltip">Toggle autocorrect</string>
     <string name="quick_action__voice_input" comment="Please mind the limited available space for the quick action strings">Voice input</string>
     <string name="quick_action__voice_input__tooltip" comment="IME stands for Input Method Editor and is indirectly equivalent to 'keyboard'.">Open voice input provider</string>
+    <string name="quick_action__local_voice_input" comment="Please mind the limited available space for the quick action strings">Voice</string>
+    <string name="quick_action__local_voice_input__tooltip">Transcribe speech on this device</string>
     <string name="quick_action__floating_window_mode" comment="Please mind the limited available space for the quick action strings">Floating</string>
     <string name="quick_action__floating_window_mode__tooltip">Toggle floating keyboard window mode</string>
     <string name="quick_action__one_handed_mode" comment="Please mind the limited available space for the quick action strings">One-handed</string>
@@ -472,6 +474,32 @@
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__label" comment="Preference title">Auto-expand/collapse</string>
     <string name="pref__smartbar__shared_actions_auto_expand_collapse__summary" comment="Preference summary">Auto-expands/collapses the shared action row based on current state</string>
     <string name="pref__smartbar__extended_actions_placement__label" comment="Preference title">Action row placement</string>
+
+    <!-- Voice input strings -->
+    <string name="settings__voice__title" comment="Title of the Voice input settings screen">Voice input</string>
+    <string name="voice_input__listening" comment="Shown while the microphone is recording">Listening…</string>
+    <string name="voice_input__transcribing" comment="Shown while the model turns the recording into text">Transcribing…</string>
+    <string name="voice_input__stop" comment="Content description of the stop button">Stop and transcribe</string>
+    <string name="voice_input__cancel" comment="Content description of the cancel button">Cancel recording</string>
+    <string name="voice_input__dismiss" comment="Button that closes the error panel">Dismiss</string>
+    <string name="voice_input__open_settings" comment="Button that opens the Voice input settings screen">Settings</string>
+    <string name="voice_input__missing_permission" comment="Voice input error: the microphone permission was not granted">Microphone permission is required for voice input</string>
+    <string name="voice_input__missing_model" comment="Voice input error: no speech model is installed">No speech model is installed</string>
+    <string name="voice_input__microphone_busy" comment="Voice input error: another app or service holds the microphone">The microphone is not available</string>
+    <string name="settings__voice__microphone" comment="Section title in Voice input settings">Microphone</string>
+    <string name="settings__voice__permission_granted" comment="Microphone permission state">Allowed</string>
+    <string name="settings__voice__permission_denied" comment="Microphone permission state">Not allowed</string>
+    <string name="settings__voice__allow_microphone" comment="Button that opens the system microphone permission dialog">Allow microphone</string>
+    <string name="settings__voice__open_app_settings" comment="Button that opens the app's system settings page">Open app settings</string>
+    <string name="settings__voice__models" comment="Section title in Voice input settings">Models</string>
+    <string name="settings__voice__installed" comment="Model is on the device">Installed</string>
+    <string name="settings__voice__download" comment="Button that downloads a model">Download</string>
+    <string name="settings__voice__delete" comment="Button that removes a downloaded model">Delete</string>
+    <string name="settings__voice__use" comment="Button that selects a model">Use</string>
+    <string name="settings__voice__downloading" comment="Model download is in progress">Downloading…</string>
+    <string name="settings__voice__download_failed" comment="A model download failed; {reason} is the error text">Download failed: {reason}</string>
+    <string name="settings__voice__keep_loaded" comment="Preference title">Keep model in memory</string>
+    <string name="settings__voice__keep_loaded_summary" comment="Preference summary">Skips the model reload before each recording</string>
 
     <!-- Typing strings -->
     <string name="settings__typing__title" comment="Title of Typing screen">Typing</string>
