@@ -77,10 +77,6 @@ abstract class DriftPreferenceModel : PreferenceModel() {
             key = "voice__model_id",
             default = AsrModelRegistry.DEFAULT_MODEL_ID,
         )
-        val engineId = string(
-            key = "voice__engine_id",
-            default = AsrModelRegistry.WHISPER_CPP,
-        )
         val maxDurationSeconds = int(
             key = "voice__max_duration_seconds",
             default = 30,

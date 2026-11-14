@@ -17,65 +17,22 @@
 package io.github.seshuthota.drift.ime.asr
 
 /**
- * Built-in ASR model catalog. Rows are data; testing a new Whisper size or a different model family only adds a
- * row (and a [AsrModelSpec.engineId] that an engine in the factory implements).
+ * Built-in ASR model catalog. Rows are data; another size or language of the same family only adds a row, and a
+ * different family adds a row plus a [StreamingAsrEngine] for its [AsrModelSpec.engineId].
  *
- * Whisper checksums and sizes are the LFS metadata of `ggerganov/whisper.cpp` on Hugging Face, which is also the download
- * host. Weights: MIT (OpenAI Whisper), GGML conversion by ggerganov/whisper.cpp.
+ * Moonshine sizes and SHA-256 were measured from the downloaded files on 2026-11-14; the folder in the URL is
+ * Moonshine's own release tag. Weights: MIT, Moonshine AI.
  */
 object AsrModelRegistry {
-    const val WHISPER_CPP = "whisper.cpp"
     const val MOONSHINE = "moonshine"
 
-    const val DEFAULT_MODEL_ID = "whisper-tiny-q5_1"
-    const val ENGLISH_MODEL_ID = "whisper-tiny-en-q5_1"
     const val MOONSHINE_TINY_EN_ID = "moonshine-tiny-streaming-en"
+    const val DEFAULT_MODEL_ID = MOONSHINE_TINY_EN_ID
 
-    // Sizes and SHA-256 measured from the files on 2026-11-14; the folder name is Moonshine's own release tag.
     private const val MOONSHINE_TINY_EN_HOST =
         "https://download.moonshine.ai/model/tiny-streaming-en/quantized_26_08_21/"
 
-    private const val HOST = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/"
-    private const val LICENSE = "MIT"
-    private const val ATTRIBUTION = "OpenAI Whisper (MIT), GGML conversion by ggerganov/whisper.cpp"
-
-    /**
-     * Multilingual first because Drift is used outside English; [ENGLISH_MODEL_ID] is one tap away for users who
-     * want the better English accuracy of the `.en` weights.
-     */
     val models: List<AsrModelSpec> = listOf(
-        AsrModelSpec(
-            id = DEFAULT_MODEL_ID,
-            displayName = "Whisper Tiny q5_1",
-            engineId = WHISPER_CPP,
-            languageTag = null,
-            license = LICENSE,
-            attribution = ATTRIBUTION,
-            files = listOf(
-                AsrModelFile(
-                    name = "ggml-tiny-q5_1.bin",
-                    url = HOST + "ggml-tiny-q5_1.bin",
-                    sha256 = "818710568da3ca15689e31a743197b520007872ff9576237bda97bd1b469c3d7",
-                    bytes = 32_152_673,
-                ),
-            ),
-        ),
-        AsrModelSpec(
-            id = ENGLISH_MODEL_ID,
-            displayName = "Whisper Tiny English q5_1",
-            engineId = WHISPER_CPP,
-            languageTag = "en",
-            license = LICENSE,
-            attribution = ATTRIBUTION,
-            files = listOf(
-                AsrModelFile(
-                    name = "ggml-tiny.en-q5_1.bin",
-                    url = HOST + "ggml-tiny.en-q5_1.bin",
-                    sha256 = "c77c5766f1cef09b6b7d47f21b546cbddd4157886b3b5d6d4f709e91e66c7c2b",
-                    bytes = 32_166_155,
-                ),
-            ),
-        ),
         AsrModelSpec(
             id = MOONSHINE_TINY_EN_ID,
             displayName = "Moonshine Tiny Streaming (English, live)",

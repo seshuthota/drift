@@ -78,7 +78,9 @@ fun VoiceInputScreen() {
     ) { granted -> permissionGranted = granted }
 
     var installedIds by remember { mutableStateOf(modelManager.installedModels().map { it.spec.id }.toSet()) }
-    val selectedId by prefs.voice.modelId.collectAsState()
+    val storedModelId by prefs.voice.modelId.collectAsState()
+    // A stored id of a removed model falls back to the first one, as AsrController does.
+    val selectedId = modelManager.spec(storedModelId)?.id ?: modelManager.models().firstOrNull()?.id
     val keepLoaded by prefs.voice.keepModelLoaded.collectAsState()
     var downloadingId by remember { mutableStateOf<String?>(null) }
     val progress = remember { MutableStateFlow(0f) }

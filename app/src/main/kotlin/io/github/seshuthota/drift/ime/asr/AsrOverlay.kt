@@ -81,7 +81,6 @@ fun AsrPanel(height: Dp) {
     val controller by context.asrController()
     val state by controller.state.collectAsState()
     val amplitude by controller.amplitude.collectAsState()
-    val busy by controller.busy.collectAsState()
 
     Surface(
         modifier = Modifier.fillMaxWidth().height(height),
@@ -123,17 +122,7 @@ fun AsrPanel(height: Dp) {
                         ),
                         style = MaterialTheme.typography.titleMedium,
                     )
-                    if (recording) {
-                        ElapsedTime()
-                        // Text from the last few seconds is being typed in while the microphone stays open.
-                        if (busy) {
-                            Text(
-                                text = stringRes(R.string.voice_input__transcribing),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                        }
-                    }
+                    if (recording) ElapsedTime()
                 }
             }
             IconButton(

@@ -1,9 +1,24 @@
 # Drift local voice input (ASR) — design and plan
 
-**Status:** core, Whisper engine, IME wiring and Settings landed; device pass with a real voice next
+**Status (2026-11-14):** superseded — Whisper was replaced by Moonshine Streaming; see "Outcome" below. The rest
+of this document is the original Whisper plan, kept for its reasoning.
 **Scope:** on-device speech-to-text for the IME, Whisper Tiny first, engine and model replaceable
 **Out of scope for v1:** streaming/partial transcripts, punctuation restoration model, standalone VAD model,
   translation, hands-free/always-listening modes
+
+## Outcome
+
+On the device (Snapdragon 8 Elite, a microphone that delivers speech around -45 dBFS) Whisper Tiny was not usable
+for dictation: one-word utterances came back as `[BLANK_AUDIO]` or as hallucinated sentences, live previews meant
+re-transcribing the growing clip every 1-2 s, and multilingual auto-detection picked random languages on short
+audio. Silence gating, trimming, gain and prompting helped only partly.
+
+Voice input now uses **Moonshine Tiny Streaming (English)** through the `ai.moonshine:moonshine-voice` Android
+library (MIT, ONNX Runtime CPU, built-in Silero VAD). It emits text for the line being spoken while audio arrives
+and ends lines at pauses, which the IME shows as composing text and commits per line (`MoonshineEngine`,
+`StreamingAsrEngine`, `AsrController`). whisper.cpp, whisper-rs and the Rust/JNI ASR bridge were removed.
+Integration notes: moonshine-voice bundles a minimal `libonnxruntime.so` that cannot load `.onnx` models, so an
+artifact transform in `app/build.gradle.kts` strips it and the app's full onnxruntime-android 1.23.2 serves both.
 
 ---
 

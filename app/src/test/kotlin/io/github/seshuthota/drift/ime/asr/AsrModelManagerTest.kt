@@ -36,9 +36,7 @@ class AsrModelManagerTest : FunSpec({
         val ids = AsrModelRegistry.models.map { it.id }
         ids.toSet() shouldHaveSize ids.size
         AsrModelRegistry.default().id shouldBe AsrModelRegistry.DEFAULT_MODEL_ID
-        AsrModelRegistry.default().languageTag shouldBe null
-        val engines = listOf(AsrModelRegistry.WHISPER_CPP, AsrModelRegistry.MOONSHINE)
-        engines.sumOf { AsrModelRegistry.forEngine(it).size } shouldBe AsrModelRegistry.models.size
+        AsrModelRegistry.forEngine(AsrModelRegistry.MOONSHINE) shouldHaveSize AsrModelRegistry.models.size
         for (spec in AsrModelRegistry.models) {
             spec.files.isEmpty().shouldBeFalse()
             spec.totalBytes shouldBeGreaterThan 1_000_000L
@@ -53,7 +51,7 @@ class AsrModelManagerTest : FunSpec({
 
     test("install downloads, verifies and reports progress") {
         withTempRoot { root ->
-            val content = "hello whisper".toByteArray()
+            val content = "hello model".toByteArray()
             val spec = testSpec(content)
             val provider = FakeProvider(mapOf(spec.files.single().url to content))
             val manager = AsrModelManager(root, listOf(spec), provider)
@@ -144,6 +142,22 @@ class AsrModelManagerTest : FunSpec({
             directory.exists().shouldBeFalse()
         }
     }
+
+    test("removeUnlisted deletes directories of models no longer in the registry") {
+        withTempRoot { root ->
+            val spec = testSpec(byteArrayOf(1, 2, 3))
+            val manager = AsrModelManager(root, listOf(spec), FakeProvider(emptyMap()))
+            val kept = File(root, spec.id).apply { mkdirs() }
+            File(kept, "model.bin").writeBytes(byteArrayOf(1, 2, 3))
+            val stale = File(root, "whisper-tiny-q5_1").apply { mkdirs() }
+            File(stale, "ggml-tiny-q5_1.bin").writeBytes(byteArrayOf(9))
+
+            manager.removeUnlisted()
+
+            kept.exists().shouldBeTrue()
+            stale.exists().shouldBeFalse()
+        }
+    }
 })
 
 private class FakeProvider(private val files: Map<String, ByteArray>) : AsrStreamProvider {
@@ -158,7 +172,7 @@ private class FakeProvider(private val files: Map<String, ByteArray>) : AsrStrea
 private fun testSpec(content: ByteArray): AsrModelSpec = AsrModelSpec(
     id = "test-model",
     displayName = "Test model",
-    engineId = AsrModelRegistry.WHISPER_CPP,
+    engineId = AsrModelRegistry.MOONSHINE,
     languageTag = null,
     license = "MIT",
     attribution = "test",

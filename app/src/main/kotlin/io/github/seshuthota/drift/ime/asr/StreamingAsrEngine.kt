@@ -17,8 +17,9 @@
 package io.github.seshuthota.drift.ime.asr
 
 /**
- * A speech-to-text runtime that produces text while audio arrives, instead of once per finished recording like
- * [AsrEngine]. It finds sentence ("line") boundaries itself, so the caller only feeds audio and shows events.
+ * A speech-to-text runtime that produces text while audio arrives. It finds sentence ("line") boundaries itself,
+ * so the caller only feeds audio and shows events. Everything model- or runtime-specific stays behind this
+ * interface; a second engine is one more implementation.
  *
  * Not thread-safe: one caller feeds one stream at a time. [addAudio] and [stop] may run inference on the calling
  * thread, so call them off the main thread.

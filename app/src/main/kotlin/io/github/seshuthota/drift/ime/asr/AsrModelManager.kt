@@ -84,6 +84,12 @@ class AsrModelManager(
 
     fun installedModels(): List<InstalledAsrModel> = registry.mapNotNull { installed(it) }
 
+    /** Deletes model directories that no registry row names anymore, e.g. models of a removed engine. */
+    fun removeUnlisted() {
+        val known = registry.map { it.id }.toSet()
+        root.listFiles()?.filter { it.isDirectory && it.name !in known }?.forEach { it.deleteRecursively() }
+    }
+
     /**
      * Downloads and verifies every missing file of [spec]. [onProgress] receives 0..1 over the model's total bytes.
      * Returns the installed model, or a failure with the download or checksum error.
