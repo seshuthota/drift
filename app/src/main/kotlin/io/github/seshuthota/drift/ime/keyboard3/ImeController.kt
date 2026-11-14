@@ -684,15 +684,41 @@ class ImeController(
             val oldText = candidate.replacesText ?: return false
             val newText = candidate.text.toString() + " "
             if (oldText != newText) {
-                if (state.editor.getTextBeforeCursor(oldText.length) != oldText ||
-                    !replaceBeforeCursor(oldText.length, newText)
-                ) {
+                val replaced = if (state.editor.info.isRawInputEditor) {
+                    replaceRawGlideTail(oldText, newText)
+                } else {
+                    state.editor.getTextBeforeCursor(oldText.length) == oldText &&
+                        replaceBeforeCursor(oldText.length, newText)
+                }
+                if (!replaced) {
                     dismissGlideAlternatives()
                     return false
                 }
             }
             // The word is settled: move on to predicting the next one.
             requestSuggestions(force = true)
+            return true
+        }
+
+        /**
+         * Swaps the glided word for [newText] in a terminal. Its editor reports neither its line nor its cursor, so
+         * the replacement goes through the text k3 tracked instead of the editor's text and the alternatives are
+         * re-targeted at [newText] so a second pick has something to replace.
+         */
+        private fun replaceRawGlideTail(oldText: String, newText: String): Boolean {
+            val tracked = state.editor.replaceRawTail(oldText, newText) ?: return false
+            val content = state.content
+            resetContent(
+                K3TextRange(content.offset + tracked.length),
+                content.surroundingText.copy(textBefore = tracked),
+            )
+            expectedContentQueue.push(state.content)
+            val nlp = nlpManager?.takeIf { it.isInitialized() }?.value
+            val alternatives = nlp?.activeCandidates.orEmpty()
+                .map { if (it is GlideSuggestionCandidate) it.copy(replacesText = newText) else it }
+            if (alternatives.size > 1) {
+                nlp?.suggestDirectly(alternatives)
+            }
             return true
         }
 

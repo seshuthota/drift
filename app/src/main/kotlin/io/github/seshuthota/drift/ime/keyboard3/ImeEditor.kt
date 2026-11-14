@@ -105,8 +105,28 @@ open class ImeEditor(
     private fun replaceTextRaw(ic: InputConnection, range: IntRange, text: String) {
         val oldLength = rawInputDeleteBefore(range)
         val previous = rawTextBefore.takeIf { it.length == oldLength }
-        val edit = rawInputEdit(previous, oldLength, text)
+        commitRawEdit(ic, rawInputEdit(previous, oldLength, text))
         rawTextBefore = text
+    }
+
+    /**
+     * Swaps the [oldText] tail of the text k3 last committed for [newText].
+     *
+     * A raw editor reports none of its own text back, so a suggestion picked from the candidates row cannot
+     * locate the word with [getTextBeforeCursor] and replace it with [replaceText]. The tracked text takes
+     * its place. Returns the whole tracked text after the edit, or null when it no longer ends with [oldText]
+     * (the terminal moved on, e.g. after Ctrl+C or a shell rewrite).
+     */
+    fun replaceRawTail(oldText: String, newText: String): String? {
+        val ic = ic.get() ?: return null
+        val previous = rawTextBefore
+        val replacement = rawTailReplacement(previous, oldText, newText) ?: return null
+        commitRawEdit(ic, rawInputEdit(previous, previous.length, replacement))
+        rawTextBefore = replacement
+        return replacement
+    }
+
+    private fun commitRawEdit(ic: InputConnection, edit: RawInputEdit) {
         val payload = buildString {
             repeat(edit.deletes) { append(RAW_DELETE) }
             append(edit.insert)
@@ -310,6 +330,15 @@ open class ImeEditor(
                 return RawInputEdit(deletes = 0, insert = newText.substring(oldLength.coerceAtLeast(0)))
             }
             return RawInputEdit(deletes = oldLength - newText.length, insert = "")
+        }
+
+        /**
+         * Tracked text after replacing the [oldText] tail of [previous] with [newText], or null when that tail
+         * is not there anymore. The tail must be non-empty, as an empty one could match anywhere.
+         */
+        internal fun rawTailReplacement(previous: String, oldText: String, newText: String): String? {
+            if (oldText.isEmpty() || !previous.endsWith(oldText)) return null
+            return previous.dropLast(oldText.length) + newText
         }
 
         /** DEL. Termux's shell erases on this byte; deleteSurroundingText key events do not land. */

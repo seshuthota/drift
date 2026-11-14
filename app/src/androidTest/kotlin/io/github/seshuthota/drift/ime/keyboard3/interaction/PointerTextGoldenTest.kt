@@ -16,18 +16,8 @@
 
 package io.github.seshuthota.drift.ime.keyboard3.interaction
 
-import android.os.Bundle
-import android.os.Handler
 import android.text.InputType
-import android.text.SpannableStringBuilder
-import android.view.KeyEvent
-import android.view.inputmethod.CompletionInfo
-import android.view.inputmethod.CorrectionInfo
 import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.ExtractedText
-import android.view.inputmethod.ExtractedTextRequest
-import android.view.inputmethod.InputConnection
-import android.view.inputmethod.InputContentInfo
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.PointerId
@@ -49,8 +39,9 @@ import io.github.seshuthota.drift.ime.keyboard3.hint.LongPressKeyHintPlacement
 import io.github.seshuthota.drift.ime.keyboard3.touch.TouchKey
 import io.github.seshuthota.drift.ime.keyboard3.touch.TouchKeyboard
 import io.github.seshuthota.drift.ime.keyboard3.touch.TouchLayer
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import io.github.seshuthota.drift.ime.nlp.GlideSuggestionCandidate
+import io.github.seshuthota.drift.ime.nlp.SuggestionCandidate
+import io.github.seshuthota.drift.ime.nlp.WordSuggestionCandidate
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -67,7 +58,6 @@ import java.lang.ref.WeakReference
 import kotlin.math.PI
 import kotlin.math.hypot
 import kotlin.math.sin
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * End-to-end golden traces: pointer samples go through [PointerTracker], the real [ImeController]
@@ -114,7 +104,7 @@ class PointerTextGoldenTest {
         tracker = PointerTracker(
             touchKeyboard = keyboard(),
             imeController = controller,
-            interactionController = NoOpInteraction,
+            interactionController = NoOpInteractionController,
             showSimplePopups = false,
             peekDistanceSqMin = 0.01f,
             gestureConfig = GestureConfig(
@@ -207,8 +197,60 @@ class PointerTextGoldenTest {
         assertEquals("the ", connection.text.toString())
     }
 
+    @Test
+    fun completionCandidateReplacesTheTypedWord() {
+        "hel".forEach(::tap)
+        pick(WordSuggestionCandidate(text = "hello"))
+        assertEquals("hello ", connection.text.toString())
+    }
+
+    @Test
+    fun glideAlternativeReplacesTheCommittedWord() {
+        assumeTrue(prefs.glide.enabled.get())
+        runGlide("the")
+        val committed = connection.text.toString()
+        val alternative = pickGlideAlternative(committed)
+        pick(alternative)
+        assertEquals(alternative.text.toString() + " ", connection.text.toString())
+    }
+
+    /**
+     * The Termux shape: a glide alternative must swap the committed word even though the editor reports none of
+     * its text and ignores composing regions.
+     */
+    @Test
+    fun rawGlideAlternativeReplacesTheCommittedWord() {
+        assumeTrue(prefs.glide.enabled.get())
+        bindRawEditor()
+        runGlide("the")
+        val committed = connection.text.toString()
+        val alternative = pickGlideAlternative(committed)
+        pick(alternative)
+        assertEquals(alternative.text.toString() + " ", connection.text.toString())
+    }
+
+    private fun pick(candidate: SuggestionCandidate) {
+        controller.updateStateBlocking {
+            emitCandidate(candidate)
+        }
+    }
+
+    /** Waits for the committed glide's alternatives and returns one that is not the word already in the field. */
+    private fun pickGlideAlternative(committed: String): GlideSuggestionCandidate {
+        val nlp = (context.applicationContext as DriftApplication).nlpManager.value
+        val deadline = System.currentTimeMillis() + 5_000
+        while (System.currentTimeMillis() < deadline) {
+            val candidate = nlp.activeCandidates
+                .filterIsInstance<GlideSuggestionCandidate>()
+                .firstOrNull { it.replacesText == committed && it.text.toString() + " " != committed }
+            if (candidate != null) return candidate
+            Thread.sleep(50)
+        }
+        throw AssertionError("no glide alternative for '$committed': ${nlp.activeCandidates}")
+    }
+
     private fun bindRawEditor() {
-        connection = RecordingInputConnection()
+        connection = RecordingInputConnection(raw = true)
         controller.updateStateBlocking {
             handleStartInputView(
                 WeakReference(connection),
@@ -378,140 +420,11 @@ class PointerTextGoldenTest {
         override fun toString() = "PointerTextGoldenTest"
     }
 
-    private object NoOpInteraction : InteractionController {
-        override val activeSystemTimingOptions: StateFlow<InteractionTimingOptions> =
-            MutableStateFlow(TIMING)
-        override val activeTimingOptions: StateFlow<InteractionTimingOptions> =
-            MutableStateFlow(TIMING)
-        override val activeFeedbackOptions: StateFlow<InteractionFeedbackOptions> =
-            MutableStateFlow(InteractionFeedbackOptions.Fallback)
-
-        override fun performAudioFeedback(kind: InteractionKind, output: K3StringOrDescriptor?) = Unit
-        override fun performHapticFeedback(kind: InteractionKind, output: K3StringOrDescriptor?) = Unit
-
-        override suspend fun showToast(
-            text: String,
-            type: InteractionController.ToastType,
-        ): InteractionController.ToastHandle = object : InteractionController.ToastHandle {
-            override suspend fun hide() = Unit
-        }
-    }
-
     private companion object {
         val SIZE = IntSize(1000, 1000)
         const val BACKSPACE = '\b'
         val keyboardKeys = HashMap<Char, TouchKey>()
         var preloaded = false
-        val TIMING = InteractionTimingOptions(
-            keyRepeatTimeout = 400.milliseconds,
-            keyRepeatDelay = 50.milliseconds,
-            longPressTimeout = 400.milliseconds,
-            multiTapTimeout = 300.milliseconds,
-            multiPressTimeout = 100.milliseconds,
-            doubleTapTimeout = 300.milliseconds,
-        )
     }
 }
 
-/** Minimal editor behind the IME: enough of [InputConnection] for text, composing and selection. */
-private class RecordingInputConnection : InputConnection {
-    val text = SpannableStringBuilder()
-    val commits = mutableListOf<String>()
-    private var selStart = 0
-    private var selEnd = 0
-    private var composingStart = -1
-    private var composingEnd = -1
-
-    override fun getTextBeforeCursor(n: Int, flags: Int): CharSequence =
-        text.subSequence((selStart - n).coerceAtLeast(0), selStart)
-
-    override fun getTextAfterCursor(n: Int, flags: Int): CharSequence =
-        text.subSequence(selEnd, (selEnd + n).coerceAtMost(text.length))
-
-    override fun getSelectedText(flags: Int): CharSequence =
-        if (selStart != selEnd) text.subSequence(minOf(selStart, selEnd), maxOf(selStart, selEnd)) else ""
-
-    override fun getCursorCapsMode(reqModes: Int): Int = 0
-
-    override fun getExtractedText(request: ExtractedTextRequest?, flags: Int): ExtractedText? = null
-
-    override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean {
-        val start = (minOf(selStart, selEnd) - beforeLength).coerceAtLeast(0)
-        val end = (maxOf(selStart, selEnd) + afterLength).coerceAtMost(text.length)
-        if (start < end) text.delete(start, end)
-        selStart = start
-        selEnd = start
-        return true
-    }
-
-    override fun deleteSurroundingTextInCodePoints(beforeLength: Int, afterLength: Int): Boolean =
-        deleteSurroundingText(beforeLength, afterLength)
-
-    override fun setComposingText(t: CharSequence, newCursorPosition: Int): Boolean {
-        replaceComposing(t, keepComposing = true)
-        moveCursor(newCursorPosition)
-        return true
-    }
-
-    override fun setComposingRegion(start: Int, end: Int): Boolean {
-        composingStart = start.coerceIn(0, text.length)
-        composingEnd = end.coerceIn(composingStart, text.length)
-        return true
-    }
-
-    override fun finishComposingText(): Boolean {
-        composingStart = -1
-        composingEnd = -1
-        return true
-    }
-
-    override fun commitText(t: CharSequence, newCursorPosition: Int): Boolean {
-        commits += t.toString()
-        replaceComposing(t, keepComposing = false)
-        moveCursor(newCursorPosition)
-        return true
-    }
-
-    override fun commitCompletion(completion: CompletionInfo?): Boolean = false
-    override fun commitCorrection(correction: CorrectionInfo?): Boolean = false
-
-    override fun setSelection(start: Int, end: Int): Boolean {
-        selStart = start.coerceIn(0, text.length)
-        selEnd = end.coerceIn(0, text.length)
-        return true
-    }
-
-    override fun performEditorAction(editorAction: Int): Boolean = false
-    override fun performContextMenuAction(id: Int): Boolean = false
-    override fun beginBatchEdit(): Boolean = true
-    override fun endBatchEdit(): Boolean = true
-    override fun sendKeyEvent(event: KeyEvent?): Boolean = false
-    override fun clearMetaKeyStates(states: Int): Boolean = false
-    override fun reportFullscreenMode(enabled: Boolean): Boolean = false
-    override fun performPrivateCommand(action: String?, data: Bundle?): Boolean = false
-    override fun requestCursorUpdates(cursorUpdateMode: Int): Boolean = false
-    override fun getHandler(): Handler? = null
-    override fun closeConnection() = Unit
-    override fun commitContent(contentInfo: InputContentInfo, flags: Int, opts: Bundle?): Boolean = false
-
-    private fun replaceComposing(t: CharSequence, keepComposing: Boolean) {
-        val start = if (composingStart >= 0) composingStart else minOf(selStart, selEnd)
-        val end = if (composingEnd >= 0) composingEnd else maxOf(selStart, selEnd)
-        text.replace(start, end, t)
-        if (keepComposing) {
-            composingStart = start
-            composingEnd = start + t.length
-        } else {
-            composingStart = -1
-            composingEnd = -1
-        }
-        selStart = start + t.length
-        selEnd = selStart
-    }
-
-    private fun moveCursor(newCursorPosition: Int) {
-        val position = (selStart + (newCursorPosition - 1).coerceAtLeast(0)).coerceIn(0, text.length)
-        selStart = position
-        selEnd = position
-    }
-}

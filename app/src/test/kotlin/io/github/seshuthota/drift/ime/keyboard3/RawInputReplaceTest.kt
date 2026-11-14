@@ -56,6 +56,25 @@ class RawInputReplaceTest : FunSpec({
         ImeEditor.rawKeySequence(KeyEvent.KEYCODE_Z, KeyEvent.META_CTRL_ON) shouldBe null
     }
 
+    test("picking a glide alternative swaps only the glided word") {
+        ImeEditor.rawTailReplacement(previous = "ls hello ", oldText = "hello ", newText = "world ") shouldBe
+            "ls world "
+        ImeEditor.rawTailReplacement(previous = "hello ", oldText = "hello ", newText = "world ") shouldBe "world "
+    }
+
+    test("a glide alternative is ignored once the tracked text no longer ends with the glided word") {
+        ImeEditor.rawTailReplacement(previous = "ls ", oldText = "hello ", newText = "world ") shouldBe null
+        ImeEditor.rawTailReplacement(previous = "", oldText = "hello ", newText = "world ") shouldBe null
+        ImeEditor.rawTailReplacement(previous = "hello ", oldText = "", newText = "world ") shouldBe null
+    }
+
+    test("a glide alternative sends the erased word and the picked one") {
+        val previous = "ls hello "
+        val replacement = ImeEditor.rawTailReplacement(previous, oldText = "hello ", newText = "world ")
+        ImeEditor.rawInputEdit(previous, previous.length, replacement!!) shouldBe
+            RawInputEdit(deletes = 6, insert = "world ")
+    }
+
     test("backspace keeps erasing when the tracked buffer no longer shrinks") {
         ImeEditor.rawBackspaceNeedsExtraDelete(lengthBefore = 4, lengthAfter = 3) shouldBe false
         ImeEditor.rawBackspaceNeedsExtraDelete(lengthBefore = 0, lengthAfter = 0) shouldBe true
