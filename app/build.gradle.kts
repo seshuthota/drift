@@ -176,7 +176,7 @@ dependencies {
     val composeBom = platform(libs.androidx.compose.bom)
     implementation(composeBom)
     // testImplementation(composeBom)
-    // androidTestImplementation(composeBom)
+    androidTestImplementation(composeBom)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.activity.ktx)
@@ -226,8 +226,10 @@ dependencies {
     testImplementation(libs.turbine)
     // The unit tests run on the desktop JVM and need the desktop native library.
     testImplementation(libs.onnxruntime.desktop)
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.androidx.test.ext)
     androidTestImplementation(libs.androidx.test.espresso.core)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
 
 // `onnxruntime-android` and the desktop `onnxruntime` ship the same `ai.onnxruntime` classes. The JVM
