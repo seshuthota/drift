@@ -1,6 +1,6 @@
 # Drift typing intelligence — status and plan
 
-**Last updated:** 2026-11-12 (glide diagnostics and daily-use release build; first version 2026-11-08)
+**Last updated:** 2026-11-14 (suggestion-bar render trace; first version 2026-11-08)
 **Scope:** glide decoder, next-word prediction, typo correction/autocorrect, and the input pipeline around them
 **Companion documents:** `ml/REPORT.md` (swipe CTC prototype), `ml/nwp/README.md` (next-word model)
 
@@ -22,7 +22,7 @@
 | Autocorrect | On space / punctuation, only when confident. Unknown words need margin ≥ 2.5 over the runner-up. A fix that only adds apostrophes (`dont` → `don't`) needs margin ≥ 0.8 against the runner-up, or against the typed word when that word is in the dictionary. Other dictionary words are left as typed. Backspace right after undoes it and the word is not corrected again. Bold candidate = will autocorrect. Pref `correction__auto_correct` (default on), quick action toggles it | Unit tests: `recieve`, `teh`, `dont` correct; `ill`, `id`, `were`, `its`, `pout` stay. The 98.1 % precision / 71.5 % recall figure is from the previous 128–255 dictionary |
 | Browser omnibox | Inline autocompletion is no longer treated as a user selection, so suggestions keep working in address bars | unit-tested; device run did not trigger an inline completion |
 | Short glides | Two-letter words on neighbouring keys (`we`, `as`, `re`) are recognized on release; vertical moves stay taps. A real finger stroke from `o` to `k` still commits `on` after the endpoint term (preview had `ok` second). Parked | synthetic + one device retest |
-| Raw editors (Termux) | `TYPE_NULL` fields get a tail-only commit. Backspace sends `U+007F` and keeps going after Drift's buffer is empty. Enter commits `\n` (Termux makes that a carriage return). Arrows, Home/End, Page Up/Down, forward delete, and word-delete (Ctrl+W) commit the sequences Termux's `KeyHandler` writes for a normal shell. Ctrl+Z is not sent (that byte suspends the job). `RawInputReplaceTest` | installed on I2401. Letters, backspace, and Enter checked on device. Navigation sequences are unit-tested and in that build; not pressed on device in this session |
+| Raw editors (Termux) | `TYPE_NULL` fields get a tail-only commit. Backspace sends `U+007F` and keeps going after Drift's buffer is empty. Enter commits `\n` (Termux makes that a carriage return). Arrows, Home/End, Page Up/Down, forward delete, and word-delete (Ctrl+W) commit the sequences Termux's `KeyHandler` writes for a normal shell. Ctrl+Z is not sent (that byte suspends the job). A post-glide alternative swaps the committed word through the tracked span (`ImeEditor.replaceRawTail`): the rich path's `getTextBeforeCursor` guard never matches in Termux, and the raw path's replace span is the whole tracked line, not the tail. `RawInputReplaceTest` | installed on I2401. Letters, backspace, and Enter checked on device. Navigation sequences are unit-tested and in that build; not pressed on device in this session. Glide-alternative replacement is covered by `PointerTextGoldenTest` (12/12 on the API 35 emulator; the raw case fails with the old controller path) but is **not yet checked in Termux on a phone** (pending) |
 
 ### Device check (Vivo I2401, Android 16, injected gestures)
 
@@ -102,6 +102,7 @@ Ordered by impact on users.
      translated strings); CI does not run lint.
    - The autocorrect switch uses the spellcheck icon, same idea as the auto-space row beside it.
    - **Termux (and any `TYPE_NULL` editor) — fixed 2026-11-11.** Drift replaces the whole current span on every key via `setComposingRegion` + `commitText`. A normal field rewrites that span. Termux keeps a scratch buffer, writes it to the shell, and clears it, so each key appended the whole word (`h`, `hhe`, `hhehel`). Key events (`deleteSurroundingText`, Enter, arrows) do not reach the shell. Letters send only the new tail. Backspace sends `U+007F` and keeps sending one after the tracked buffer is empty. Enter commits `\n`. Arrows, Home/End, Page Up/Down, and forward delete commit Termux's normal-shell sequences (`ESC [ A` and the rest). Word-delete commits Ctrl+W. Ctrl+Z is not sent. Typing latency in Termux is TUI-bound, not the IME: a plain shell and an idle `opencode` prompt accept a five-key burst within 300 ms; the delay appears only while `opencode` is working, when its event loop queues keystrokes.
+    - **Termux glide alternatives — coded 2026-11-13, phone check pending.** After a glide, tapping a different word in the candidate row did nothing: `emitGlideReplacement` first compared `getTextBeforeCursor` with the committed word, which is always empty in a `TYPE_NULL` editor, and `replaceBeforeCursor` then passed only the tail as the replace span, which the raw path diffs against the whole tracked line. Raw editors now swap the tail of k3's tracked text (`ImeEditor.replaceRawTail`, `rawTailReplacement`) and `resetContent` re-seeds k3's model and `inputContext` with the new line. The remaining alternatives are re-targeted at the new word, so a second pick still works. `RawInputReplaceTest` covers the tail math; `PointerTextGoldenTest` drives the whole pick into a Termux-like connection (12/12 on the API 35 emulator, and the raw case fails when the controller fix is reverted). Still to check on the phone: tap a non-top alternative in real Termux.
 7. **Licensing/attribution — on the About screen.** Glide training data is the FUTO swipe dataset (MIT).
    Next-word training data is FineWeb (ODC-By) and OpenAssistant Conversations (Apache-2.0).
 
@@ -148,9 +149,11 @@ In recommended order. Each item says what it fixes.
    The feedback link was already done (issue 6).
 7. **Licensing notices — done.** About shows the FUTO swipe dataset (MIT), FineWeb (ODC-By), and
    OpenAssistant Conversations (Apache-2.0). Multilingual glide (Phase 4) is still later.
-8. **Termux raw input — done.** Issue 6. Letters, backspace, Enter, arrows, Home/End, Page Up/Down,
-   forward delete, and word-delete. Installed on I2401. Navigation sequences are covered by
-   `RawInputReplaceTest` and were not pressed on the phone in this session.
+8. **Termux raw input — done, one device check pending.** Issue 6. Letters, backspace, Enter, arrows,
+   Home/End, Page Up/Down, forward delete, and word-delete. Installed on I2401. Navigation sequences are
+   covered by `RawInputReplaceTest` and were not pressed on the phone in this session. Post-glide
+   alternatives now swap the committed word through the tracked span (`ImeEditor.replaceRawTail`,
+   2026-11-13); the golden trace passes on the emulator, the real-Termux tap is still pending.
 9. **Kotlin-path accuracy test — done.** Issue 5. 200 real traces, shipped ONNX + beam + prior +
    endpoint term, Python parity. This also acts as the first golden-trace regression guard; a larger
    end-to-end suite (pointer events → committed text) is still open under Phase 6.
@@ -172,9 +175,15 @@ In recommended order. Each item says what it fixes.
    `PointerTracker.handleDown/handleUp` through the real `ImeController` and `ImeEditor` into a recording
    `InputConnection` for taps, space, backspace, double-space period, raw-editor tail commits
    (`a`/`b`/`U+007F`), autocorrect (`teh` → `the`) and a real neural glide commit (`the`) via
-   `GlideTypingManager` with an injected controller provider. 7/7 on the I2401; the full instrumented
-   suite (including the latency and app-context tests) is 9/9 on the API 35 emulator. Completion selection
-   and the suggestion bar are still open.
+   `GlideTypingManager` with an injected controller provider. Completion selection and picking a glide
+   alternative are covered too (2026-11-13): a `WordSuggestionCandidate` replaces the partial word, and a
+   non-top glide alternative replaces the committed word in a rich editor and in a Termux-shaped
+   connection (`raw = true`: no readable text, no composing regions, `U+007F` erases). 7/7 on the I2401;
+   12/12 on the API 35 emulator. Reverting the raw controller fix fails exactly the raw alternative test,
+   so it is a real regression guard. The rendered row is covered by `CandidatesRowGoldenTest` (2026-11-14):
+   `CandidatesRow` composes inside the real theme and controller locals, the two injected candidates are
+   asserted visible, and a raw touch click on the second one commits `help `. 2/2; the full instrumented
+   suite is 16/16 on the API 35 emulator. Smartbar actions and expansion are still open.
 14. **Daily-use build and real-use data — done.** Signed release APK (debug key) built and smoke-tested;
    DevTools has a new "Glide diagnostics" toggle (off by default) that records committed glide traces,
    top candidates, decode time and raw/rich editor to `Android/data/io.github.seshuthota.drift/files/
@@ -205,6 +214,10 @@ In recommended order. Each item says what it fixes.
 5. **Language/layout order** after English QWERTY.
 6. **FUTO weights — decided.** Stay dataset-only. The accuracy bar in decision 1 was met without them.
 7. **Device data collection.** Opt-in capture of swipe traces (no text) to measure domain shift.
+8. **Word suggestions in raw editors — decided: none.** Termux keeps glide alternatives only, because they
+   are the glide correction itself. The shipped dictionary is prose, so ordinal completions on a command
+   line would be noise, and autocorrect must never rewrite a command. `emitCompletion` and
+   `requestSuggestions` stay closed for `TYPE_NULL` fields.
 
 ---
 
@@ -233,6 +246,19 @@ In recommended order. Each item says what it fixes.
   `hello`, `hello world`, backspace, double-space period, raw-editor tail commits, autocorrect
   (`teh` → `the`) and a glide commit (`the`); 7/7 on the I2401 and the full instrumented suite is 9/9 on
   the API 35 emulator. Completion selection and the suggestion bar are not covered yet.
+- **End to end (2026-11-13):** three cases added: `completionCandidateReplacesTheTypedWord`
+  (`hel` → `hello `), `glideAlternativeReplacesTheCommittedWord`, and
+  `rawGlideAlternativeReplacesTheCommittedWord`, the last into a connection that reports no text, rejects
+  composing regions and erases on `U+007F` like Termux. 12/12 on the API 35 emulator
+  (`medium_phone_api35`, ~24 s). Reverting only `ImeController`'s raw branch fails the raw case and
+  nothing else.
+- **Rendered candidates row (2026-11-14):** `CandidatesRowGoldenTest` composes the real `CandidatesRow`
+  through `ProvideSnyggTheme` with `LocalImeController`/`LocalInteractionController` provided, injects
+  `hello`/`help` via `NlpManager.suggestDirectly` (clipboard suggestions disabled for the test, restored
+  after), asserts both labels are displayed, and sends one raw touch click at the `help` node. The commit
+  must leave `help ` in the editor, which proves the row's pointer handler reaches `emitCompletion`, not
+  just that the text rendered. 2/2 on the API 35 emulator; the whole instrumented suite is 16/16.
+  Smartbar actions and auto-expansion are not covered.
 - **Frozen baselines:** glide 400k/ch128/147k = 89.38 / 95.03 / 95.90 % top-1/3/5; previous app-dictionary
   decoder with LM λ 0.4 = 89.87 % top-1; typo corrector on the 128–255 dictionary = 89.1 / 96.9 % top-1/3.
 - **Wired lexicon (2026-11-11):** same 400k checkpoint, log prior k = 0.4, 60,564-word list = 89.38 / 94.17 %
@@ -303,9 +329,10 @@ In recommended order. Each item says what it fixes.
 - Done: typo correction, autocorrect with undo, short-glide recognition, omnibox fix, personal learning
   (focus item 4), About licensing (issue 7), double-space period, Termux raw input (focus item 8), the
   decoder-level golden-trace test (issue 5, focus item 9), and the first end-to-end pointer → text traces
-  (focus item 13: taps, space, backspace, double-space period, raw editor, autocorrect, glide). Real-use
-  diagnostics and the release build are focus item 14.
-- Remaining: completion selection and other suggestion-bar traces. Real-finger confirmation of the
+  (focus item 13: taps, space, backspace, double-space period, raw editor, autocorrect, glide) with the
+  rendered candidates row. Real-use diagnostics and the release build are focus item 14.
+- Remaining: smartbar actions and auto-expansion (candidate rendering and selection are covered since
+  2026-11-14), plus the real-Termux check of a glide-alternative pick. Real-finger confirmation of the
   edge-back gesture (issue 4) is still deferred. Phase 3 still wants a conversational corpus that
   transfers to the chat benchmark (UltraChat did not). Phase 4 (multilingual glide) has not started.
   Decisions still open: language order (5), opt-in device traces (7). The sealed set stays at 4,000 rows
