@@ -26,7 +26,8 @@ ksp = "2.3.11"
 material-kolor = "4.1.1"
 mikepenz-aboutlibraries = "15.2.0"
 okio = "3.18.2"
-onnxruntime = "1.22.0"
+onnxruntime = "1.23.2"
+moonshine-voice = "0.1.5"
 patrickgold-compose-tooltip = "0.2.0-rc02"
 patrickgold-jetpref = "0.5.0-beta01"
 
@@ -81,6 +82,7 @@ mikepenz-aboutlibraries-core = { module = "com.mikepenz:aboutlibraries-core", ve
 mikepenz-aboutlibraries-compose = { module = "com.mikepenz:aboutlibraries-compose-m3", version.ref = "mikepenz-aboutlibraries" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android", version.ref = "onnxruntime" }
+moonshine-voice = { module = "ai.moonshine:moonshine-voice", version.ref = "moonshine-voice" }
 onnxruntime-desktop = { module = "com.microsoft.onnxruntime:onnxruntime", version.ref = "onnxruntime" }
 patrickgold-compose-tooltip = { module = "dev.patrickgold.compose.tooltip:tooltip", version.ref = "patrickgold-compose-tooltip" }
 patrickgold-jetpref-datastore-model = { module = "dev.patrickgold.jetpref:jetpref-datastore-model", version.ref = "patrickgold-jetpref" }

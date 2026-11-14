@@ -6,6 +6,13 @@
 -keep class ai.onnxruntime.** { *; }
 -dontwarn ai.onnxruntime.**
 
+# moonshine-voice calls back into its Java classes from JNI by name.
+-keep class ai.moonshine.voice.** { *; }
+-dontwarn ai.moonshine.voice.**
+-dontwarn androidx.work.**
+-dontwarn okhttp3.**
+-dontwarn com.google.android.material.**
+
 # Keep `Companion` object fields of serializable classes.
 # This avoids serializer lookup through `getDeclaredClasses` as done for named companion objects.
 -if @kotlinx.serialization.Serializable class **

@@ -20,14 +20,20 @@ package io.github.seshuthota.drift.ime.asr
  * Built-in ASR model catalog. Rows are data; testing a new Whisper size or a different model family only adds a
  * row (and a [AsrModelSpec.engineId] that an engine in the factory implements).
  *
- * Checksums and sizes are the LFS metadata of `ggerganov/whisper.cpp` on Hugging Face, which is also the download
+ * Whisper checksums and sizes are the LFS metadata of `ggerganov/whisper.cpp` on Hugging Face, which is also the download
  * host. Weights: MIT (OpenAI Whisper), GGML conversion by ggerganov/whisper.cpp.
  */
 object AsrModelRegistry {
     const val WHISPER_CPP = "whisper.cpp"
+    const val MOONSHINE = "moonshine"
 
     const val DEFAULT_MODEL_ID = "whisper-tiny-q5_1"
     const val ENGLISH_MODEL_ID = "whisper-tiny-en-q5_1"
+    const val MOONSHINE_TINY_EN_ID = "moonshine-tiny-streaming-en"
+
+    // Sizes and SHA-256 measured from the files on 2026-11-14; the folder name is Moonshine's own release tag.
+    private const val MOONSHINE_TINY_EN_HOST =
+        "https://download.moonshine.ai/model/tiny-streaming-en/quantized_26_08_21/"
 
     private const val HOST = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/"
     private const val LICENSE = "MIT"
@@ -70,7 +76,65 @@ object AsrModelRegistry {
                 ),
             ),
         ),
+        AsrModelSpec(
+            id = MOONSHINE_TINY_EN_ID,
+            displayName = "Moonshine Tiny Streaming (English, live)",
+            engineId = MOONSHINE,
+            languageTag = "en",
+            license = "MIT",
+            attribution = "Moonshine Streaming by Moonshine AI (MIT)",
+            files = listOf(
+                moonshineTinyEn(
+                    "adapter.ort",
+                    "22ecc949e146c49667fda28d102d4e30749a107dc88a396292aa8f277ef1347c",
+                    1_319_664,
+                ),
+                moonshineTinyEn(
+                    "cross_kv.ort",
+                    "143a36667b8d05fd9d04e8c337b7ee121f37ef299aea6b3d82bdb3d3401950b4",
+                    1_287_544,
+                ),
+                moonshineTinyEn(
+                    "decoder_kv.ort",
+                    "8852553f312adb6c9aa4d17418015049b30f412209ee569d336548c0044627de",
+                    32_583_720,
+                ),
+                moonshineTinyEn(
+                    "decoder_kv_with_attention.ort",
+                    "c1b41adca4ef75ad8dfdfc71875b5d0ae9be959865a14498da01cbddab8c02b8",
+                    32_515_016,
+                ),
+                moonshineTinyEn(
+                    "encoder.ort",
+                    "a8414e1a5dedf9f2093d7680601dd8a9b0433e7020260eafe0e370ead91134ca",
+                    7_675_440,
+                ),
+                moonshineTinyEn(
+                    "frontend.model.ort",
+                    "5121b561417b638afce0c6c31b760e37c93cf97f80d9b0031aad1fe7b6f25d61",
+                    23_344,
+                ),
+                moonshineTinyEn(
+                    "frontend.weights.ort",
+                    "217da24ac6f522ebf02da8ef288e77d1ac68d50d4a6821433182e4fbf4204bbd",
+                    2_093_464,
+                ),
+                moonshineTinyEn(
+                    "streaming_config.json",
+                    "74fe5ddebd63b17caf59e8a3b18c17547ff7bce1642050edbb1c3962674f8950",
+                    509,
+                ),
+                moonshineTinyEn(
+                    "tokenizer.bin",
+                    "6884b35fd6377d4c4d32336a0bc152f36b64d1e45b6503683cdc238250a8472d",
+                    249_974,
+                ),
+            ),
+        ),
     )
+
+    private fun moonshineTinyEn(name: String, sha256: String, bytes: Long) =
+        AsrModelFile(name, MOONSHINE_TINY_EN_HOST + name, sha256, bytes)
 
     fun spec(id: String): AsrModelSpec? = models.firstOrNull { it.id == id }
 

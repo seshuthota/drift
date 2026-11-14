@@ -84,6 +84,7 @@ class AsrController(
     private val appContext = context.applicationContext
     private val recorder = AudioRecorder(appContext)
     private val engine = WhisperCppEngine()
+    private val streamingEngine: StreamingAsrEngine = MoonshineEngine()
     private val engineLock = Mutex()
 
     private val _state = MutableStateFlow<AsrState>(AsrState.Idle)
@@ -124,6 +125,7 @@ class AsrController(
             flogInfo { "voice: piece of ${durationMs(pcm)}ms, ${speechMs}ms speech, ${levelDbLabel(pcm)} dBFS" }
             session?.queue?.trySend(pcm)
         }
+        recorder.onAudio = { pcm -> session?.queue?.trySend(pcm) }
         recorder.onInterrupted = {
             flogInfo { "voice: capture was interrupted" }
             scope.launch(Dispatchers.Main) {
@@ -163,14 +165,23 @@ class AsrController(
         }
         val current = Session(SystemClock.elapsedRealtime(), keyboardLanguage())
         session = current
-        if (!recorder.start(AudioRecorder.Config(cutter = SegmentCutter()))) {
+        val streaming = installed.spec.engineId == streamingEngine.id
+        val config = if (streaming) {
+            AudioRecorder.Config(stream = true)
+        } else {
+            AudioRecorder.Config(cutter = SegmentCutter())
+        }
+        if (!recorder.start(config)) {
             session = null
             _state.value = AsrState.Error(AsrError.MicrophoneBusy)
             return
         }
         _state.value = AsrState.Recording
+        imeControllerProvider()?.beginExternalEdit()
         flogInfo { "voice: dictation started with ${installed.spec.id}, language ${current.language ?: "auto"}" }
-        current.worker = scope.launch { transcribeAll(current, installed) }
+        current.worker = scope.launch {
+            if (streaming) streamAll(current, installed) else transcribeAll(current, installed)
+        }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -216,13 +227,7 @@ class AsrController(
         val text = stripNonSpeech(result.text)
         flogInfo { "voice: preview of ${durationMs(pcm)}ms in ${result.inferenceMs}ms -> \"$text\"" }
         if (text.isEmpty()) return
-        onMain(current) {
-            val editor = editor() ?: return@onMain
-            if (!editor.supportsLivePreview) return@onMain
-            val prefix = current.piecePrefix ?: spacePrefix(editor).also { current.piecePrefix = it }
-            editor.setLivePreview(prefix + text)
-            current.previewEditor = editor
-        }
+        onMain(current) { showPreview(current, text) }
     }
 
     /** Transcribes a finished piece at full quality and commits it in place of its preview. */
@@ -236,27 +241,89 @@ class AsrController(
         if (session === current) _busy.value = true
         try {
             val result = engineLock.withLock {
-                engine.transcribe(boosted(pcm), AudioRecorder.SAMPLE_RATE, current.typedTail, false, current.language)
+                engine.transcribe(
+                    boosted(pcm),
+                    AudioRecorder.SAMPLE_RATE,
+                    current.typedTail,
+                    false,
+                    current.language,
+                )
             }
             val text = stripNonSpeech(result.text)
             flogInfo {
-                "voice: ${durationMs(raw)}ms piece, ${durationMs(pcm)}ms after trim, in ${result.inferenceMs}ms -> \"$text\""
+                "voice: ${durationMs(raw)}ms piece, ${durationMs(pcm)}ms after trim, " +
+                    "in ${result.inferenceMs}ms -> \"$text\""
             }
-            onMain(current) {
-                val editor = current.previewEditor ?: editor()
-                if (editor == null || text.isEmpty()) {
-                    clearPreview(current)
-                    return@onMain
-                }
-                val prefix = current.piecePrefix ?: spacePrefix(editor)
-                editor.commitLiveText(prefix + text)
-                current.typedTail = (current.typedTail + prefix + text).takeLast(MAX_PROMPT_CHARS)
-                current.piecePrefix = null
-                current.previewEditor = null
-            }
+            onMain(current) { commitPiece(current, text) }
         } finally {
             if (session === current) _busy.value = false
         }
+    }
+
+    /**
+     * Streaming engines: feeds every captured chunk as it arrives and shows the engine's events. The engine ends
+     * lines at pauses itself, so there is no cutter, trimming or re-transcription here.
+     */
+    private suspend fun streamAll(current: Session, installed: InstalledAsrModel) {
+        try {
+            engineLock.withLock {
+                streamingEngine.load(installed)
+                streamingEngine.start()
+            }
+            val gain = AutoGain()
+            for (pcm in current.queue) {
+                val events = engineLock.withLock { streamingEngine.addAudio(gain.process(pcm)) }
+                showStreamEvents(current, events)
+            }
+            showStreamEvents(current, engineLock.withLock { streamingEngine.stop() })
+            onMain(current) { clearPreview(current) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            flogInfo { "voice: streaming failed: ${e.message}" }
+            scope.launch(Dispatchers.Main) {
+                if (session === current) fail(AsrError.Failure(e.message ?: e.javaClass.simpleName))
+            }
+        }
+    }
+
+    private suspend fun showStreamEvents(current: Session, events: List<StreamEvent>) {
+        if (events.isEmpty()) return
+        for (event in events) {
+            if (event is StreamEvent.Final) flogInfo { "voice: line ${event.lineId} final -> \"${event.text}\"" }
+        }
+        onMain(current) {
+            for (event in events) {
+                val text = stripNonSpeech(event.text)
+                when (event) {
+                    is StreamEvent.Partial -> if (text.isNotEmpty()) showPreview(current, text)
+                    is StreamEvent.Final -> commitPiece(current, text)
+                }
+            }
+        }
+    }
+
+    /** Shows [text] as the live preview of the current piece. Main thread only. */
+    private fun showPreview(current: Session, text: String) {
+        val editor = current.previewEditor ?: editor() ?: return
+        if (!editor.supportsLivePreview) return
+        val prefix = current.piecePrefix ?: spacePrefix(editor).also { current.piecePrefix = it }
+        editor.setLivePreview(prefix + text)
+        current.previewEditor = editor
+    }
+
+    /** Commits [text] as the final text of the current piece, in place of its preview. Main thread only. */
+    private fun commitPiece(current: Session, text: String) {
+        val editor = current.previewEditor ?: editor()
+        if (editor == null || text.isEmpty()) {
+            clearPreview(current)
+            return
+        }
+        val prefix = current.piecePrefix ?: spacePrefix(editor)
+        editor.commitLiveText(prefix + text)
+        current.typedTail = (current.typedTail + prefix + text).takeLast(MAX_PROMPT_CHARS)
+        current.piecePrefix = null
+        current.previewEditor = null
     }
 
     /** Runs [block] on the main thread if [current] is still the active dictation. */
@@ -311,6 +378,7 @@ class AsrController(
             current.worker?.join()
             if (session !== current) return@launch
             session = null
+            imeControllerProvider()?.endExternalEdit()
             if (_state.value == AsrState.Transcribing) _state.value = AsrState.Idle
             if (!prefs.voice.keepModelLoaded.get()) closeEngineWhenIdle()
         }
@@ -336,6 +404,7 @@ class AsrController(
         val current = session ?: return
         clearPreview(current)
         session = null
+        imeControllerProvider()?.endExternalEdit()
         current.queue.close()
         current.worker?.cancel()
         _busy.value = false
@@ -349,13 +418,21 @@ class AsrController(
 
     fun release() {
         cancel()
-        scope.launch { engineLock.withLock { engine.close() } }
+        scope.launch {
+            engineLock.withLock {
+                engine.close()
+                streamingEngine.close()
+            }
+        }
     }
 
     private fun closeEngineWhenIdle() {
         scope.launch {
             engineLock.withLock {
-                if (session == null) engine.close()
+                if (session == null) {
+                    engine.close()
+                    streamingEngine.close()
+                }
             }
         }
     }

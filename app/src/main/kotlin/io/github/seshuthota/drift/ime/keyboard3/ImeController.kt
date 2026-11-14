@@ -204,6 +204,28 @@ class ImeController(
         }
     }
 
+    /**
+     * True while something other than k3 (voice input) is writing composing text into the field. Selection
+     * updates are ignored meanwhile: k3 would re-evaluate the composition and shrink the composing region to the
+     * last word, so the next live preview replaced only that word and the text piled up. k3 resyncs on the first
+     * selection update after this is cleared.
+     */
+    @Volatile
+    var isExternalEditActive: Boolean = false
+        private set
+
+    fun beginExternalEdit() {
+        isExternalEditActive = true
+    }
+
+    /** Ends an external edit and resyncs k3 with the field, whose last selection updates may have been skipped. */
+    fun endExternalEdit() {
+        if (!isExternalEditActive) return
+        isExternalEditActive = false
+        val selection = activeState.value.editor.currentSelection() ?: return
+        updateStateBlocking { handleUpdateSelection(selection) }
+    }
+
     fun setEmitInterceptor(interceptor: EmitInterceptor?) {
         emitInterceptor.store(interceptor)
     }
@@ -330,6 +352,7 @@ class ImeController(
         }
 
         fun handleUpdateSelection(newSelection: K3TextRange) {
+            if (isExternalEditActive) return
             val content = expectedContentQueue.popUntilOrNull { it.selection == newSelection }
             if (content != null) {
                 flogDebug { "DEDUPLICATED!!1" }

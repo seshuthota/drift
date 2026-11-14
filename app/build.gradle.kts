@@ -17,6 +17,9 @@
 import com.android.build.api.dsl.ApplicationExtension
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+import java.util.zip.ZipOutputStream
 
 plugins {
     alias(libs.plugins.agp.application)
@@ -172,6 +175,43 @@ kover {
     useJacoco()
 }
 
+/**
+ * Removes the ONNX Runtime that moonshine-voice bundles. It is a minimal build that only reads `.ort` models, while
+ * Drift's next-word and glide models are `.onnx`; both libraries share the file name `libonnxruntime.so`, so only
+ * one can ship. onnxruntime-android (same 1.23.2 version, full build) serves Moonshine too, which only uses ORT's
+ * stable C API.
+ */
+abstract class StripBundledOnnxRuntime : TransformAction<TransformParameters.None> {
+    @get:InputArtifact
+    abstract val input: Provider<FileSystemLocation>
+
+    override fun transform(outputs: TransformOutputs) {
+        val aar = input.get().asFile
+        val out = outputs.file("${aar.nameWithoutExtension}-without-ort.aar")
+        ZipFile(aar).use { zip ->
+            ZipOutputStream(out.outputStream()).use { zos ->
+                for (entry in zip.entries()) {
+                    if (entry.name.endsWith("/libonnxruntime.so")) continue
+                    zos.putNextEntry(ZipEntry(entry.name))
+                    zip.getInputStream(entry).use { it.copyTo(zos) }
+                    zos.closeEntry()
+                }
+            }
+        }
+    }
+}
+
+val ortStripped: Attribute<Boolean> = Attribute.of("drift.ortStripped", Boolean::class.javaObjectType)
+
+dependencies {
+    attributesSchema { attribute(ortStripped) }
+    artifactTypes.maybeCreate("aar").attributes.attribute(ortStripped, false)
+    registerTransform(StripBundledOnnxRuntime::class) {
+        from.attribute(ortStripped, false).attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, "aar")
+        to.attribute(ortStripped, true).attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, "aar")
+    }
+}
+
 dependencies {
     val composeBom = platform(libs.androidx.compose.bom)
     implementation(composeBom)
@@ -206,6 +246,14 @@ dependencies {
     implementation(libs.mikepenz.aboutlibraries.compose)
     implementation(libs.okio)
     implementation(libs.onnxruntime.android)
+    // Streaming speech-to-text. Its model downloader, TTS UI and WorkManager job are unused: Drift downloads
+    // models through AsrModelManager, so those transitive libraries are left out.
+    implementation(libs.moonshine.voice) {
+        attributes { attribute(ortStripped, true) }
+        exclude(group = "com.google.android.material", module = "material")
+        exclude(group = "androidx.work", module = "work-runtime")
+        exclude(group = "com.squareup.okhttp3", module = "okhttp")
+    }
     implementation(libs.patrickgold.compose.tooltip)
     implementation(libs.patrickgold.jetpref.datastore.model)
     ksp(libs.patrickgold.jetpref.datastore.model.processor)

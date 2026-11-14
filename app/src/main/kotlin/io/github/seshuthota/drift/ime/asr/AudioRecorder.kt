@@ -41,6 +41,8 @@ class AudioRecorder(private val context: Context) {
         val sampleRate: Int = SAMPLE_RATE,
         /** When set, the capture is handed out in pieces at the cutter's boundaries while it keeps running. */
         val cutter: SegmentCutter? = null,
+        /** When true, every chunk goes to [onAudio] as it is read and nothing is buffered; [cutter] is ignored. */
+        val stream: Boolean = false,
     )
 
     private val _amplitude = MutableStateFlow(0f)
@@ -65,6 +67,10 @@ class AudioRecorder(private val context: Context) {
      */
     @Volatile
     var onSegment: ((pcm: ShortArray, speechMs: Long) -> Unit)? = null
+
+    /** Called from the capture thread with each ~100 ms chunk in stream mode. Must not block or call [stop]. */
+    @Volatile
+    var onAudio: ((pcm: ShortArray) -> Unit)? = null
 
     @Volatile
     private var recording = false
@@ -147,7 +153,8 @@ class AudioRecorder(private val context: Context) {
         val cutter = config.cutter
         if (cutter == null || cutter.hasPendingSpeech) return rest
         if (rest != null) {
-            flogInfo { "voice: dropped last ${rest.size * 1_000L / config.sampleRate}ms, only ${cutter.pendingSpeechMs}ms speech" }
+            val ms = rest.size * 1_000L / config.sampleRate
+            flogInfo { "voice: dropped last ${ms}ms, only ${cutter.pendingSpeechMs}ms speech" }
         }
         return null
     }
@@ -215,12 +222,24 @@ class AudioRecorder(private val context: Context) {
             val db = if (rms <= 1e-6f) -120f else 20f * log10(rms)
             // Speech sits around -40..-15 dBFS, so raw RMS (0.01..0.2) would leave the level meter nearly flat.
             _amplitude.value = ((db - METER_FLOOR_DB) / (METER_CEIL_DB - METER_FLOOR_DB)).coerceIn(0f, 1f)
+            if (config.stream) {
+                peakDb = maxOf(peakDb, db)
+                if (++peakChunks == LEVEL_LOG_CHUNKS) {
+                    flogInfo { "voice: level peak %.1f dBFS".format(peakDb) }
+                    peakDb = -120f
+                    peakChunks = 0
+                }
+                onAudio?.invoke(chunk)
+                continue
+            }
             val cutter = config.cutter
             val action = cutter?.onChunk(db, read * 1_000L / config.sampleRate) ?: SegmentCutter.Action.KEEP
             peakDb = maxOf(peakDb, db)
             if (++peakChunks == LEVEL_LOG_CHUNKS) {
                 val threshold = cutter?.thresholdDb
-                flogInfo { "voice: level peak %.1f dBFS, speech threshold %.1f".format(peakDb, threshold ?: Float.NaN) }
+                flogInfo {
+                    "voice: level peak %.1f dBFS, speech threshold %.1f".format(peakDb, threshold ?: Float.NaN)
+                }
                 peakDb = -120f
                 peakChunks = 0
             }

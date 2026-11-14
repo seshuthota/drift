@@ -37,7 +37,8 @@ class AsrModelManagerTest : FunSpec({
         ids.toSet() shouldHaveSize ids.size
         AsrModelRegistry.default().id shouldBe AsrModelRegistry.DEFAULT_MODEL_ID
         AsrModelRegistry.default().languageTag shouldBe null
-        AsrModelRegistry.forEngine(AsrModelRegistry.WHISPER_CPP) shouldHaveSize AsrModelRegistry.models.size
+        val engines = listOf(AsrModelRegistry.WHISPER_CPP, AsrModelRegistry.MOONSHINE)
+        engines.sumOf { AsrModelRegistry.forEngine(it).size } shouldBe AsrModelRegistry.models.size
         for (spec in AsrModelRegistry.models) {
             spec.files.isEmpty().shouldBeFalse()
             spec.totalBytes shouldBeGreaterThan 1_000_000L

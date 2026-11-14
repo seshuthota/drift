@@ -21,6 +21,7 @@ import android.content.ContentUris
 import android.os.SystemClock
 import android.view.KeyCharacterMap
 import android.view.KeyEvent
+import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import androidx.core.view.inputmethod.InputConnectionCompat
 import androidx.core.view.inputmethod.InputContentInfoCompat
@@ -175,6 +176,17 @@ open class ImeEditor(
     fun performClipboardPaste(): Boolean {
         val ic = ic.get() ?: return false
         return ic.performContextMenuAction(android.R.id.paste)
+    }
+
+    /** The field's current selection, read from the editor, or null when it cannot tell. */
+    fun currentSelection(): K3TextRange? {
+        val ic = ic.get() ?: return null
+        val extracted = ic.getExtractedText(ExtractedTextRequest(), 0) ?: return null
+        if (extracted.selectionStart < 0) return null
+        return K3TextRange(
+            start = extracted.startOffset + extracted.selectionStart,
+            end = extracted.startOffset + extracted.selectionEnd,
+        )
     }
 
     /** Whether [setLivePreview] can show text that is still changing; raw editors such as Termux cannot. */
