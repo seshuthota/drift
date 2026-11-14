@@ -143,7 +143,7 @@ class AsrModelManagerTest : FunSpec({
         }
     }
 
-    test("removeUnlisted deletes directories of models no longer in the registry") {
+    test("removeUnlisted deletes unknown model directories and undeclared files") {
         withTempRoot { root ->
             val spec = testSpec(byteArrayOf(1, 2, 3))
             val manager = AsrModelManager(root, listOf(spec), FakeProvider(emptyMap()))
@@ -152,9 +152,13 @@ class AsrModelManagerTest : FunSpec({
             val stale = File(root, "whisper-tiny-q5_1").apply { mkdirs() }
             File(stale, "ggml-tiny-q5_1.bin").writeBytes(byteArrayOf(9))
 
+            val undeclared = File(kept, "decoder_kv_with_attention.ort").apply { writeBytes(byteArrayOf(7)) }
+
             manager.removeUnlisted()
 
             kept.exists().shouldBeTrue()
+            File(kept, "model.bin").exists().shouldBeTrue()
+            undeclared.exists().shouldBeFalse()
             stale.exists().shouldBeFalse()
         }
     }

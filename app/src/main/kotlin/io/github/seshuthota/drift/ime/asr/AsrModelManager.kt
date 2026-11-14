@@ -84,10 +84,21 @@ class AsrModelManager(
 
     fun installedModels(): List<InstalledAsrModel> = registry.mapNotNull { installed(it) }
 
-    /** Deletes model directories that no registry row names anymore, e.g. models of a removed engine. */
+    /**
+     * Deletes model directories that no registry row names anymore (e.g. models of a removed engine), and files a
+     * model no longer declares (e.g. an optional file dropped from its row).
+     */
     fun removeUnlisted() {
-        val known = registry.map { it.id }.toSet()
-        root.listFiles()?.filter { it.isDirectory && it.name !in known }?.forEach { it.deleteRecursively() }
+        val known = registry.associateBy { it.id }
+        for (entry in root.listFiles().orEmpty()) {
+            val spec = known[entry.name]
+            if (spec == null) {
+                entry.deleteRecursively()
+                continue
+            }
+            val declared = spec.files.map { it.name }.toSet()
+            entry.listFiles().orEmpty().filter { it.isFile && it.name !in declared }.forEach { it.delete() }
+        }
     }
 
     /**

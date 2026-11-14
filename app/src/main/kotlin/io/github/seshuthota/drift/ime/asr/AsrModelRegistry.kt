@@ -20,6 +20,9 @@ package io.github.seshuthota.drift.ime.asr
  * Built-in ASR model catalog. Rows are data; another size or language of the same family only adds a row, and a
  * different family adds a row plus a [StreamingAsrEngine] for its [AsrModelSpec.engineId].
  *
+ * `decoder_kv_with_attention.ort` (32 MB) is left out: Moonshine only loads it when present, logs a warning
+ * otherwise, and its own non-English models ship without it; it serves word-level timing, which Drift does not use.
+ *
  * Moonshine sizes and SHA-256 were measured from the downloaded files on 2026-11-14; the folder in the URL is
  * Moonshine's own release tag. Weights: MIT, Moonshine AI.
  */
@@ -55,11 +58,6 @@ object AsrModelRegistry {
                     "decoder_kv.ort",
                     "8852553f312adb6c9aa4d17418015049b30f412209ee569d336548c0044627de",
                     32_583_720,
-                ),
-                moonshineTinyEn(
-                    "decoder_kv_with_attention.ort",
-                    "c1b41adca4ef75ad8dfdfc71875b5d0ae9be959865a14498da01cbddab8c02b8",
-                    32_515_016,
                 ),
                 moonshineTinyEn(
                     "encoder.ort",

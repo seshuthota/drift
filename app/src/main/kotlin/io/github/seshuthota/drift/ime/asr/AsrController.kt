@@ -22,6 +22,7 @@ import io.github.seshuthota.drift.app.DriftPreferenceModel
 import io.github.seshuthota.drift.ime.keyboard3.ImeController
 import io.github.seshuthota.drift.ime.keyboard3.ImeEditor
 import io.github.seshuthota.drift.lib.devtools.flogInfo
+import io.github.seshuthota.drift.libnative.purgeNativeMemory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -279,6 +280,8 @@ class AsrController(
         imeControllerProvider()?.endExternalEdit()
         current.queue.close()
         current.worker?.cancel()
+        // A cancelled or failed dictation frees the model too; otherwise it stays loaded until the next normal stop.
+        if (!prefs.voice.keepModelLoaded.get()) closeEngineWhenIdle()
     }
 
     fun dismissError() {
@@ -289,15 +292,22 @@ class AsrController(
 
     fun release() {
         cancel()
-        scope.launch { engineLock.withLock { engine.close() } }
+        scope.launch { engineLock.withLock { closeEngine() } }
     }
 
     private fun closeEngineWhenIdle() {
         scope.launch {
             engineLock.withLock {
-                if (session == null) engine.close()
+                if (session == null) closeEngine()
             }
         }
+    }
+
+    /** Frees the model and hands the freed pages back to the system, which the allocator would otherwise keep. */
+    private fun closeEngine() {
+        engine.close()
+        val purged = purgeNativeMemory()
+        flogInfo { "voice: model released, native memory purged=$purged" }
     }
 
     private fun selectedSpec(): AsrModelSpec? {
