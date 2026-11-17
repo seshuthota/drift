@@ -406,11 +406,18 @@ class ImeController(
             } else {
                 null
             }
+            val textBeforeWord = wordBeforeSeparator?.let { word ->
+                state.content.surroundingText.textBefore.let { it.subSequence(0, it.length - word.length).toString() }
+            }
             val corrected = if (wordBeforeSeparator != null) autocorrectBeforeSeparator() else null
             lastAutocorrection = null
             super.emitText(value)
             if (corrected == null && !wordBeforeSeparator.isNullOrEmpty() && isProseField()) {
                 nlpManager?.takeIf { it.isInitialized() }?.value?.noteTypedWord(wordBeforeSeparator, immediate = false)
+            }
+            if (!wordBeforeSeparator.isNullOrEmpty() && textBeforeWord != null && isProseField()) {
+                nlpManager?.takeIf { it.isInitialized() }?.value
+                    ?.learnWord(textBeforeWord, corrected?.corrected ?: wordBeforeSeparator)
             }
             if (!wordBeforeSeparator.isNullOrEmpty() && isQualityLogged()) {
                 if (corrected != null) {
@@ -479,7 +486,7 @@ class ImeController(
          * The field takes prose: not a raw editor, password, URL, email, name or no-suggestions field.
          * Autocorrect and personal learning only act here.
          */
-        private fun isProseField(): Boolean {
+        fun isProseField(): Boolean {
             val info = state.editor.info
             if (info.isRawInputEditor || !info.isRichInputEditor) return false
             val attributes = info.inputAttributes
@@ -495,7 +502,13 @@ class ImeController(
             ) {
                 return false
             }
+            val textBefore = state.content.surroundingText.textBefore
+            val textBeforeWord = textBefore.subSequence(0, textBefore.length - committed.length)
             if (!replaceBeforeCursor(committed.length, autocorrection.original)) return false
+            if (isProseField()) {
+                nlpManager?.takeIf { it.isInitialized() }?.value
+                    ?.replaceLearnedWord(textBeforeWord, autocorrection.corrected, autocorrection.original)
+            }
             flogDebug { "autocorrect reverted: '${autocorrection.corrected}' -> '${autocorrection.original}'" }
             if (isQualityLogged()) QualityLog.autocorrectUndone(autocorrection.original, autocorrection.corrected)
             rejectedAutocorrection = autocorrection.original
@@ -629,6 +642,7 @@ class ImeController(
             if (autocorrection != null && revertAutocorrection(autocorrection)) {
                 return
             }
+            nlpManager?.takeIf { it.isInitialized() }?.value?.onBackspace(state.content.surroundingText.textBefore)
             if (state.editor.info.isRawInputEditor) {
                 // k3 only deletes characters it has tracked since this field was focused. A terminal
                 // line is longer than that (prompt leftovers, text from before the keyboard attached),
@@ -744,6 +758,8 @@ class ImeController(
             val oldText = candidate.replacesText ?: return false
             val newText = candidate.text.toString() + " "
             if (oldText != newText) {
+                val textBefore = state.editor.getTextBeforeCursor(64)
+                val textBeforeWord = textBefore.subSequence(0, (textBefore.length - oldText.length).coerceAtLeast(0))
                 val replaced = if (state.editor.info.isRawInputEditor) {
                     replaceRawGlideTail(oldText, newText)
                 } else {
@@ -753,6 +769,10 @@ class ImeController(
                 if (!replaced) {
                     dismissGlideAlternatives()
                     return false
+                }
+                if (isProseField() && textBefore.endsWith(oldText)) {
+                    nlpManager?.takeIf { it.isInitialized() }?.value
+                        ?.replaceLearnedWord(textBeforeWord, oldText.trim(), newText.trim())
                 }
                 if (!state.flags.isIncognitoMode) {
                     val rank = nlpManager?.takeIf { it.isInitialized() }?.value?.activeCandidates.orEmpty()
@@ -892,9 +912,12 @@ class ImeController(
             val newText = (if (leadingSpace) " " else "") + text + " "
             val rank = nlpManager?.takeIf { it.isInitialized() }?.value?.activeCandidates.orEmpty().indexOf(candidate)
             val logged = isQualityLogged()
+            val textBeforeWord = before.subSequence(0, before.length - partial.length).toString() +
+                (if (leadingSpace) " " else "")
             if (!replaceBeforeCursor(partial.length, newText)) {
                 return false
             }
+            if (isProseField()) nlpManager?.takeIf { it.isInitialized() }?.value?.learnWord(textBeforeWord, text)
             if (logged) {
                 QualityLog.wordCommitted(
                     text,

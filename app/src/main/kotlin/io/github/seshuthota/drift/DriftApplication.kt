@@ -42,6 +42,7 @@ import io.github.seshuthota.drift.ime.keyboard3.ImeController
 import io.github.seshuthota.drift.ime.media.emoji.DriftEmojiCompat
 import io.github.seshuthota.drift.ime.nlp.NlpManager
 import io.github.seshuthota.drift.ime.nlp.latin.NextWordPredictor
+import io.github.seshuthota.drift.ime.nlp.latin.PersonalNgram
 import io.github.seshuthota.drift.ime.keyboard3.gesture.GlideTypingManager
 import io.github.seshuthota.drift.ime.theme.SystemThemeMode
 import io.github.seshuthota.drift.ime.theme.ThemeController
@@ -104,6 +105,9 @@ class DriftApplication : Application() {
     val glideTypingManager = lazy { GlideTypingManager(this) }
     val nlpManager = lazy { NlpManager(this) }
     val nextWordPredictor = lazy { NextWordPredictor(this) }
+    val personalNgram = lazy {
+        PersonalNgram(File(filesDir, "personal/ngram.tsv")) { UserManagerCompat.isUserUnlocked(this) }
+    }
     val subtypeManager = lazy { SubtypeManager(this) }
 
     override fun onCreate() {
@@ -225,5 +229,7 @@ fun Context.asrController() = this.inferDriftApplication().asrController
 fun Context.nlpManager() = this.inferDriftApplication().nlpManager
 
 fun Context.nextWordPredictor() = this.inferDriftApplication().nextWordPredictor
+
+fun Context.personalNgram() = this.inferDriftApplication().personalNgram
 
 fun Context.subtypeManager() = this.inferDriftApplication().subtypeManager

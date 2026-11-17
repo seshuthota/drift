@@ -40,6 +40,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.k3lp.lib.text.asK3String
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.exp
+import kotlin.math.ln
 
 /**
  * Orchestrates glide typing: keeps the classifier fed with layout and word data, throttles previews
@@ -181,11 +183,22 @@ class GlideTypingManager(
         val textBefore = imeControllerProvider()?.snapshotState()?.content?.surroundingText?.textBefore
             ?.toString() ?: return
         scope.launch {
-            val logProbs = predictor.nextWordLogProbs(textBefore, textBefore.length >= TRUNCATION_HINT_CHARS)
-                ?: return@launch
+            val truncated = textBefore.length >= TRUNCATION_HINT_CHARS
+            val logProbs = predictor.nextWordLogProbs(textBefore, truncated) ?: return@launch
+            // The user's own word sequences are mixed in, so a word they use after this context ranks higher.
+            val personal = if (nlpManager.isPersonalLearningActive()) nlpManager.personalNgram else null
+            val history = personal?.historyOf(textBefore, truncated)
+            val alpha = if (personal != null && history != null) personal.alpha(history) else 0.0
             val scorer: (String) -> Double = { word ->
                 val id = predictor.idOf(NwpText.normalize(word))
-                LM_WEIGHT * (if (id != null && id < logProbs.size) logProbs[id].toDouble() else -LM_FLOOR)
+                val modelLogProb = if (id != null && id < logProbs.size) logProbs[id].toDouble() else null
+                val logProb = if (alpha > 0.0 && personal != null && history != null) {
+                    val mixed = personal.mix(history, alpha, word, modelLogProb?.let { exp(it) } ?: 0.0)
+                    if (mixed > 0.0) maxOf(ln(mixed), -LM_FLOOR) else -LM_FLOOR
+                } else {
+                    modelLogProb ?: -LM_FLOOR
+                }
+                LM_WEIGHT * logProb
             }
             synchronized(classifierLock) {
                 if (glideId == forGlide) {
@@ -307,7 +320,9 @@ class GlideTypingManager(
                                 emitText(" ".asK3String())
                             }
                             val committed = cased.first() + " "
+                            val textBeforeWord = state.editor.getTextBeforeCursor(64)
                             emitText(committed.asK3String())
+                            if (isProseField()) nlpManager.learnWord(textBeforeWord, cased.first())
                             // Keep every candidate (the committed one included, so the user can switch
                             // back) as a one-tap replacement for the word that was just inserted.
                             alternatives = cased.mapIndexed { index, word ->

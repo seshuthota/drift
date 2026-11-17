@@ -26,6 +26,7 @@ import io.github.seshuthota.drift.ime.nlp.SuggestionCandidate
 import io.github.seshuthota.drift.ime.nlp.SuggestionProvider
 import io.github.seshuthota.drift.ime.nlp.WordSuggestionCandidate
 import io.github.seshuthota.drift.nextWordPredictor
+import io.github.seshuthota.drift.personalNgram
 import io.github.seshuthota.drift.lib.devtools.flogDebug
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -48,6 +49,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         /** The editor context window ([org.k3lp.runtime.K3SurroundingText.textBefore]) is ~50 chars at most. */
         private const val TRUNCATION_HINT_CHARS = 48
 
+        /** Model and personal candidates considered before the mixed ranking is cut to the row size. */
+        private const val PERSONAL_POOL = 20
+
         /** Shorter typed text is too ambiguous to correct. */
         private const val MIN_CORRECTION_LENGTH = 2
         private const val MAX_CORRECTIONS = 3
@@ -61,6 +65,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
     private val appContext by context.appContext()
     private val predictor by context.nextWordPredictor()
+    private val personalNgram by context.personalNgram()
     private val prefs by DriftPreferenceStore
 
     /**
@@ -154,12 +159,33 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val truncated = textBefore.length >= TRUNCATION_HINT_CHARS
         val sentenceStart = NwpText.isSentenceStart(contextText)
         val logProbs = predictor.nextWordLogProbs(contextText, truncated)
+        // The user's own word sequences, mixed into the model's probabilities (`PersonalNgram`).
+        val personal = if (prefs.correction.personalLearning.get()) personalNgram else null
+        val history = personal?.historyOf(contextText, truncated)
+        val alpha = if (personal != null && history != null) personal.alpha(history) else 0.0
         // The model vocabulary still contains spellings removed from the word list (`dont`, `recieve`).
         val predictions = if (logProbs == null) {
             emptyList()
         } else {
             val lexicon = corrector
-            predictor.predict(logProbs, prefix, maxCandidateCount) { word -> lexicon?.contains(word) == true }
+            val allowed = { word: String -> lexicon?.contains(word) == true }
+            if (alpha <= 0.0 || personal == null || history == null) {
+                predictor.predict(logProbs, prefix, maxCandidateCount, allowed)
+            } else {
+                val pool = LinkedHashMap<String, Double>()
+                for (p in predictor.predict(logProbs, prefix, PERSONAL_POOL, allowed)) {
+                    pool[p.word] = exp(p.logProb.toDouble())
+                }
+                // A word the user committed at least twice may be predicted even outside the dictionary (names).
+                for (word in personal.candidates(history, prefix, PERSONAL_POOL)) {
+                    if (word in pool || !(allowed(word) || personal.countOf(word) >= 2)) continue
+                    pool[word] = predictor.idOf(word)?.let { exp(logProbs[it].toDouble()) } ?: 0.0
+                }
+                pool.mapNotNull { (word, modelProb) ->
+                    val mixed = personal.mix(history, alpha, word, modelProb)
+                    if (mixed > 0.0) NextWordPredictor.Prediction(word, ln(mixed).toFloat()) else null
+                }.sortedByDescending { it.logProb }.take(maxCandidateCount)
+            }
         }
         val confidence = HashMap<String, Double>()
         for (prediction in predictions) {
@@ -178,7 +204,17 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
 
         val corrector = corrector
             ?: return completions.map { candidate(it, prefix, sentenceStart, confidence[it] ?: 0.0) }
-        val lm: ((String) -> Float?)? = logProbs?.let { lp -> { word -> predictor.idOf(word)?.let { lp[it] } } }
+        val lm: ((String) -> Float?)? = logProbs?.let { lp ->
+            { word ->
+                val modelLogProb = predictor.idOf(word)?.let { lp[it] }
+                if (alpha > 0.0 && personal != null && history != null) {
+                    val mixed = personal.mix(history, alpha, word, modelLogProb?.let { exp(it.toDouble()) } ?: 0.0)
+                    if (mixed > 0.0) ln(mixed).toFloat() else null
+                } else {
+                    modelLogProb
+                }
+            }
+        }
         // Results are best first and include the typed word when it is in the dictionary. A dictionary word still
         // gets the corrections that score above it (`dont` is absent, so `don't` can lead).
         val ranked = if (p.length < MIN_CORRECTION_LENGTH) emptyList() else corrector.correct(p, MAX_CORRECTIONS + 2, lm)

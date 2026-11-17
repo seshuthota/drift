@@ -31,8 +31,10 @@ import io.github.seshuthota.drift.ime.dictionary.DictionaryManager
 import io.github.seshuthota.drift.ime.nlp.latin.LatinLanguageProvider
 import io.github.seshuthota.drift.ime.nlp.latin.NwpText
 import io.github.seshuthota.drift.ime.nlp.latin.PersonalLearning
+import io.github.seshuthota.drift.ime.nlp.latin.PersonalNgram
 import io.github.seshuthota.drift.ime.nlp.latin.isTypingPosition
 import io.github.seshuthota.drift.inferDriftApplication
+import io.github.seshuthota.drift.personalNgram
 import io.github.seshuthota.drift.lib.util.NetworkUtils
 import io.github.seshuthota.drift.subtypeManager
 import kotlinx.coroutines.CoroutineScope
@@ -333,6 +335,54 @@ class NlpManager(context: Context) {
         }
     }
 
+    /** The user's word sequences; the latin provider and glide mix them into the next-word model. */
+    val personalNgram: PersonalNgram by appContext.personalNgram()
+
+    /** The last word handed to [learnWord] (text before it, word), so deleting it right away takes it back. */
+    private var lastLearned: Pair<String, String>? = null
+
+    /** Personal learning is on and the field is not incognito. Callers also check that the field takes prose. */
+    fun isPersonalLearningActive(): Boolean =
+        prefs.correction.personalLearning.get() && !imeController.snapshotState().flags.isIncognitoMode
+
+    /** [word] was committed after [textBeforeWord]. Main thread; the counting happens off it. */
+    fun learnWord(textBeforeWord: CharSequence, word: String) {
+        if (word.isBlank() || !isPersonalLearningActive()) return
+        val before = textBeforeWord.toString()
+        lastLearned = before to word
+        scope.launch { personalNgram.learn(before, before.length >= TRUNCATION_HINT_CHARS, word) }
+    }
+
+    /** The word committed after [textBeforeWord] changed from [old] to [new] (a glide pick or an autocorrect undo). */
+    fun replaceLearnedWord(textBeforeWord: CharSequence, old: String, new: String) {
+        if (!isPersonalLearningActive()) return
+        val before = textBeforeWord.toString()
+        lastLearned = before to new
+        scope.launch {
+            val truncated = before.length >= TRUNCATION_HINT_CHARS
+            personalNgram.unlearn(before, truncated, old)
+            personalNgram.learn(before, truncated, new)
+        }
+    }
+
+    /**
+     * A backspace is about to delete the character before the end of [textBefore]. When it reaches into the word
+     * just learned (its separator first, then the word itself), the word was wrong and is taken back.
+     */
+    fun onBackspace(textBefore: CharSequence) {
+        val (before, word) = lastLearned ?: return
+        val text = textBefore.toString()
+        when {
+            text.endsWith(word, ignoreCase = true) -> {
+                lastLearned = null
+                if (!isPersonalLearningActive()) return
+                scope.launch { personalNgram.unlearn(before, before.length >= TRUNCATION_HINT_CHARS, word) }
+            }
+            text.endsWith("$word ", ignoreCase = true) -> Unit
+            else -> lastLearned = null
+        }
+    }
+
     private suspend fun latinProvider(): LatinLanguageProvider? {
         val subtype = subtypeManager.activeSubtype
         return providers.withLock { it[subtype.nlpProviders.suggestion] }?.provider as? LatinLanguageProvider
@@ -538,3 +588,6 @@ class NlpManager(context: Context) {
             }
     }
 }
+
+/** The editor context window is ~50 chars; at or above this the text is assumed to be cut. */
+private const val TRUNCATION_HINT_CHARS = 48

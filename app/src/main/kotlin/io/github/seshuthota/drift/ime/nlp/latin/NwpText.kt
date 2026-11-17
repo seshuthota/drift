@@ -72,6 +72,31 @@ object NwpText {
         return out.subList(from, out.size).toIntArray()
     }
 
+    /**
+     * The tokens of [text] as [contextIds] sees them, as strings: words, `,`, and `<s>` for a sentence end
+     * (consecutive ends collapse). Words with digits become `<unk>`. When [truncated] the first token is dropped.
+     */
+    fun tokens(text: CharSequence, truncated: Boolean): List<String> {
+        val out = ArrayList<String>()
+        var first = true
+        for (match in TOKEN_RE.findAll(normalize(text))) {
+            if (truncated && first) {
+                first = false
+                continue
+            }
+            first = false
+            val tok = match.value
+            val c = tok[0]
+            when {
+                c == '\n' || c == '.' || c == '!' || c == '?' -> if (out.lastOrNull() != "<s>") out.add("<s>")
+                c == ',' -> if (out.isNotEmpty() && out.last() != "<s>" && out.last() != ",") out.add(",")
+                tok.any { it.isDigit() } -> out.add("<unk>")
+                else -> out.add(tok)
+            }
+        }
+        return out
+    }
+
     /** The word currently being typed directly before the cursor (letters and apostrophes), or "". */
     fun partialWord(textBefore: CharSequence): String =
         PARTIAL_WORD_RE.find(textBefore)?.value ?: ""
