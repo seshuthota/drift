@@ -83,8 +83,12 @@ data class GestureConfig(
     val glideMinVelocityPxPerMs: Float,
     /** A press older than this cannot become a glide anymore. */
     val glideMaxDurationMillis: Long,
-    /** Minimum distance between accepted glide points, as a fraction of the down key's width. */
-    val glideMinPointSpacingFraction: Float = 0.25f,
+    /**
+     * Minimum distance between accepted glide points, as a fraction of the down key's width. 0.10 keeps the path
+     * close to the density the decoder was trained on: `GlidePipelineSimulationTest` on 1,500 raw FUTO dev rows gave
+     * 90.67 % top-1 at 0.10 against 90.07 % at 0.25 (2026-11-17).
+     */
+    val glideMinPointSpacingFraction: Float = 0.10f,
     /**
      * Minimum release distance, as a fraction of the down key's width, for a press that never started gliding to
      * still count as a short glide between neighbouring keys. Past half a key width the finger is on another key.

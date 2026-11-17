@@ -221,9 +221,10 @@ class GlideTypingManager(
             return
         }
         synchronized(pointsLock) {
-            // Pointer moves already fed the classifier; the outcome list is only a fallback for
-            // streams that delivered no move samples at all.
-            if (addedPointCount == 0) {
+            // The outcome list is the recognizer's complete path: every streamed point plus the release point, which
+            // never arrives as a move. Without it the decoder misses where the stroke really ended.
+            if (points.isNotEmpty()) {
+                classifier.clear()
                 points.forEach { classifier.addGesturePoint(it) }
             }
         }
