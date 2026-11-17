@@ -63,6 +63,13 @@ diagnostics were off (the 2026-11-14 capture was lost with the 2026-11-15 reinst
   Capture keeps running 350 ms after the stop tap. `AutoGain` decay 0.98 → 0.95 per chunk (peak half-life ~3.4 s →
   ~1.4 s). Settings > Voice input has "Use the plain microphone input" (`MIC` instead of `VOICE_RECOGNITION`).
   None of this is measured yet: the clips are what will measure it.
+- **Parked: recursive improvement loop.** Tune the models themselves from the user's logs, round after round: label
+  logged glides (picks and retypes strong, kept weak), hold out the most recent days, tune decoder and mixing
+  weights by replay first, then fine-tune the CTC on the user's traces mixed with FUTO, then the LSTM. Ship only
+  what beats the current version on the held-out days without a FUTO sealed-set regression, as a model file pushed to
+  the phone (no reinstall), with the version in every log event. Prerequisites: version tag in `QualityLog`, model and
+  weight overrides loaded from `files/`, a log-to-dataset builder, and a replay-tune-gate script. Risk: unfixed wrong
+  glides become labels, so weight strong labels and always gate on held-out data.
 - **Next.** One week of logged use, then: a personal n-gram cache blended with the LSTM for predictions, glide
   fine-tuning on the user's own labelled traces, and the voice front-end A/B on saved clips.
 
