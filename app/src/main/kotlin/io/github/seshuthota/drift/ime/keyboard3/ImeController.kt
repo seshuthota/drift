@@ -353,11 +353,13 @@ class ImeController(
             )
             lastEditorSelection = null
             if (!info.isRawInputEditor) {
-                // EditorInfo carries only 20 characters each side, which can miss a link chip's placeholder. One
-                // live read catches fields that report on-screen text before k3 builds anything on them.
-                evaluateTrust(initialSelection, state.editor.getSurroundingText(50, 10), "startInputView")
+                // EditorInfo carries only 20 characters each side, which can miss a link chip's placeholder, so the
+                // field is read live as well. Either read distrusts it; the narrow one cannot undo the wide one.
+                val live = state.editor.getSurroundingText(50, 10)
+                val trustworthy = isSurroundingTextTrustworthy(initialSelection, live, initialSurrounding)
+                setTrust(!trustworthy, "startInputView", initialSelection)
             }
-            resetContent(initialSelection, initialSurrounding)
+            loadContent(initialSelection, initialSurrounding)
             expectedContentQueue.clear()
             lastAutocorrection = null
             rejectedAutocorrection = null
@@ -945,30 +947,26 @@ class ImeController(
          * Trust is decided per report, not per field: a field that reports its on-screen text for one read may report
          * its stored text the next, and a wrong guess only costs suggestions until the next report corrects it.
          */
-        private fun evaluateTrust(selection: K3TextRange, surrounding: K3SurroundingText, source: String) {
+        private fun setTrust(untrusted: Boolean, source: String, selection: K3TextRange) {
             val editor = state.editor
-            if (editor === ImeEditor.Disconnected) return
-            val untrusted = !isSurroundingTextTrustworthy(selection, surrounding)
-            if (editor.isTextUntrusted == untrusted) return
+            if (editor === ImeEditor.Disconnected || editor.isTextUntrusted == untrusted) return
             editor.isTextUntrusted = untrusted
             if (untrusted) {
-                flogWarning {
-                    "$source: field reports on-screen text, editing relatively selection=$selection " +
-                        "before=${surrounding.textBefore.length} selected=${surrounding.textSelected.length}"
-                }
+                flogWarning { "$source: field reports on-screen text at $selection, editing relatively" }
             } else {
                 flogInfo { "$source: field reports stored text again, editing by offsets" }
             }
         }
 
-        override fun resetContent(newSelection: K3TextRange, newSurrounding: K3SurroundingText) {
-            evaluateTrust(newSelection, newSurrounding, "resetContent")
-            // k3 gets no text from an untrusted field, so it never writes the field's on-screen text back into it.
-            super.resetContent(
-                newSelection,
-                if (state.editor.isTextUntrusted) K3SurroundingText.Empty else newSurrounding,
-            )
+        /** Hands k3 the field's text, or nothing while the field's reports cannot be trusted. */
+        private fun loadContent(selection: K3TextRange, surrounding: K3SurroundingText) {
+            super.resetContent(selection, if (state.editor.isTextUntrusted) K3SurroundingText.Empty else surrounding)
             reevaluateInputShiftState()
+        }
+
+        override fun resetContent(newSelection: K3TextRange, newSurrounding: K3SurroundingText) {
+            setTrust(!isSurroundingTextTrustworthy(newSelection, newSurrounding), "resetContent", newSelection)
+            loadContent(newSelection, newSurrounding)
         }
 
         override fun resetContent() {
@@ -1039,6 +1037,19 @@ class ImeController(
             return OBJECT_REPLACEMENT !in surrounding.textBefore &&
                 OBJECT_REPLACEMENT !in surrounding.textSelected &&
                 OBJECT_REPLACEMENT !in surrounding.textAfter
+        }
+
+        /**
+         * Whether a field that just started may be edited by offsets, given the [live] read taken at start and the
+         * narrower [initial] EditorInfo window. Either read seeing on-screen text distrusts the field: the initial
+         * window covers only 20 characters each side, which can miss a chip's placeholder entirely.
+         */
+        internal fun isSurroundingTextTrustworthy(
+            selection: K3TextRange,
+            live: K3SurroundingText,
+            initial: K3SurroundingText,
+        ): Boolean {
+            return isSurroundingTextTrustworthy(selection, live) && isSurroundingTextTrustworthy(selection, initial)
         }
     }
 }

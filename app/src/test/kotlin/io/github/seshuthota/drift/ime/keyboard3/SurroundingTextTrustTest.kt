@@ -53,4 +53,14 @@ class SurroundingTextTrustTest : FunSpec({
     test("an unknown cursor position leaves the text trusted") {
         isSurroundingTextTrustworthy(K3TextRange(-1, -1), text("")) shouldBe true
     }
+
+    test("a chip the narrow EditorInfo window misses is still not trusted") {
+        // Stored text is "https://example.com/abc" (23 chars) and the chip's label fits within the cursor, so the
+        // 20-character EditorInfo window alone looks clean; only the live read shows the placeholder.
+        val initialWindow = text("https://example.com/a…")
+        val live = text("⁦￼ https://example.com/a…")
+        isSurroundingTextTrustworthy(K3TextRange(23, 23), initialWindow) shouldBe true
+        isSurroundingTextTrustworthy(K3TextRange(23, 23), live, initialWindow) shouldBe false
+        isSurroundingTextTrustworthy(K3TextRange(23, 23), text("https://example.com/abc"), initialWindow) shouldBe true
+    }
 })
