@@ -33,10 +33,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,12 +59,14 @@ import androidx.compose.ui.unit.dp
 import io.github.seshuthota.drift.DriftImeService
 import io.github.seshuthota.drift.R
 import io.github.seshuthota.drift.asrController
+import io.github.seshuthota.drift.ime.keyboard3.ImeActions
 import io.github.seshuthota.drift.ime.theme.DriftImeUi
 import io.github.seshuthota.drift.ime.theme.ImeUiAttrs
 import io.github.seshuthota.drift.lib.compose.stringRes
 import io.github.seshuthota.drift.lib.snygg.ui.rememberSnyggThemeQuery
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import org.k3lp.lib.text.asK3String
 
 /** True while voice input owns the keyboard area: recording, transcribing or showing an error. */
 @Composable
@@ -93,11 +95,11 @@ private fun rememberVoicePanelColors(): VoicePanelColors {
     val key = rememberSnyggThemeQuery(DriftImeUi.Key.elementName)
     val enter = rememberSnyggThemeQuery(
         DriftImeUi.Key.elementName,
-        attributes = mapOf(ImeUiAttrs.Output.name to ENTER_OUTPUT),
+        attributes = mapOf(ImeUiAttrs.Output.eq(ImeActions.Enter)),
     )
     val space = rememberSnyggThemeQuery(
         DriftImeUi.Key.elementName,
-        attributes = mapOf(ImeUiAttrs.Output.name to " "),
+        attributes = mapOf(ImeUiAttrs.Output.eq(" ".asK3String())),
     )
     val fallback = MaterialTheme.colorScheme
     val text = key.foreground(fallback.onSurface)
@@ -111,9 +113,6 @@ private fun rememberVoicePanelColors(): VoicePanelColors {
         activeIcon = enter.foreground(text),
     )
 }
-
-/** Theme attribute value of the enter key's output, which themes use to give it the accent colour. */
-private const val ENTER_OUTPUT = "@k3:action/enter"
 
 /**
  * Full-height voice panel that replaces the keyboard while local voice input is active. One big button in the
@@ -150,7 +149,7 @@ fun AsrPanel(height: Dp) {
                         TextButton(
                             colors = ButtonDefaults.textButtonColors(contentColor = colors.activeButton),
                             onClick = {
-                            controller.dismissError()
+                                controller.dismissError()
                                 DriftImeService.launchSettings()
                             },
                         ) {
@@ -181,7 +180,11 @@ fun AsrPanel(height: Dp) {
                     if (state is AsrState.Error) controller.dismissError() else controller.cancel()
                 },
             ) {
-                Icon(Icons.Filled.Close, contentDescription = stringRes(R.string.voice_input__cancel), tint = colors.text)
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = stringRes(R.string.voice_input__cancel),
+                    tint = colors.text,
+                )
             }
         }
     }
@@ -195,8 +198,14 @@ private fun VoiceButton(
     amplitude: Float,
     onClick: () -> Unit,
 ) {
-    val buttonColor by animateColorAsState(if (recording) colors.activeButton else colors.idleButton, label = "voice_color")
-    val iconColor by animateColorAsState(if (recording) colors.activeIcon else colors.idleIcon, label = "voice_icon")
+    val buttonColor by animateColorAsState(
+        targetValue = if (recording) colors.activeButton else colors.idleButton,
+        label = "voice_color",
+    )
+    val iconColor by animateColorAsState(
+        targetValue = if (recording) colors.activeIcon else colors.idleIcon,
+        label = "voice_icon",
+    )
     val level by animateFloatAsState(if (recording) amplitude.coerceIn(0f, 1f) else 0f, label = "voice_level")
     val haloColor = colors.activeButton
 
@@ -225,9 +234,19 @@ private fun VoiceButton(
                     strokeWidth = 3.dp,
                 )
             } else if (recording) {
-                Icon(Icons.Filled.Stop, contentDescription = stringRes(R.string.voice_input__stop), tint = iconColor, modifier = Modifier.size(40.dp))
+                Icon(
+                    Icons.Filled.Stop,
+                    contentDescription = stringRes(R.string.voice_input__stop),
+                    tint = iconColor,
+                    modifier = Modifier.size(40.dp),
+                )
             } else {
-                Icon(Icons.Filled.Mic, contentDescription = stringRes(R.string.voice_input__stop), tint = iconColor, modifier = Modifier.size(40.dp))
+                Icon(
+                    Icons.Filled.Mic,
+                    contentDescription = stringRes(R.string.voice_input__stop),
+                    tint = iconColor,
+                    modifier = Modifier.size(40.dp),
+                )
             }
         }
     }

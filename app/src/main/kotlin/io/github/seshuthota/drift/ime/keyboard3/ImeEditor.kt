@@ -105,7 +105,7 @@ open class ImeEditor(
     }
 
     /**
-     * True once this field has reported its on-screen text and positions instead of its stored ones (see
+     * True while this field's latest report was its on-screen text and positions instead of its stored ones (see
      * [ImeController.isSurroundingTextTrustworthy]). ChatGPT does this for pasted links shown as chips. Offsets
      * k3 derives then point past the end of the stored text, and Compose text fields crash on an out-of-range
      * setComposingRegion or setSelection, so every edit is made relative to the cursor instead.
@@ -114,13 +114,14 @@ open class ImeEditor(
     var isTextUntrusted: Boolean = false
 
     /**
-     * Replaces the [range] k3 edits, which ends at the cursor, without naming any position: deletes its length
-     * before the cursor and commits [text] there. No composing region is kept.
+     * Replaces the [range] k3 edits, which ends at the cursor, without naming any position: deletes the length of
+     * [range] before the cursor and commits [text] there. No composing region is kept.
      */
     private fun replaceTextRelative(ic: InputConnection, range: IntRange, text: String) {
         ic.beginBatchEdit()
         ic.finishComposingText()
-        val deletes = rawInputDeleteBefore(range)
+        // commitText replaces a selection itself, so only the part of the range in front of it may be deleted here.
+        val deletes = rawInputDeleteBefore(range) - (ic.getSelectedText(0)?.length ?: 0)
         if (deletes > 0) ic.deleteSurroundingText(deletes, 0)
         if (text.isNotEmpty()) ic.commitText(text, 1)
         ic.endBatchEdit()
@@ -354,11 +355,9 @@ open class ImeEditor(
         contract {
             callsInPlace(block, InvocationKind.EXACTLY_ONCE)
         }
-        requestCursorUpdates(0)
         beginBatchEdit()
         block()
         endBatchEdit()
-        requestCursorUpdates(CURSOR_UPDATES)
     }
 
     companion object {
@@ -459,13 +458,6 @@ open class ImeEditor(
                 else -> null
             }
         }
-
-        /**
-         * The input connection update cursor flags.
-         *
-         * MUST NOT contain filter flags, as these behave strangely with some editors!!
-         */
-        const val CURSOR_UPDATES = InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE
 
         val Disconnected = ImeEditor(
             ic = WeakReference(null),

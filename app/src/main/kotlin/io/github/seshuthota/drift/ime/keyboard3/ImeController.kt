@@ -56,6 +56,8 @@ import io.github.seshuthota.drift.ime.nlp.WordSuggestionCandidate
 import io.github.seshuthota.drift.ime.text.key.KeyVariation
 import io.github.seshuthota.drift.lib.DriftLocale
 import io.github.seshuthota.drift.lib.devtools.flogDebug
+import io.github.seshuthota.drift.lib.devtools.flogInfo
+import io.github.seshuthota.drift.lib.devtools.flogWarning
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -353,8 +355,7 @@ class ImeController(
             if (!info.isRawInputEditor) {
                 // EditorInfo carries only 20 characters each side, which can miss a link chip's placeholder. One
                 // live read catches fields that report on-screen text before k3 builds anything on them.
-                val live = state.editor.getSurroundingText(50, 10)
-                if (!isSurroundingTextTrustworthy(initialSelection, live)) state.editor.isTextUntrusted = true
+                evaluateTrust(initialSelection, state.editor.getSurroundingText(50, 10), "startInputView")
             }
             resetContent(initialSelection, initialSurrounding)
             expectedContentQueue.clear()
@@ -374,8 +375,8 @@ class ImeController(
             resetContent(newSelection, state.editor.getSurroundingText(50, 10))
             // The cursor moved or the text changed outside of our own edits.
             lastAutocorrection = null
-            // Cursor-anchor updates also fire for layout/scroll changes and can carry stale selections, so only
-            // drop glide alternatives once the glided word is really no longer directly before the cursor.
+            // Selection updates also fire for layout/scroll changes and can carry stale selections, so only drop
+            // glide alternatives once the glided word is really no longer directly before the cursor.
             dismissGlideAlternativesIfStale()
             expectedContentQueue.push(state.content)
             requestSuggestions()
@@ -940,14 +941,33 @@ class ImeController(
             )
         }
 
-        override fun resetContent(newSelection: K3TextRange, newSurrounding: K3SurroundingText) {
+        /**
+         * Trust is decided per report, not per field: a field that reports its on-screen text for one read may report
+         * its stored text the next, and a wrong guess only costs suggestions until the next report corrects it.
+         */
+        private fun evaluateTrust(selection: K3TextRange, surrounding: K3SurroundingText, source: String) {
             val editor = state.editor
-            if (editor !== ImeEditor.Disconnected && !isSurroundingTextTrustworthy(newSelection, newSurrounding)) {
-                // Sticky for this field: its reports cannot be told apart from good ones once a chip is gone.
-                editor.isTextUntrusted = true
+            if (editor === ImeEditor.Disconnected) return
+            val untrusted = !isSurroundingTextTrustworthy(selection, surrounding)
+            if (editor.isTextUntrusted == untrusted) return
+            editor.isTextUntrusted = untrusted
+            if (untrusted) {
+                flogWarning {
+                    "$source: field reports on-screen text, editing relatively selection=$selection " +
+                        "before=${surrounding.textBefore.length} selected=${surrounding.textSelected.length}"
+                }
+            } else {
+                flogInfo { "$source: field reports stored text again, editing by offsets" }
             }
+        }
+
+        override fun resetContent(newSelection: K3TextRange, newSurrounding: K3SurroundingText) {
+            evaluateTrust(newSelection, newSurrounding, "resetContent")
             // k3 gets no text from an untrusted field, so it never writes the field's on-screen text back into it.
-            super.resetContent(newSelection, if (editor.isTextUntrusted) K3SurroundingText.Empty else newSurrounding)
+            super.resetContent(
+                newSelection,
+                if (state.editor.isTextUntrusted) K3SurroundingText.Empty else newSurrounding,
+            )
             reevaluateInputShiftState()
         }
 
@@ -1002,7 +1022,8 @@ class ImeController(
         private const val OBJECT_REPLACEMENT = '\uFFFC'
 
         /**
-         * Whether [surrounding] is the field's stored text, so that k3 may rewrite it at offsets taken from [selection].
+         * Whether [surrounding] is the field's stored text, so that k3 may rewrite it at offsets taken from
+         * [selection].
          *
          * Some editors return their on-screen text instead. ChatGPT shows a pasted link as a chip: its text reads
          * `U+2066 U+FFFC U+00A0 https://example.com/a… U+2069` while the field stores `https://example.com/abc`.
