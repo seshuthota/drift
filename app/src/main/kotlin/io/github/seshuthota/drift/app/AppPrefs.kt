@@ -85,6 +85,12 @@ abstract class DriftPreferenceModel : PreferenceModel() {
             key = "voice__keep_model_loaded",
             default = false,
         )
+
+        /** Record from the plain microphone source instead of the voice-recognition one (some phones mute it). */
+        val plainMicSource = boolean(
+            key = "voice__plain_mic_source",
+            default = false,
+        )
     }
 
     val clipboard = Clipboard()
@@ -224,6 +230,14 @@ abstract class DriftPreferenceModel : PreferenceModel() {
         )
         val glideDiagnostics = boolean(
             key = "devtools__glide_diagnostics",
+            default = false,
+        )
+        val qualityLog = boolean(
+            key = "devtools__quality_log",
+            default = false,
+        )
+        val voiceClips = boolean(
+            key = "devtools__voice_clips",
             default = false,
         )
     }

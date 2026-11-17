@@ -30,6 +30,7 @@ import io.github.seshuthota.drift.app.DriftPreferenceModel
 import io.github.seshuthota.drift.app.DriftPreferenceStore
 import io.github.seshuthota.drift.app.NoBackupPreferenceModel
 import io.github.seshuthota.drift.app.NoBackupPreferenceStore
+import io.github.seshuthota.drift.ime.QualityLog
 import io.github.seshuthota.drift.ime.asr.AsrController
 import io.github.seshuthota.drift.ime.asr.AsrModelManager
 import io.github.seshuthota.drift.ime.clipboard.ClipboardManager
@@ -171,6 +172,7 @@ class DriftApplication : Application() {
         }
         clipboardManager.value.initializeForContext(this)
         DictionaryManager.init(this)
+        QualityLog.attach(this)
     }
 
     private fun Configuration.determineSystemThemeMode(): SystemThemeMode {

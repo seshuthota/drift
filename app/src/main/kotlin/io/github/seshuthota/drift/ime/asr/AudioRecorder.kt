@@ -63,8 +63,11 @@ class AudioRecorder(private val context: Context) {
             PackageManager.PERMISSION_GRANTED
     }
 
-    /** Starts capturing. Returns false when the permission is missing or the microphone is busy. */
-    fun start(): Boolean {
+    /**
+     * Starts capturing from [audioSource] (a `MediaRecorder.AudioSource` value). Returns false when the permission is
+     * missing or the microphone is busy.
+     */
+    fun start(audioSource: Int = MediaRecorder.AudioSource.VOICE_RECOGNITION): Boolean {
         if (recording || !hasPermission()) return false
         val minBuffer = AudioRecord.getMinBufferSize(
             SAMPLE_RATE,
@@ -74,7 +77,7 @@ class AudioRecorder(private val context: Context) {
         if (minBuffer <= 0) return false
         val audioRecord = try {
             AudioRecord.Builder()
-                .setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION)
+                .setAudioSource(audioSource)
                 .setAudioFormat(
                     AudioFormat.Builder()
                         .setEncoding(AudioFormat.ENCODING_PCM_16BIT)

@@ -19,6 +19,7 @@ package io.github.seshuthota.drift.ime.keyboard3.gesture
 import android.content.Context
 import io.github.seshuthota.drift.DriftImeService
 import io.github.seshuthota.drift.app.DriftPreferenceStore
+import io.github.seshuthota.drift.ime.QualityLog
 import io.github.seshuthota.drift.ime.core.Subtype
 import io.github.seshuthota.drift.ime.keyboard3.ImeController
 import io.github.seshuthota.drift.ime.keyboard3.touch.InputShiftState
@@ -287,8 +288,13 @@ class GlideTypingManager(
                     return@launch
                 }
                 if (commit) {
-                    val rawEditor = imeControllerProvider()?.snapshotState()?.editor?.info?.isRawInputEditor == true
+                    val imeState = imeControllerProvider()?.snapshotState()
+                    val rawEditor = imeState?.editor?.info?.isRawInputEditor == true
                     GlideDiagnostics.record(appContext, snapshot, decodeMs, suggestions, rawEditor)
+                    if (imeState?.flags?.isIncognitoMode == false) {
+                        preparedKeys?.let { QualityLog.layout(it) }
+                        QualityLog.glideCommitted(snapshot, suggestions, decodeMs, rawEditor)
+                    }
                     withContext(Dispatchers.Main) {
                         val imeController = imeControllerProvider() ?: return@withContext
                         var alternatives = emptyList<GlideSuggestionCandidate>()

@@ -26,6 +26,7 @@ import io.github.seshuthota.drift.DriftApplication
 import io.github.seshuthota.drift.DriftImeService
 import io.github.seshuthota.drift.app.DriftPreferenceStore
 import io.github.seshuthota.drift.ime.ImeUiMode
+import io.github.seshuthota.drift.ime.QualityLog
 import io.github.seshuthota.drift.ime.clipboard.ClipboardManager
 import io.github.seshuthota.drift.ime.clipboard.provider.ClipboardItem
 import io.github.seshuthota.drift.ime.clipboard.provider.ItemType
@@ -411,6 +412,13 @@ class ImeController(
             if (corrected == null && !wordBeforeSeparator.isNullOrEmpty() && isProseField()) {
                 nlpManager?.takeIf { it.isInitialized() }?.value?.noteTypedWord(wordBeforeSeparator, immediate = false)
             }
+            if (!wordBeforeSeparator.isNullOrEmpty() && isQualityLogged()) {
+                if (corrected != null) {
+                    QualityLog.wordCommitted(corrected.corrected, "autocorrect", original = corrected.original)
+                } else {
+                    QualityLog.wordCommitted(wordBeforeSeparator, "typed")
+                }
+            }
             expectedContentQueue.push(state.content)
             if (corrected != null) {
                 lastAutocorrection = corrected.copy(separator = text)
@@ -489,6 +497,7 @@ class ImeController(
             }
             if (!replaceBeforeCursor(committed.length, autocorrection.original)) return false
             flogDebug { "autocorrect reverted: '${autocorrection.corrected}' -> '${autocorrection.original}'" }
+            if (isQualityLogged()) QualityLog.autocorrectUndone(autocorrection.original, autocorrection.corrected)
             rejectedAutocorrection = autocorrection.original
             nlpManager?.takeIf { it.isInitialized() }?.value?.noteTypedWord(autocorrection.original, immediate = true)
             requestSuggestions()
@@ -614,6 +623,7 @@ class ImeController(
         }
 
         override fun emitBackspace() {
+            if (!state.flags.isIncognitoMode) QualityLog.backspace()
             val autocorrection = lastAutocorrection
             lastAutocorrection = null
             if (autocorrection != null && revertAutocorrection(autocorrection)) {
@@ -743,6 +753,11 @@ class ImeController(
                 if (!replaced) {
                     dismissGlideAlternatives()
                     return false
+                }
+                if (!state.flags.isIncognitoMode) {
+                    val rank = nlpManager?.takeIf { it.isInitialized() }?.value?.activeCandidates.orEmpty()
+                        .indexOfFirst { it is GlideSuggestionCandidate && it.text == candidate.text }
+                    QualityLog.glidePicked(candidate.text.toString(), rank)
                 }
             }
             // The word is settled: move on to predicting the next one.
@@ -875,12 +890,27 @@ class ImeController(
             // A prediction right after a word or sentence punctuation needs a separating space.
             val leadingSpace = partial.isEmpty() && last != null && (last.isLetterOrDigit() || last in ".,!?;:")
             val newText = (if (leadingSpace) " " else "") + text + " "
+            val rank = nlpManager?.takeIf { it.isInitialized() }?.value?.activeCandidates.orEmpty().indexOf(candidate)
+            val logged = isQualityLogged()
             if (!replaceBeforeCursor(partial.length, newText)) {
                 return false
+            }
+            if (logged) {
+                QualityLog.wordCommitted(
+                    text,
+                    "pick",
+                    rank = rank,
+                    prefix = partial.toString(),
+                    kind = candidate.javaClass.simpleName,
+                )
             }
             requestSuggestions(force = true)
             return true
         }
+
+        /** Typing in this field may go to the opt-in quality log: a prose field outside incognito mode. */
+        private fun isQualityLogged(): Boolean =
+            !state.flags.isIncognitoMode && isProseField() && QualityLog.isEnabled()
 
         override fun switchTouchLayer(newTouchLayerId: K3LayerId) {
             if (newTouchLayerId.isTextLayer()) {

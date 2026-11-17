@@ -178,7 +178,7 @@ fun DevtoolsScreen() {
             }
 
             SegmentedListColumn(title = stringRes(R.string.devtools__group_ime_window_tools__title)) {
-                val count = 3
+                val count = 5
                 SwitchPreference(
                     prefs.devtools.showWindowResizeHandleBoundaries,
                     shapes = ListItemDefaults.segmentedShapes(0, count),
@@ -192,6 +192,20 @@ fun DevtoolsScreen() {
                     title = stringRes(R.string.devtools__glide_diagnostics__label),
                     summary = stringRes(R.string.devtools__glide_diagnostics__summary),
                     enabledIf = { prefs.devtools.enabled isEqualTo true },
+                )
+                SwitchPreference(
+                    prefs.devtools.qualityLog,
+                    shapes = ListItemDefaults.segmentedShapes(2, count),
+                    title = stringRes(R.string.devtools__quality_log__label),
+                    summary = stringRes(R.string.devtools__quality_log__summary),
+                    enabledIf = { prefs.devtools.enabled isEqualTo true },
+                )
+                SwitchPreference(
+                    prefs.devtools.voiceClips,
+                    shapes = ListItemDefaults.segmentedShapes(3, count),
+                    title = stringRes(R.string.devtools__voice_clips__label),
+                    summary = stringRes(R.string.devtools__voice_clips__summary),
+                    enabledIf = { prefs.devtools.enabled isEqualTo true && prefs.devtools.qualityLog isEqualTo true },
                 )
                 val successMsg = stringRes(R.string.devtools__reset_window_config__toast_success)
                 val failureMsg = stringRes(R.string.devtools__reset_window_config__toast_failure)
@@ -211,7 +225,7 @@ fun DevtoolsScreen() {
                             )
                         }
                     },
-                    shapes = ListItemDefaults.segmentedShapes(2, count),
+                    shapes = ListItemDefaults.segmentedShapes(4, count),
                     title = stringRes(R.string.devtools__reset_window_config__label),
                     summary = stringRes(R.string.devtools__reset_window_config__summary),
                     enabledIf = { prefs.devtools.enabled isEqualTo true },

@@ -1,6 +1,6 @@
 # Drift typing intelligence — status and plan
 
-**Last updated:** 2026-11-14 (suggestion-bar render trace; first version 2026-11-08)
+**Last updated:** 2026-11-17 (real-use quality: Phase 0 log + Phase 1 fixes; first version 2026-11-08)
 **Scope:** glide decoder, next-word prediction, typo correction/autocorrect, and the input pipeline around them
 **Companion documents:** `ml/REPORT.md` (swipe CTC prototype), `ml/nwp/README.md` (next-word model)
 
@@ -39,6 +39,32 @@
 
 `99732acd` omnibox fix · `920556e5` ML code · `d5fd3bf0` typo correction · `48abdf57` ranking vs completions and
 dictionary misspellings · `5852bbbf` autocorrect · `2d286bde` + `7d42e9cc` short glides.
+
+### Real-use quality, 2026-11-17
+
+After a few days of daily use the user rated glide at roughly 60 % right, voice as missing speech now and then, and
+next-word predictions as weak. Nothing on the phone could confirm that: the release build logs nothing, and glide
+diagnostics were off (the 2026-11-14 capture was lost with the 2026-11-15 reinstall).
+
+- **Glide pipeline is not the gap.** `GlidePipelineSimulationTest` (lab test, needs `DRIFT_FUTO_RAW`) replays raw
+  FUTO dev rows with their timestamps through `GestureRecognizer` at I2401 scale. 1,500 rows: decoder fed directly
+  91.13 % top-1; through the shipping recognizer 89.93 %; release point kept 90.07 %; release point + point spacing
+  0.10 key 90.67 %; 120 Hz resampling changes nothing (FUTO traces are ~60 Hz, so Compose `historical` samples are
+  not worth wiring). 0.7 % of strokes come out as taps. Both small wins are in: `GlideTypingManager.onGlideComplete`
+  now decodes the recognizer's full path (the release point was dropped), and `glideMinPointSpacingFraction` is 0.10.
+  The remaining ~30 pt must be the user's own strokes and vocabulary, which only real data can show.
+- **Phase 0, typing quality log.** `QualityLog` (Developer options > Typing quality log, off by default) writes
+  `files/diagnostics/quality.jsonl`: glide commits with traces and layout, alternative picks, backspaces after a
+  glide and the retyped word, every finished word with the next-word row shown before it, autocorrect undos, and per
+  dictation the model, mic source, per-second peak dBFS and gain, committed lines, how it ended, and backspaces in the
+  following 20 s. "Keep voice clips" saves the last 30 dictations as WAV. Nothing in incognito or non-prose fields.
+  `ml/quality/analyze.py` summarises a pulled folder (`ml/quality/data/` is git-ignored).
+- **Phase 1, voice.** Moonshine Small Streaming (en, ~142 MB, opt-in) is in the registry; Tiny stays the default.
+  Capture keeps running 350 ms after the stop tap. `AutoGain` decay 0.98 → 0.95 per chunk (peak half-life ~3.4 s →
+  ~1.4 s). Settings > Voice input has "Use the plain microphone input" (`MIC` instead of `VOICE_RECOGNITION`).
+  None of this is measured yet: the clips are what will measure it.
+- **Next.** One week of logged use, then: a personal n-gram cache blended with the LSTM for predictions, glide
+  fine-tuning on the user's own labelled traces, and the voice front-end A/B on saved clips.
 
 ---
 

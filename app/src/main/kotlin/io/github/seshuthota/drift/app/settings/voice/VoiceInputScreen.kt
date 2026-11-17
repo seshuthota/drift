@@ -82,6 +82,7 @@ fun VoiceInputScreen() {
     // A stored id of a removed model falls back to the first one, as AsrController does.
     val selectedId = modelManager.spec(storedModelId)?.id ?: modelManager.models().firstOrNull()?.id
     val keepLoaded by prefs.voice.keepModelLoaded.collectAsState()
+    val plainMic by prefs.voice.plainMicSource.collectAsState()
     var downloadingId by remember { mutableStateOf<String?>(null) }
     val progress = remember { MutableStateFlow(0f) }
     val progressValue by progress.collectAsState()
@@ -206,6 +207,26 @@ fun VoiceInputScreen() {
                 Switch(
                     checked = keepLoaded,
                     onCheckedChange = { value -> scope.launch { prefs.voice.keepModelLoaded.set(value) } },
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringRes(R.string.settings__voice__plain_mic),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        text = stringRes(R.string.settings__voice__plain_mic_summary),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                Switch(
+                    checked = plainMic,
+                    onCheckedChange = { value -> scope.launch { prefs.voice.plainMicSource.set(value) } },
                 )
             }
         }

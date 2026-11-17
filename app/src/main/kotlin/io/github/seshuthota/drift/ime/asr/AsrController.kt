@@ -17,8 +17,10 @@
 package io.github.seshuthota.drift.ime.asr
 
 import android.content.Context
+import android.media.MediaRecorder
 import android.os.SystemClock
 import io.github.seshuthota.drift.app.DriftPreferenceModel
+import io.github.seshuthota.drift.ime.QualityLog
 import io.github.seshuthota.drift.ime.keyboard3.ImeController
 import io.github.seshuthota.drift.ime.keyboard3.ImeEditor
 import io.github.seshuthota.drift.lib.devtools.flogInfo
@@ -29,6 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -36,6 +39,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
+import kotlin.math.log10
 
 /** Observable state of the local voice input flow. */
 sealed interface AsrState {
@@ -83,9 +88,17 @@ class AsrController(
     val amplitude: StateFlow<Float> = recorder.amplitude
 
     /** One dictation: its queue of audio chunks, the worker that feeds them to the engine, and its preview. */
-    private class Session(val startedAtMs: Long) {
+    private class Session(val startedAtMs: Long, val modelId: String, keepClip: Boolean) {
         val queue = Channel<ShortArray>(Channel.UNLIMITED)
         var worker: Job? = null
+
+        /** Quality-log material: committed lines, per-second peak level and gain, and the raw audio if kept. */
+        val finals: MutableList<String> = java.util.Collections.synchronizedList(mutableListOf())
+        val peakDb: MutableList<Float> = java.util.Collections.synchronizedList(mutableListOf())
+        val gain: MutableList<Float> = java.util.Collections.synchronizedList(mutableListOf())
+        val clip: ShortPcmBuffer? = if (keepClip) ShortPcmBuffer(MAX_CLIP_SAMPLES) else null
+        var logged = false
+        var source = "voice_recognition"
 
         /** Space put before the current line, fixed when its first text appears. Main thread only. */
         var linePrefix: String? = null
@@ -135,9 +148,12 @@ class AsrController(
             _state.value = AsrState.Error(AsrError.MissingModel)
             return
         }
-        val current = Session(SystemClock.elapsedRealtime())
+        val current = Session(SystemClock.elapsedRealtime(), installed.spec.id, QualityLog.keepVoiceClips())
         session = current
-        if (!recorder.start()) {
+        val plainMic = prefs.voice.plainMicSource.get()
+        current.source = if (plainMic) "mic" else "voice_recognition"
+        val audioSource = if (plainMic) MediaRecorder.AudioSource.MIC else MediaRecorder.AudioSource.VOICE_RECOGNITION
+        if (!recorder.start(audioSource)) {
             session = null
             _state.value = AsrState.Error(AsrError.MicrophoneBusy)
             return
@@ -156,8 +172,22 @@ class AsrController(
                 engine.start()
             }
             val gain = AutoGain()
+            var secondPeak = 0
+            var secondGain = 0f
+            var secondChunks = 0
             for (pcm in current.queue) {
-                val events = engineLock.withLock { engine.addAudio(gain.process(pcm)) }
+                current.clip?.append(pcm)
+                val processed = gain.process(pcm)
+                for (sample in pcm) secondPeak = maxOf(secondPeak, abs(sample.toInt()))
+                secondGain += gain.gain
+                if (++secondChunks == CHUNKS_PER_SECOND) {
+                    current.peakDb += if (secondPeak == 0) -120f else 20f * log10(secondPeak / 32_768f)
+                    current.gain += secondGain / secondChunks
+                    secondPeak = 0
+                    secondGain = 0f
+                    secondChunks = 0
+                }
+                val events = engineLock.withLock { engine.addAudio(processed) }
                 showStreamEvents(current, events)
             }
             showStreamEvents(current, engineLock.withLock { engine.stop() })
@@ -175,7 +205,10 @@ class AsrController(
     private suspend fun showStreamEvents(current: Session, events: List<StreamEvent>) {
         if (events.isEmpty()) return
         for (event in events) {
-            if (event is StreamEvent.Final) flogInfo { "voice: line ${event.lineId} final -> \"${event.text}\"" }
+            if (event is StreamEvent.Final) {
+                flogInfo { "voice: line ${event.lineId} final -> \"${event.text}\"" }
+                current.finals += event.text.replace('\n', ' ').trim()
+            }
         }
         onMain(current) {
             for (event in events) {
@@ -244,12 +277,17 @@ class AsrController(
         // A tap landing right after the panel opens is the finger that opened it, not a request to stop.
         if (elapsed < MIN_RECORDING_MS) return
         _state.value = AsrState.Transcribing
-        // Stopped here, on the main thread, so a later cancel()/start() can never stop a newer recording.
-        recorder.stop()
-        current.queue.close()
         scope.launch(Dispatchers.Main) {
+            // The last word is often still being spoken when the stop is tapped, and the audio still buffered in the
+            // recorder would be dropped by an immediate stop, so keep capturing briefly. A cancel() meanwhile wins.
+            delay(STOP_TAIL_MS)
+            if (session !== current) return@launch
+            // Stopped here, on the main thread, so a later cancel()/start() can never stop a newer recording.
+            recorder.stop()
+            current.queue.close()
             current.worker?.join()
             if (session !== current) return@launch
+            logSession(current, "stop:$reason")
             session = null
             imeControllerProvider()?.endExternalEdit()
             if (_state.value == AsrState.Transcribing) _state.value = AsrState.Idle
@@ -269,12 +307,13 @@ class AsrController(
 
     private fun fail(reason: AsrError) {
         recorder.stop()
-        teardown()
+        teardown("fail:${reason.javaClass.simpleName}")
         _state.value = AsrState.Error(reason)
     }
 
-    private fun teardown() {
+    private fun teardown(ending: String = "cancel") {
         val current = session ?: return
+        logSession(current, ending)
         clearPreview(current)
         session = null
         imeControllerProvider()?.endExternalEdit()
@@ -282,6 +321,25 @@ class AsrController(
         current.worker?.cancel()
         // A cancelled or failed dictation frees the model too; otherwise it stays loaded until the next normal stop.
         if (!prefs.voice.keepModelLoaded.get()) closeEngineWhenIdle()
+    }
+
+    /** Writes [current] to the opt-in quality log once. Main thread only. */
+    private fun logSession(current: Session, ending: String) {
+        if (current.logged) return
+        current.logged = true
+        if (!QualityLog.isEnabled()) return
+        if (imeControllerProvider()?.snapshotState()?.flags?.isIncognitoMode != false) return
+        QualityLog.voice(
+            model = current.modelId,
+            source = current.source,
+            durationMs = SystemClock.elapsedRealtime() - current.startedAtMs,
+            peakDb = current.peakDb.toList(),
+            gain = current.gain.toList(),
+            lines = current.finals.toList(),
+            ending = ending,
+            pcm = current.clip?.toArray(),
+            sampleRate = AudioRecorder.SAMPLE_RATE,
+        )
     }
 
     fun dismissError() {
@@ -316,5 +374,32 @@ class AsrController(
 
     companion object {
         private const val MIN_RECORDING_MS = 700L
+
+        /** How long capture continues after the stop tap. */
+        private const val STOP_TAIL_MS = 350L
+
+        /** The recorder delivers ~100 ms chunks. */
+        private const val CHUNKS_PER_SECOND = 10
+
+        /** Kept clips are capped at two minutes (3.8 MB). */
+        private const val MAX_CLIP_SAMPLES = AudioRecorder.SAMPLE_RATE * 120
     }
+}
+
+/** Growable PCM16 buffer with a hard cap; samples past the cap are dropped. Thread-safe. */
+private class ShortPcmBuffer(private val maxSamples: Int) {
+    private var data = ShortArray(16_000)
+    private var size = 0
+
+    @Synchronized
+    fun append(pcm: ShortArray) {
+        val count = minOf(pcm.size, maxSamples - size)
+        if (count <= 0) return
+        if (size + count > data.size) data = data.copyOf(minOf(maxSamples, maxOf(data.size * 2, size + count)))
+        System.arraycopy(pcm, 0, data, size, count)
+        size += count
+    }
+
+    @Synchronized
+    fun toArray(): ShortArray = data.copyOf(size)
 }

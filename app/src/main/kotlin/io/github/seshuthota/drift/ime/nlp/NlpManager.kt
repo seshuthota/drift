@@ -21,6 +21,7 @@ import android.os.SystemClock
 import android.util.LruCache
 import io.github.seshuthota.drift.app.DriftPreferenceStore
 import io.github.seshuthota.drift.clipboardManager
+import io.github.seshuthota.drift.ime.QualityLog
 import io.github.seshuthota.drift.ime.clipboard.provider.ClipboardItem
 import io.github.seshuthota.drift.ime.clipboard.provider.ItemType
 import io.github.seshuthota.drift.ime.core.Subtype
@@ -28,6 +29,7 @@ import io.github.seshuthota.drift.ime.media.emoji.EmojiSuggestionProvider
 import io.github.seshuthota.drift.glideTypingManager
 import io.github.seshuthota.drift.ime.dictionary.DictionaryManager
 import io.github.seshuthota.drift.ime.nlp.latin.LatinLanguageProvider
+import io.github.seshuthota.drift.ime.nlp.latin.NwpText
 import io.github.seshuthota.drift.ime.nlp.latin.PersonalLearning
 import io.github.seshuthota.drift.ime.nlp.latin.isTypingPosition
 import io.github.seshuthota.drift.inferDriftApplication
@@ -250,6 +252,9 @@ class NlpManager(context: Context) {
                     internalSuggestions = reqTime to buildList {
                         addAll(emojiSuggestions)
                         addAll(suggestions)
+                    }
+                    if (NwpText.partialWord(content.surroundingText.textBefore).isEmpty()) {
+                        QualityLog.predictionsShown(suggestions.map { it.text.toString() }, reqTime)
                     }
                 }
             }

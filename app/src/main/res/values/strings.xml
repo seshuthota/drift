@@ -501,6 +501,8 @@
     <string name="settings__voice__download_failed" comment="A model download failed; {reason} is the error text">Download failed: {reason}</string>
     <string name="settings__voice__keep_loaded" comment="Preference title">Keep model in memory</string>
     <string name="settings__voice__keep_loaded_summary" comment="Preference summary">Skips the model reload before each recording</string>
+    <string name="settings__voice__plain_mic" comment="Preference title: record from the plain microphone input">Use the plain microphone input</string>
+    <string name="settings__voice__plain_mic_summary" comment="Preference summary">Try this if voice input misses words. Some phones record speech very quietly on the voice recognition input.</string>
 
     <!-- Typing strings -->
     <string name="settings__typing__title" comment="Title of Typing screen">Typing</string>
@@ -819,6 +821,10 @@
     <string name="devtools__show_window_resize_handle_boundaries__summary">Show window resize handle boundaries for debugging</string>
     <string name="devtools__glide_diagnostics__label" comment="Developer option: record glide traces to a file">Glide diagnostics</string>
     <string name="devtools__glide_diagnostics__summary" comment="Developer option: the file includes the committed words, opt in only for testing">Record glide traces, top candidates and decode time to a file. The committed words are included; turn it off when finished.</string>
+    <string name="devtools__quality_log__label" comment="Developer option: record typing quality events to a file on the device">Typing quality log</string>
+    <string name="devtools__quality_log__summary" comment="Developer option: the file includes the words typed, opt in only for testing">Record glides and what happened to them, the words you finish and the predictions shown, and a summary of each dictation, to a file on this device. Includes the words you type, except in incognito mode and password fields. Turn it off when finished.</string>
+    <string name="devtools__voice_clips__label" comment="Developer option: keep recordings of voice input">Keep voice clips</string>
+    <string name="devtools__voice_clips__summary" comment="Developer option: recordings stay on the device">Also save the audio of the last 30 dictations next to the quality log, to test voice models on a computer. Recordings stay on this device.</string>
     <string name="devtools__reset_window_config__label">Reset window config</string>
     <string name="devtools__reset_window_config__summary">Resets the window config (fixed/floating mode, paddings, offsets) to default</string>
     <string name="devtools__reset_window_config__toast_success">Successfully reset window config to default</string>
