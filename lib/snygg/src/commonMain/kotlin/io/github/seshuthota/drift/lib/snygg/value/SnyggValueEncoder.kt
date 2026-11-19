@@ -77,7 +77,7 @@ abstract class SnyggEnumLikeValueEncoder<V> internal constructor(
         val map = snyggIdToValueMapOf()
         spec.parse(v, map)
         val entry = serializationMapping.getOrElse(map.getString(serializationId)) {
-            error("Given value \"v\" is not valid")
+            error("Given value \"${map.getString(serializationId)}\" is not valid")
         }
         return@runCatching construct(entry)
     }
