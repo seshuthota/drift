@@ -29,11 +29,6 @@ import kotlinx.serialization.json.JsonNames
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class ExtensionMeta(
-    /**
-     * The unique identifier of this extension, adhering to
-     * [Java™ package name standards](https://docs.oracle.com/javase/tutorial/java/package/namingpkgs.html)
-     * and this regex: `^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$`
-     */
     val id: String,
 
     val version: String,
@@ -52,13 +47,6 @@ data class ExtensionMeta(
      * A list of maintainers who (actively) worked on putting the content together for this extension. Note that
      * the actual author of each file within the extension (theme, layout, e.g.) may be different and is specified
      * in the file meta itself.
-     *
-     * Format: `Your Name <email@address.com> (www.maintainer.com)`
-     *  - Name is required
-     *  - Email is optional, if included must be within the `<` and `>` symbols
-     *  - URL is optional, if included must be within the `(` and `)` symbols
-     *
-     * Order of the above fields is important for parsing.
      */
     @JsonNames("authors")
     val maintainers: List<ExtensionMaintainer>,

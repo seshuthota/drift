@@ -18,11 +18,6 @@ package io.github.seshuthota.drift.ime.nlp.latin
 
 import org.k3lp.runtime.K3Content
 
-/**
- * Text handling for the next-word model. Pure Kotlin, mirrors `ml/nwp/prepare.py` exactly: lowercase, curly
- * apostrophes normalized, words of `[a-z0-9]+('[a-z]+)?` (anything with a digit is `<unk>`), sentence ends and
- * newlines become `<s>`, commas are kept, everything else is dropped, repeated `<s>`/`,` are collapsed.
- */
 object NwpText {
     const val UNK = 0
     const val BOS = 1

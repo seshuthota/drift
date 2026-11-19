@@ -1,0 +1,192 @@
+[
+  {
+    "in": "",
+    "tokens": []
+  },
+  {
+    "in": " ",
+    "tokens": []
+  },
+  {
+    "in": "\n",
+    "tokens": [
+      "<s>"
+    ]
+  },
+  {
+    "in": ".",
+    "tokens": [
+      "<s>"
+    ]
+  },
+  {
+    "in": "...",
+    "tokens": [
+      "<s>"
+    ]
+  },
+  {
+    "in": "hello",
+    "tokens": [
+      "hello"
+    ]
+  },
+  {
+    "in": "Hello, world!",
+    "tokens": [
+      "hello",
+      ",",
+      "world",
+      "<s>"
+    ]
+  },
+  {
+    "in": "hi. there",
+    "tokens": [
+      "hi",
+      "<s>",
+      "there"
+    ]
+  },
+  {
+    "in": "one!two?three.",
+    "tokens": [
+      "one",
+      "<s>",
+      "two",
+      "<s>",
+      "three",
+      "<s>"
+    ]
+  },
+  {
+    "in": "a\n\nb",
+    "tokens": [
+      "a",
+      "<s>",
+      "b"
+    ]
+  },
+  {
+    "in": ", leading comma",
+    "tokens": [
+      "leading",
+      "comma"
+    ]
+  },
+  {
+    "in": "a, , b",
+    "tokens": [
+      "a",
+      ",",
+      "b"
+    ]
+  },
+  {
+    "in": "a,,b",
+    "tokens": [
+      "a",
+      ",",
+      "b"
+    ]
+  },
+  {
+    "in": "x.y.z",
+    "tokens": [
+      "x",
+      "<s>",
+      "y",
+      "<s>",
+      "z"
+    ]
+  },
+  {
+    "in": "don’t stop",
+    "tokens": [
+      "don't",
+      "stop"
+    ]
+  },
+  {
+    "in": "don't stop",
+    "tokens": [
+      "don't",
+      "stop"
+    ]
+  },
+  {
+    "in": "I’m here",
+    "tokens": [
+      "i'm",
+      "here"
+    ]
+  },
+  {
+    "in": "abc123 def",
+    "tokens": [
+      "<unk>",
+      "def"
+    ]
+  },
+  {
+    "in": "Café",
+    "tokens": [
+      "caf"
+    ]
+  },
+  {
+    "in": "naïve",
+    "tokens": [
+      "na",
+      "ve"
+    ]
+  },
+  {
+    "in": "emoji 😀 here",
+    "tokens": [
+      "emoji",
+      "here"
+    ]
+  },
+  {
+    "in": "tab\there",
+    "tokens": [
+      "tab",
+      "here"
+    ]
+  },
+  {
+    "in": "  leading spaces and. trailing  ",
+    "tokens": [
+      "leading",
+      "spaces",
+      "and",
+      "<s>",
+      "trailing"
+    ]
+  },
+  {
+    "in": "a-b_c",
+    "tokens": [
+      "a",
+      "b",
+      "c"
+    ]
+  },
+  {
+    "in": "THE END.",
+    "tokens": [
+      "the",
+      "end",
+      "<s>"
+    ]
+  },
+  {
+    "in": "under_score 42",
+    "tokens": [
+      "under",
+      "score",
+      "<unk>"
+    ]
+  }
+]

@@ -260,7 +260,6 @@ object QualityLog {
         clips.dropLast(MAX_CLIPS).forEach { it.delete() }
     }
 
-    /** 16-bit mono PCM in a RIFF/WAVE container. */
     internal fun wav(pcm: ShortArray, sampleRate: Int): ByteArray {
         val dataBytes = pcm.size * 2
         val out = java.nio.ByteBuffer.allocate(44 + dataBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)
