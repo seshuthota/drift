@@ -204,7 +204,7 @@ data class ClipboardItem(
     }
 
     fun close(context: Context) {
-        if (type == ItemType.IMAGE) {
+        if (type != ItemType.TEXT) {
             tryOrNull { context.contentResolver.delete(this.uri!!, null, null) }
         }
     }
