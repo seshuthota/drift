@@ -110,11 +110,9 @@ class DriftApplication : Application() {
 
         try {
             Flog.install(
-                context = this,
                 isFloggingEnabled = BuildConfig.DEBUG,
                 flogTopics = LogTopic.ALL,
                 flogLevels = Flog.LEVEL_ALL,
-                flogOutputs = Flog.OUTPUT_CONSOLE,
             )
             CrashUtility.install(this)
 

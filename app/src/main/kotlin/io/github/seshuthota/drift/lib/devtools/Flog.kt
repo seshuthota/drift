@@ -16,21 +16,16 @@
 
 package io.github.seshuthota.drift.lib.devtools
 
-import android.content.Context
 import android.util.Log
-import io.github.seshuthota.drift.appContext
 import io.github.seshuthota.drift.lib.devtools.Flog.createTag
 import io.github.seshuthota.drift.lib.devtools.Flog.getStacktraceElement
 import io.github.seshuthota.drift.lib.devtools.Flog.log
-import java.lang.ref.WeakReference
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
 typealias FlogTopic = UInt
 
 typealias FlogLevel = UInt
-
-typealias FlogOutput = UInt
 
 inline fun flogError(topic: FlogTopic = Flog.TOPIC_OTHER, block: () -> String = { "" }) {
     contract {
@@ -79,7 +74,7 @@ private infix fun UInt.isSet(flag: UInt): Boolean {
  *     removed manual tagging).
  *  - [getStacktraceElement] (converted to Kotlin, renamed from "getTag",
  *     method now returns stack trace element).
- *  - [log] (only the [OUTPUT_CONSOLE] part, converted to Kotlin).
+ *  - [log] (only the console part, converted to Kotlin).
  * Timber is licensed under the Apache 2.0 license, see the repo here:
  *  https://github.com/JakeWharton/timber
  */
@@ -96,25 +91,18 @@ object Flog {
     const val LEVEL_DEBUG: FlogLevel =              0x08u
     const val LEVEL_ALL: FlogLevel =                UInt.MAX_VALUE
 
-    const val OUTPUT_CONSOLE: FlogOutput =          0x01u
-    const val OUTPUT_FILE: FlogOutput =             0x02u
-
     private const val CALL_STACK_INDEX: Int =       3
 
     private const val MAX_LOG_LENGTH: Int =         4000
 
-    private var applicationContext: WeakReference<Context> = WeakReference(null)
     private var isFloggingEnabled: Boolean = false
     private var flogTopics: FlogTopic = TOPIC_NONE
     private var flogLevels: FlogLevel = LEVEL_NONE
-    private var flogOutputs: FlogOutput = OUTPUT_CONSOLE
 
     /**
-     * Installs the flog utility for given [applicationContext] and sets the relevant
-     * configuration variables based on the given config values.
+     * Installs the flog utility and sets the relevant configuration variables based on the
+     * given config values.
      *
-     * @param context The application context, used for file logging. The context
-     *  will be wrapped in a [WeakReference] to prevent memory leaks.
      * @param isFloggingEnabled If logging is enabled. If this value is false, all calls to
      *  the flog methods will be ignored and no logs will be written, regardless of the topics
      *  and levels set.
@@ -122,21 +110,15 @@ object Flog {
      *  all topics. If this value is [TOPIC_NONE], this essentially disables all logging.
      * @param flogLevels The enabled levels for this installation. Use [LEVEL_ALL] to enable
      *  all levels. If this value is [LEVEL_NONE], this essentially disables all logging.
-     * @param flogOutputs The enabled outputs for this installation. Use either [OUTPUT_CONSOLE]
-     *  for logging to Logcat or [OUTPUT_FILE] to a logging file.
      */
     fun install(
-        context: Context,
         isFloggingEnabled: Boolean,
         flogTopics: FlogTopic,
         flogLevels: FlogLevel,
-        flogOutputs: FlogOutput
     ) {
-        this.applicationContext = WeakReference(context.appContext().value)
         this.isFloggingEnabled = isFloggingEnabled
         this.flogTopics = flogTopics
         this.flogLevels = flogLevels
-        this.flogOutputs = flogOutputs
     }
 
     fun checkShouldFlog(topic: FlogTopic, level: FlogLevel): Boolean {
@@ -173,29 +155,22 @@ object Flog {
     }
 
     fun log(level: FlogLevel, msg: String) {
-        when {
-            flogOutputs isSet OUTPUT_CONSOLE -> {
-                if (msg.length < MAX_LOG_LENGTH) {
-                    androidLog(level, msg)
-                } else {
-                    var i = 0
-                    val length: Int = msg.length
-                    while (i < length) {
-                        var newline: Int = msg.indexOf('\n', i)
-                        newline = if (newline != -1) newline else length
-                        do {
-                            val end = newline.coerceAtMost(i + MAX_LOG_LENGTH)
-                            val part: String = msg.substring(i, end)
-                            androidLog(level, part)
-                            i = end
-                        } while (i < newline)
-                        i++
-                    }
-                }
-            }
-            flogOutputs isSet OUTPUT_FILE -> {
-                fileLog(level, msg)
-            }
+        if (msg.length < MAX_LOG_LENGTH) {
+            androidLog(level, msg)
+            return
+        }
+        var i = 0
+        val length: Int = msg.length
+        while (i < length) {
+            var newline: Int = msg.indexOf('\n', i)
+            newline = if (newline != -1) newline else length
+            do {
+                val end = newline.coerceAtMost(i + MAX_LOG_LENGTH)
+                val part: String = msg.substring(i, end)
+                androidLog(level, part)
+                i = end
+            } while (i < newline)
+            i++
         }
     }
 
@@ -209,9 +184,5 @@ object Flog {
             level isSet LEVEL_INFO ->       Log.i(tag, message)
             level isSet LEVEL_DEBUG ->      Log.d(tag, message)
         }
-    }
-
-    private fun fileLog(level: FlogLevel, msg: String) {
-        val context = applicationContext.get() ?: return
     }
 }
