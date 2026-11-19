@@ -21,7 +21,7 @@ import org.k3lp.lib.text.K3Descriptor
 object ImeActions {
     val Backspace = k3Action("backspace")
     val BackspaceWord = k3Action("backspace_word")
-    val Delete = k3Action("delete") // TODO k3lp does not support this yet?
+    val Delete = k3Action("delete")
     val DeleteWord = k3Action("delete_word")
     val Enter = k3Action("enter")
 
@@ -77,11 +77,6 @@ object ImeActions {
     val NoopDragMarker = flAction("noop_drag_marker")
     val NoopSpacer = flAction("noop_spacer")
 
-    /**
-     * All actions that are capable to be shown on the fn-key and/or its secondary actions.
-     *
-     * The order of actions matches the order of the actions shown during configuration of the fn-key.
-     */
     val FnKeyCapable = listOf(
         SwitchToNextSubtype,
         SwitchToPrevSubtype,

@@ -71,11 +71,8 @@ fun layoutExtendedLongPressKeys(
     val isMultiLine = n > 5
     return extendedKeys.mapIndexed { index, popupKey ->
         if (index == 0) {
-            // default popup key, always directly at the anchor
             popupKey.withNewBounds(anchorBounds)
         } else {
-            // prioritizes distance to anchor (according to available space)
-            // aka row 0 before row 1 && right before left
             val (xFactor, yFactor) = when {
                 isMultiLine && nRightUsed0 == 0 && nRightMax != 0 -> {
                     ++nRightUsed0 to 0

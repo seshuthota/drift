@@ -19,13 +19,7 @@ package io.github.seshuthota.drift.ime.keyboard3.touch
 import io.github.seshuthota.drift.ime.keyboard3.ImeLayerIds
 import org.k3lp.model.layer.K3LayerId
 
-/**
- * Enum for the input shift states of a text keyboard.
- */
 enum class InputShiftState(val correspondingLayerId: K3LayerId) {
-    /**
-     * The default input mode, no shift modifier is active.
-     */
     UNSHIFTED(ImeLayerIds.Base),
     /**
      * Shift is active, but resets to [UNSHIFTED] after a single input. Symbol rows are shifted.

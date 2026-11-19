@@ -22,7 +22,6 @@ import org.k3lp.lib.text.K3Descriptor
 import kotlin.math.abs
 import kotlin.math.max
 
-/** Editor-level key movements, kept platform-free so the resolver stays unit-testable. */
 enum class EditorKey {
     LEFT,
     RIGHT,
@@ -34,7 +33,6 @@ enum class EditorKey {
     PAGE_DOWN,
 }
 
-/** A single executable step produced by [SwipeActionResolver]. */
 sealed interface ActionOp {
     data class Descriptor(val descriptor: K3Descriptor) : ActionOp
 
@@ -52,10 +50,6 @@ sealed interface ActionOp {
     data object Shift : ActionOp
 }
 
-/**
- * Maps a [SwipeAction] and the measured swipe distance (in quarter-threshold units) to executable
- * operations. Pure: no preferences, no Android, no IME access.
- */
 object SwipeActionResolver {
     fun resolve(
         action: SwipeAction,

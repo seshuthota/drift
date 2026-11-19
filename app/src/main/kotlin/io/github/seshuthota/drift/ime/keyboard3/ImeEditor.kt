@@ -37,7 +37,6 @@ import java.lang.ref.WeakReference
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
-/** Characters to erase and characters to write for one raw-editor replace. */
 internal data class RawInputEdit(val deletes: Int, val insert: String)
 
 open class ImeEditor(
@@ -46,21 +45,9 @@ open class ImeEditor(
 ) : K3Editor {
     fun getSurroundingText(charsBefore: Int, charsAfter: Int): K3SurroundingText {
         val ic = ic.get() ?: return K3SurroundingText.Empty
-        // TODO maybe use eet for getSurroundingText??
-//        val eet = ic.getExtractedText(
-//            ExtractedTextRequest().apply {
-//                token = -1
-//                flags = 0
-//                hintMaxLines = 10
-//                hintMaxChars = 10000
-//            },
-//            0,
-//        )
-//        eet.
         val textBeforeCursor = ic.getTextBeforeCursor(charsBefore, 0) ?: return K3SurroundingText.Empty
         val textAfterCursor = ic.getTextAfterCursor(charsAfter, 0) ?: return K3SurroundingText.Empty
         val textSelected = ic.getSelectedText(0) ?: ""
-        //val surroundingText = TextUtils.concat(textBeforeCursor, textSelected, textAfterCursor)
         return K3SurroundingText(
             textBefore = textBeforeCursor.toString(),
             textSelected = textSelected.toString(),
@@ -78,10 +65,6 @@ open class ImeEditor(
         return ic.getTextAfterCursor(charsAfter, 0)?.toString() ?: ""
     }
 
-    // TODO this function is very heavy => we need to optimize k3lp to provide:
-    //  insertAtSelection() (for simple appends)
-    //  deleteAroundSelection() for bksp/fw delete
-    //  in some cases replaceText() is needed due to the transform rules, but we abuse it waaaay too much
     override fun replaceText(
         range: IntRange,
         text: String,
@@ -109,19 +92,9 @@ open class ImeEditor(
         ic.endBatchEdit()
     }
 
-    /**
-     * True while this field's latest report was its on-screen text and positions instead of its stored ones (see
-     * [ImeController.isSurroundingTextTrustworthy]). ChatGPT does this for pasted links shown as chips. Offsets
-     * k3 derives then point past the end of the stored text, and Compose text fields crash on an out-of-range
-     * setComposingRegion or setSelection, so every edit is made relative to the cursor instead.
-     */
     @Volatile
     var isTextUntrusted: Boolean = false
 
-    /**
-     * Replaces the [range] k3 edits, which ends at the cursor, without naming any position: deletes the length of
-     * [range] before the cursor and commits [text] there. No composing region is kept.
-     */
     private fun replaceTextRelative(ic: InputConnection, range: IntRange, text: String) {
         ic.beginBatchEdit()
         ic.finishComposingText()
@@ -132,7 +105,6 @@ open class ImeEditor(
         ic.endBatchEdit()
     }
 
-    /** Text k3 last put before the cursor. Used to send only the changed tail to a raw editor. */
     private var rawTextBefore: String = ""
 
     private fun replaceTextRaw(ic: InputConnection, range: IntRange, text: String) {
@@ -142,14 +114,6 @@ open class ImeEditor(
         rawTextBefore = text
     }
 
-    /**
-     * Swaps the [oldText] tail of the text k3 last committed for [newText].
-     *
-     * A raw editor reports none of its own text back, so a suggestion picked from the candidates row cannot
-     * locate the word with [getTextBeforeCursor] and replace it with [replaceText]. The tracked text takes
-     * its place. Returns the whole tracked text after the edit, or null when it no longer ends with [oldText]
-     * (the terminal moved on, e.g. after Ctrl+C or a shell rewrite).
-     */
     fun replaceRawTail(oldText: String, newText: String): String? {
         val ic = ic.get() ?: return null
         val previous = rawTextBefore
@@ -180,7 +144,6 @@ open class ImeEditor(
         ic.get()?.commitText("\n", 1)
     }
 
-    /** One terminal erase. Used when k3's buffer is already empty but the line is not. */
     fun commitRawBackspace() {
         val ic = ic.get() ?: return
         if (rawTextBefore.isNotEmpty()) {
@@ -210,7 +173,6 @@ open class ImeEditor(
         return ic.performContextMenuAction(android.R.id.paste)
     }
 
-    /** The field's current selection, read from the editor, or null when it cannot tell. */
     fun currentSelection(): K3TextRange? {
         val ic = ic.get() ?: return null
         val extracted = ic.getExtractedText(ExtractedTextRequest(), 0) ?: return null
@@ -221,26 +183,18 @@ open class ImeEditor(
         )
     }
 
-    /** Whether [setLivePreview] can show text that is still changing; raw editors such as Termux cannot. */
     val supportsLivePreview: Boolean get() = !info.isRawInputEditor
 
-    /** Ends any composing region, so a live preview never replaces a word typed before it. */
     fun finishComposing() {
         ic.get()?.finishComposingText()
     }
 
-    /** Shows [text] as composing text, replacing the previous preview. Empty clears it. */
     fun setLivePreview(text: String) {
         val ic = ic.get() ?: return
         ic.setComposingText(text, 1)
         if (text.isEmpty()) ic.finishComposingText()
     }
 
-    /**
-     * Replaces [oldText] with [newText] when [oldText] is exactly the text before a collapsed cursor, and reports
-     * whether it did. Used to swap dictated text for a better transcript; never in raw editors, whose text cannot be
-     * read back.
-     */
     fun replaceLiveText(oldText: String, newText: String): Boolean {
         val ic = ic.get() ?: return false
         if (info.isRawInputEditor || oldText.isEmpty()) return false
@@ -257,7 +211,6 @@ open class ImeEditor(
         return true
     }
 
-    /** Commits [text] in place of the current preview (or at the cursor when there is none). */
     fun commitLiveText(text: String) {
         val ic = ic.get() ?: return
         if (info.isRawInputEditor) {
@@ -272,7 +225,7 @@ open class ImeEditor(
         val uri = item.uri ?: return false
         val mimeTypes = item.mimeTypes
         val id = ContentUris.parseId(uri)
-        val appContext = DriftApplication.getHack() // TODO this is a hack
+        val appContext = DriftApplication.getHack()
         val file = ClipboardFileStorage.getFileForId(appContext, id)
         if (!file.exists()) return false
         val inputContentInfo = InputContentInfoCompat(
@@ -360,7 +313,6 @@ open class ImeEditor(
         return true
     }
 
-    /** Commit bytes to a raw editor. [dropTracked] forgets the line Drift thinks it owns. */
     fun commitRawBytes(text: String, dropTracked: Boolean = false) {
         if (dropTracked) {
             rawTextBefore = ""
@@ -398,13 +350,6 @@ open class ImeEditor(
             return range.last - range.first + 1
         }
 
-        /**
-         * Edit that turns the previous raw-editor text into [newText].
-         *
-         * [previous] is only trusted when it has [oldLength] characters. Otherwise the span length
-         * is the only fact available: a longer string contributes its new tail, a shorter one
-         * contributes that many deletes.
-         */
         internal fun rawInputEdit(previous: String?, oldLength: Int, newText: String): RawInputEdit {
             if (previous != null && previous.length == oldLength) {
                 val common = previous.commonPrefixWith(newText).length
@@ -420,10 +365,6 @@ open class ImeEditor(
             return RawInputEdit(deletes = oldLength - newText.length, insert = "")
         }
 
-        /**
-         * Tracked text after replacing the [oldText] tail of [previous] with [newText], or null when that tail
-         * is not there anymore. The tail must be non-empty, as an empty one could match anywhere.
-         */
         internal fun rawTailReplacement(previous: String, oldText: String, newText: String): String? {
             if (oldText.isEmpty() || !previous.endsWith(oldText)) return null
             return previous.dropLast(oldText.length) + newText
@@ -432,7 +373,6 @@ open class ImeEditor(
         /** DEL. Termux's shell erases on this byte; deleteSurroundingText key events do not land. */
         internal const val RAW_DELETE = '\u007f'
 
-        /** True when a backspace did not shorten k3's text, so the terminal still needs an erase. */
         internal fun rawBackspaceNeedsExtraDelete(lengthBefore: Int, lengthAfter: Int): Boolean {
             return lengthAfter >= lengthBefore
         }

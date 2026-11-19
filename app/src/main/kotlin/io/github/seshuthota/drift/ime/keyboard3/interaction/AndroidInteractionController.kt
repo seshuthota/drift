@@ -80,19 +80,17 @@ private class AndroidInteractionController(
     }.stateIn(scope, SharingStarted.Eagerly, InteractionTimingOptions.Default)
 
     override val activeFeedbackOptions = combine<Any, InteractionFeedbackOptions>(
-        // Audio
         prefs.inputFeedback.audioEnabled.asFlow(),
         prefs.inputFeedback.audioVolume.asFlow(),
         prefs.inputFeedback.audioFeatKeyPress.asFlow(),
-        prefs.inputFeedback.audioFeatKeyPress.asFlow(), // TODO should be release
+        prefs.inputFeedback.audioFeatKeyPress.asFlow(),
         prefs.inputFeedback.audioFeatKeyRepeatedAction.asFlow(),
         prefs.inputFeedback.audioFeatKeyLongPress.asFlow(),
         prefs.inputFeedback.audioFeatGestureSwipe.asFlow(),
         prefs.inputFeedback.audioFeatGestureMovingSwipe.asFlow(),
-        // Haptic
         prefs.inputFeedback.hapticEnabled.asFlow(),
         prefs.inputFeedback.hapticFeatKeyPress.asFlow(),
-        prefs.inputFeedback.hapticFeatKeyPress.asFlow(), // TODO should be release
+        prefs.inputFeedback.hapticFeatKeyPress.asFlow(),
         prefs.inputFeedback.hapticFeatKeyRepeatedAction.asFlow(),
         prefs.inputFeedback.hapticFeatKeyLongPress.asFlow(),
         prefs.inputFeedback.hapticFeatGestureSwipe.asFlow(),
@@ -200,7 +198,6 @@ private class AndroidInteractionController(
 
         private const val HFC_LONG_PRESS: Int = HapticFeedbackConstants.LONG_PRESS
 
-        // TODO TEXT_HANDLE_MOVE is system-wise bound to normal touch haptics, not keyboard haptics
         private val HFC_TEXT_HANDLE_MOVE: Int = when {
             AndroidVersion.ATLEAST_API27_O_MR1 -> HapticFeedbackConstants.TEXT_HANDLE_MOVE
             else -> HapticFeedbackConstants.KEYBOARD_TAP

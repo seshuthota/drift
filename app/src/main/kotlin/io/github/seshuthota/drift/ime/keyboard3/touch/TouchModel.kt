@@ -76,7 +76,6 @@ class TouchKeyboard(
         if (layer == null || !NormalizedBounds.contains(position)) {
             return null
         }
-        // TODO improve runtime of this
         for (key in layer.keys) {
             if (key.hitbox.contains(position)) {
                 return key
@@ -213,7 +212,6 @@ private fun computeTouchKeyboard(
     val touchLayers = buildMap {
         for ((_, layer) in layers) {
             if (layer.id == ImeLayerIds.Numrow) {
-                // the numrow layer is not intended as a standalone layer => do not waste compute time on it here
                 put(layer.id, TouchLayer.Empty)
                 continue
             }
@@ -266,21 +264,18 @@ private fun computeTouchKeyboard(
                         size = Size(keyWidthPx, keyHeight),
                     )
                     val hitbox = when (i) {
-                        // if first key -> extend to left edge of keyboard
                         0 -> {
                             Rect(
                                 offset = Offset(0f, currentY),
                                 size = Size(currentX + keyWidthPx, keyHeight),
                             )
                         }
-                        // if last key -> extend to right edge of keyboard
                         row.size - 1 -> {
                             Rect(
                                 offset = Offset(currentX, currentY),
                                 size = Size(1f - currentX, keyHeight),
                             )
                         }
-                        // else same as bounds
                         else -> keyBoundsPx
                     }
                     val popups = when {
@@ -313,7 +308,7 @@ private fun computeTouchKeyboard(
                         } ?: emptyList()
                     }
                     val multiTapKeys = when {
-                        isFnKey -> emptyList() // no support for multi-tap on fn key
+                        isFnKey -> emptyList()
                         else -> key.multiTapKeyIds?.let { multiTapKeyIds ->
                             buildList {
                                 add(
@@ -335,7 +330,7 @@ private fun computeTouchKeyboard(
                         } ?: emptyList()
                     }
                     val flicks = when {
-                        isFnKey -> null // TODO
+                        isFnKey -> null
                         else -> key.flickId?.let { model.flicks.byFlickId[it] }
                     }
                     val attrs = if (isFnKey) options.fnKeyArrangement.simpleAction.asK3Key() else key

@@ -5,7 +5,6 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
-import io.github.seshuthota.drift.ime.text.key.KeyCode
  * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
@@ -83,9 +82,6 @@ import java.lang.ref.WeakReference
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
 
-/**
- * Provides the [ImeController] instance this composition tree is associated with.
- */
 val LocalImeController = staticCompositionLocalOf<ImeController> {
     error("No IME controller is associated with this composition tree.")
 }
@@ -93,7 +89,7 @@ val LocalImeController = staticCompositionLocalOf<ImeController> {
 @OptIn(ExperimentalAtomicApi::class)
 class ImeController(
     storageController: StorageController,
-    val clipboardManager: ClipboardManager, // TODO ClipboardController
+    val clipboardManager: ClipboardManager,
     initialState: ImeState = ImeState(),
     val touchModelCache: TouchModelCache = TouchModelCache(),
     private val subtypeManager: SubtypeManager? = null,
@@ -108,11 +104,8 @@ class ImeController(
     private val expectedContentQueue = ExpectedContentQueue()
     private var emitInterceptor = AtomicReference<EmitInterceptor?>(null)
 
-    /** The autocorrection made by the last key press, revertible by an immediate backspace. */
     private var lastAutocorrection: Autocorrection? = null
-    /** A word whose autocorrection the user reverted; it is not corrected again in this field. */
     private var rejectedAutocorrection: String? = null
-    /** The selection the field last reported through onUpdateSelection, in stored-text positions. */
     @Volatile
     private var lastEditorSelection: K3TextRange? = null
 
@@ -138,7 +131,6 @@ class ImeController(
         )
     }.stateIn(scope, SharingStarted.Eagerly, TouchModelOptions.Default)
 
-    // TODO check if we can implement this differently
     val activeSmartbarVisibleDynamicActionsCount = MutableStateFlow(0)
 
     init {
@@ -156,7 +148,6 @@ class ImeController(
             }
         }
 
-        // TODO proper stateful compilation
         scope.launch {
             foundationKeyboards = loadFoundationKeyboards(storageController.activeStorage.value)
             applyFoundationKeyboardForActiveSubtype()
@@ -180,10 +171,8 @@ class ImeController(
             return false
         }
         return when (keyCode) {
-            // TODO KeyEvent.KEYCODE_SPACE (auto-commit candidate)
             KeyEvent.KEYCODE_DEL -> true
             KeyEvent.KEYCODE_FORWARD_DEL -> true
-            // TODO KeyEvent.KEYCODE_SHIFT_LEFT, KeyEvent.KEYCODE_SHIFT_RIGHT
             else -> false
         }
     }
@@ -205,7 +194,6 @@ class ImeController(
                 }
                 true
             }
-            // TODO KeyEvent.KEYCODE_SHIFT_LEFT, KeyEvent.KEYCODE_SHIFT_RIGHT
             else -> false
         }
     }
@@ -224,12 +212,9 @@ class ImeController(
         isExternalEditActive = true
     }
 
-    /** Ends an external edit and resyncs k3 with the field, whose last selection updates may have been skipped. */
     fun endExternalEdit() {
         if (!isExternalEditActive) return
         isExternalEditActive = false
-        // The extracted-text selection is in on-screen positions for some fields (see handleUpdateSelection's
-        // caller), so prefer the last selection the field reported through onUpdateSelection.
         val selection = lastEditorSelection ?: activeState.value.editor.currentSelection() ?: return
         updateStateBlocking { handleUpdateSelection(selection) }
     }
@@ -240,8 +225,6 @@ class ImeController(
 
     fun snapshotState(): ImeState = activeState.value
 
-    // TODO evaluate if we can move to a clean coroutine-based approach in Drift
-    //  for now this helper can be used to update the state from non-suspending contexts
     inline fun updateStateBlocking(crossinline function: UpdateImeStateScope.() -> Unit) {
         runBlocking {
             updateState(function)
@@ -334,9 +317,6 @@ class ImeController(
                         when (newTouchLayerId) {
                             ImeLayerIds.Numpad, ImeLayerIds.Telpad -> false
                             else -> keyVariation != KeyVariation.PASSWORD &&
-                                // TODO review if this is the correct approach for composing region support detection
-                                //  important: for codemirror6 in browsers, it is important that composing is disabled,
-                                //  else all sorts of weird behavior starts to occur
                                 info.isRichInputEditor &&
                                 info.inputAttributes.flagTextAutoCorrect
                         }
@@ -354,8 +334,6 @@ class ImeController(
             )
             lastEditorSelection = null
             if (!info.isRawInputEditor) {
-                // EditorInfo carries only 20 characters each side, which can miss a link chip's placeholder, so the
-                // field is read live as well. Either read distrusts it; the narrow one cannot undo the wide one.
                 val live = state.editor.getSurroundingText(50, 10)
                 val trustworthy = isSurroundingTextTrustworthy(initialSelection, live, initialSurrounding)
                 setTrust(!trustworthy, "startInputView", initialSelection)
@@ -376,7 +354,6 @@ class ImeController(
                 return
             }
             resetContent(newSelection, state.editor.getSurroundingText(50, 10))
-            // The cursor moved or the text changed outside of our own edits.
             lastAutocorrection = null
             // Selection updates also fire for layout/scroll changes and can carry stale selections, so only drop
             // glide alternatives once the glided word is really no longer directly before the cursor.
@@ -391,7 +368,6 @@ class ImeController(
                 interceptor.onEmit(value)
                 return
             }
-            // Any key press after a glide ends the window in which its alternatives can replace it.
             dismissGlideAlternatives()
             super.emit(value)
         }
@@ -434,10 +410,6 @@ class ImeController(
             requestSuggestions()
         }
 
-        /**
-         * A second space directly after a letter or digit becomes ". " when double-space period is on.
-         * The space already before the cursor is replaced, so the field gains one period and keeps one space.
-         */
         private fun commitDoubleSpacePeriod(): Boolean {
             if (!prefs.correction.doubleSpacePeriod.get()) return false
             if (state.content.selection.isNotCollapsed()) return false
@@ -459,10 +431,6 @@ class ImeController(
             return true
         }
 
-        /**
-         * Replaces the word before the cursor with the suggestion provider's auto-commit candidate, if autocorrect
-         * is enabled, the field takes prose, and the candidate was computed for exactly this word.
-         */
         private fun autocorrectBeforeSeparator(): Autocorrection? {
             if (!prefs.correction.autoCorrect.get()) return null
             if (!isProseField()) return null
@@ -482,10 +450,6 @@ class ImeController(
             return Autocorrection(original = typed, corrected = corrected, separator = "")
         }
 
-        /**
-         * The field takes prose: not a raw editor, password, URL, email, name or no-suggestions field.
-         * Autocorrect and personal learning only act here.
-         */
         fun isProseField(): Boolean {
             val info = state.editor.info
             if (info.isRawInputEditor || !info.isRichInputEditor) return false
@@ -494,7 +458,6 @@ class ImeController(
                 attributes.variation in AUTOCORRECT_VARIATIONS && state.flags.keyVariation != KeyVariation.PASSWORD
         }
 
-        /** Undoes [autocorrection] if its text is still directly before the cursor. */
         private fun revertAutocorrection(autocorrection: Autocorrection): Boolean {
             val committed = autocorrection.corrected + autocorrection.separator
             if (state.content.selection.isNotCollapsed() ||
@@ -520,7 +483,6 @@ class ImeController(
         override fun emitDescriptor(descriptor: K3Descriptor) {
             val windowController = DriftImeService.windowControllerOrNull()
             when (descriptor) {
-                // TODO once k3lp supports this remove
                 ImeActions.Delete -> emitForwardDelete()
                 ImeActions.BackspaceWord -> {
                     if (state.editor.info.isRawInputEditor) {
@@ -531,12 +493,10 @@ class ImeController(
                         super.emitDescriptor(descriptor)
                     }
                 }
-                // TODO evaluate use of modern cursor anchor API instead of sending raw key events
                 ImeActions.ArrowDown -> state.editor.sendDownUpKeyEvent(KeyEvent.KEYCODE_DPAD_DOWN)
                 ImeActions.ArrowLeft -> state.editor.sendDownUpKeyEvent(KeyEvent.KEYCODE_DPAD_LEFT)
                 ImeActions.ArrowRight -> state.editor.sendDownUpKeyEvent(KeyEvent.KEYCODE_DPAD_RIGHT)
                 ImeActions.ArrowUp -> state.editor.sendDownUpKeyEvent(KeyEvent.KEYCODE_DPAD_UP)
-                // TODO clipboard manager needs a rewrite to match the new state paradigm
                 ImeActions.ClipboardCopy -> {
                     if (state.editor.info.isRichInputEditor) {
                         val text = state.content.surroundingText.textSelected
@@ -572,8 +532,6 @@ class ImeController(
                         clipboardManager.primaryClip?.let { clipboardManager.deleteClip(it, onlyIfUnpinned = true) }
                     }
                     clipboardManager.updatePrimaryClip(null)
-                    // TODO we have no ref here:
-                    //  appContext.showShortToastSync(R.string.clipboard__cleared_primary_clip)
                 }
                 ImeActions.SelectAll -> state.editor.performSelectAll()
                 ImeActions.ShowImeWindow -> DriftImeService.showUi()
@@ -599,7 +557,7 @@ class ImeController(
                 ImeActions.ShowInputMethodPicker -> DriftImeService.showImePicker()
                 ImeActions.SwitchToPrevInputMethod -> DriftImeService.switchToPrevInputMethod()
                 ImeActions.SwitchToNextInputMethod -> DriftImeService.switchToNextInputMethod()
-                ImeActions.ShowSubtypePicker -> {} // TODO
+                ImeActions.ShowSubtypePicker -> {}
                 ImeActions.SwitchToPrevSubtype -> subtypeManager?.switchToPrevSubtype()
                 ImeActions.SwitchToNextSubtype -> subtypeManager?.switchToNextSubtype()
                 ImeActions.ToggleActionsEditor -> {
@@ -680,7 +638,7 @@ class ImeController(
                 emitEnterKey()
                 return
             }
-            val isShiftPressed = false // TODO inputEventDispatcher.isPressed(KeyCode.SHIFT)
+            val isShiftPressed = false
             if (info.imeOptions.flagNoEnterAction || info.inputAttributes.flagTextMultiLine && isShiftPressed) {
                 emitEnterKey()
             } else {
@@ -717,13 +675,11 @@ class ImeController(
                 state.editor.sendDownUpKeyEvent(KeyEvent.KEYCODE_FORWARD_DEL)
                 return
             }
-            // TODO request additional text if too low on context length
             if (state.content.selection.isNotCollapsed()) {
                 emitBackspace()
             } else {
                 val newSurroundingText = state.content.surroundingText.copy(
                     textAfter = state.content.surroundingText.textAfter.let { text ->
-                        // TODO unicode
                         if (text.isEmpty()) text else text.substring(1)
                     },
                 )
@@ -734,15 +690,12 @@ class ImeController(
                 )
                 state.editor.deleteSurroundingText(
                     charsBefore = 0,
-                    charsAfter = 1, // TODO
+                    charsAfter = 1,
                 )
             }
         }
 
         fun emitCandidate(candidate: SuggestionCandidate) {
-//            scope.launch {
-//                candidate.sourceProvider?.notifySuggestionAccepted(subtypeManager.activeSubtype, candidate)
-//            }
             when (candidate) {
                 is ClipboardSuggestionCandidate -> emitClipboardItem(candidate.clipboardItem)
                 is GlideSuggestionCandidate -> emitGlideReplacement(candidate)
@@ -750,10 +703,6 @@ class ImeController(
             }
         }
 
-        /**
-         * Replaces the word inserted by the last glide with [candidate]. Does nothing (and drops the stale
-         * alternatives) unless the committed text is still directly before a collapsed cursor.
-         */
         fun emitGlideReplacement(candidate: GlideSuggestionCandidate): Boolean {
             val oldText = candidate.replacesText ?: return false
             val newText = candidate.text.toString() + " "
@@ -780,16 +729,10 @@ class ImeController(
                     QualityLog.glidePicked(candidate.text.toString(), rank)
                 }
             }
-            // The word is settled: move on to predicting the next one.
             requestSuggestions(force = true)
             return true
         }
 
-        /**
-         * Swaps the glided word for [newText] in a terminal. Its editor reports neither its line nor its cursor, so
-         * the replacement goes through the text k3 tracked instead of the editor's text and the alternatives are
-         * re-targeted at [newText] so a second pick has something to replace.
-         */
         private fun replaceRawGlideTail(oldText: String, newText: String): Boolean {
             val tracked = state.editor.replaceRawTail(oldText, newText) ?: return false
             val content = state.content
@@ -831,11 +774,6 @@ class ImeController(
             return true
         }
 
-        /**
-         * Asks the suggestion providers for candidates for the current content. Skipped while glide alternatives
-         * are on display (they stay until the user acts) unless [force] is set, and in fields where suggestions
-         * make no sense (passwords, raw input).
-         */
         private fun requestSuggestions(force: Boolean = false) {
             val nlp = nlpManager?.value ?: return
             val subtype = subtypeManager?.activeSubtype ?: return
@@ -845,8 +783,6 @@ class ImeController(
             ) {
                 return
             }
-            // Only post-glide alternatives are protected; stale live previews (e.g. from a glide that produced no
-            // word) must not block suggestions.
             if (!force && nlp.activeCandidates.any { it is GlideSuggestionCandidate && it.replacesText != null }) {
                 return
             }
@@ -892,10 +828,6 @@ class ImeController(
             }
         }
 
-        /**
-         * Commits a word candidate: replaces the partially typed word before the cursor (if any) with the
-         * candidate plus a space, then asks for next-word predictions.
-         */
         fun emitCompletion(candidate: SuggestionCandidate): Boolean {
             var text = candidate.text.toString()
             if (text.isEmpty() || state.editor.info.isRawInputEditor || !state.content.isTypingPosition()) {
@@ -907,7 +839,6 @@ class ImeController(
             val before = state.editor.getTextBeforeCursor(64)
             val partial = NwpText.partialWord(before)
             val last = before.getOrNull(before.length - partial.length - 1)
-            // A prediction right after a word or sentence punctuation needs a separating space.
             val leadingSpace = partial.isEmpty() && last != null && (last.isLetterOrDigit() || last in ".,!?;:")
             val newText = (if (leadingSpace) " " else "") + text + " "
             val rank = nlpManager?.takeIf { it.isInitialized() }?.value?.activeCandidates.orEmpty().indexOf(candidate)
@@ -931,7 +862,6 @@ class ImeController(
             return true
         }
 
-        /** Typing in this field may go to the opt-in quality log: a prose field outside incognito mode. */
         private fun isQualityLogged(): Boolean =
             !state.flags.isIncognitoMode && isProseField() && QualityLog.isEnabled()
 
@@ -976,12 +906,11 @@ class ImeController(
         }
 
         fun reevaluateInputShiftState() {
-            val isPeekOngoing = false // TODO
+            val isPeekOngoing = false
             if (state.flags.inputShiftState == InputShiftState.CAPS_LOCK || isPeekOngoing) return
             val capsMode = state.content.cursorCapsMode(state.editor.info.inputAttributes)
             val shift = prefs.typing.autoCapitalization.get()
                 && capsMode != InputAttributes.CapsMode.NONE
-                // && subtypeManager.activeSubtype.primaryLocale.supportsCapitalization
             val inputShiftState = when {
                 shift -> InputShiftState.SHIFTED_AUTOMATIC
                 else -> InputShiftState.UNSHIFTED
@@ -996,10 +925,6 @@ class ImeController(
             )
         }
 
-        /**
-         * Trust is decided per report, not per field: a field that reports its on-screen text for one read may report
-         * its stored text the next, and a wrong guess only costs suggestions until the next report corrects it.
-         */
         private fun setTrust(untrusted: Boolean, source: String, selection: K3TextRange) {
             val editor = state.editor
             if (editor === ImeEditor.Disconnected || editor.isTextUntrusted == untrusted) return
@@ -1011,7 +936,6 @@ class ImeController(
             }
         }
 
-        /** Hands k3 the field's text, or nothing while the field's reports cannot be trusted. */
         private fun loadContent(selection: K3TextRange, surrounding: K3SurroundingText) {
             super.resetContent(selection, if (state.editor.isTextUntrusted) K3SurroundingText.Empty else surrounding)
             reevaluateInputShiftState()
@@ -1043,7 +967,6 @@ class ImeController(
             if (selection.isNotCollapsed() || !state.flags.isComposingEnabled) {
                 return null
             }
-            // TODO rework how we get the primary locale
             val locale = DriftLocale.fromTag(model.locales.getOrElse(0) { "" })
             return breakIterators.word(locale) {
                 it.setText(surroundingText.textBefore)
@@ -1051,8 +974,6 @@ class ImeController(
                 val isWord = it.ruleStatus != BreakIterator.WORD_NONE
                 if (isWord) {
                     val start = it.previous().let { pos ->
-                        // Include Emoji indicator in local composing. This is required so that emoji suggestion indicator
-                        // can be detected in the composing text.
                         (pos - 1).takeIf { updatedPos ->
                             surroundingText.textBefore.getOrNull(updatedPos) == EmojiSuggestionType.LEADING_COLON.prefix.first()
                         } ?: pos
@@ -1092,11 +1013,6 @@ class ImeController(
                 OBJECT_REPLACEMENT !in surrounding.textAfter
         }
 
-        /**
-         * Whether a field that just started may be edited by offsets, given the [live] read taken at start and the
-         * narrower [initial] EditorInfo window. Either read seeing on-screen text distrusts the field: the initial
-         * window covers only 20 characters each side, which can miss a chip's placeholder entirely.
-         */
         internal fun isSurroundingTextTrustworthy(
             selection: K3TextRange,
             live: K3SurroundingText,
@@ -1142,12 +1058,10 @@ private class ExpectedContentQueue {
     }
 }
 
-/** A word replaced by autocorrect when [separator] was typed. */
 private data class Autocorrection(val original: String, val corrected: String, val separator: String)
 
 private val AUTOCORRECT_SEPARATORS = setOf(' ', '.', ',', '!', '?', ';', ':', '\n')
 
-/** The character before the trailing space is a letter or digit, so a second space can become a period. */
 internal fun isDoubleSpacePeriod(textBeforeCursor: CharSequence): Boolean {
     if (textBeforeCursor.length < 2) return false
     val end = textBeforeCursor.length
@@ -1155,7 +1069,6 @@ internal fun isDoubleSpacePeriod(textBeforeCursor: CharSequence): Boolean {
     return textBeforeCursor[end - 2].isLetterOrDigit()
 }
 
-/** Prose fields; names, addresses, emails, URLs, passwords and filters are never autocorrected. */
 private val AUTOCORRECT_VARIATIONS = setOf(
     InputAttributes.Variation.NORMAL,
     InputAttributes.Variation.EMAIL_SUBJECT,

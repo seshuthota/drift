@@ -53,28 +53,17 @@ import kotlin.math.ln
  */
 class GlideTypingManager(
     context: Context,
-    /**
-     * The controller that receives committed glides. The default is the live IME service; tests inject
-     * the application controller so a glide can be traced into a recording input connection.
-     */
     private val imeControllerProvider: () -> ImeController? = { DriftImeService.imeControllerOrNull() },
 ) {
     private val appContext = context.applicationContext
     companion object {
         private const val MAX_SUGGESTION_COUNT = 8
 
-        /** Trail samples are batched to roughly one frame; the classifier still sees every point. */
         private const val TRAIL_REFRESH_MS = 16L
 
-        /**
-         * Glide + next-word LM fusion: each candidate gets `LM_WEIGHT * ln P_lm(word | text before cursor)`, or
-         * `-LM_WEIGHT * LM_FLOOR` if the word is outside the LM vocabulary. Tuned with `ml/nwp/fuse_eval.py`,
-         * re-measured with the shipping artifacts in `ml/nwp/fuse_shipping.py` (λ 0.4 is still the optimum).
-         */
         private const val LM_WEIGHT = 0.4
         private const val LM_FLOOR = 10.0
 
-        /** The editor context window is ~50 chars; at or above this the text is assumed to be cut. */
         private const val TRUNCATION_HINT_CHARS = 48
     }
 
@@ -86,7 +75,6 @@ class GlideTypingManager(
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val classifier: GlideTypingClassifier = HybridGlideTypingClassifier(context)
     private val classifierLock = Any()
-    /** Guards the point stream only, so a preview decode never blocks pointer samples. */
     private val pointsLock = Any()
     private val frequencyCache = HashMap<String, Double>()
     private val requestInFlight = AtomicBoolean(false)
@@ -106,13 +94,8 @@ class GlideTypingManager(
 
     private val _trail = MutableStateFlow<List<GesturePoint>>(emptyList())
 
-    /** Normalized gesture trail of the current/last glide, for drawing. */
     val trail: StateFlow<List<GesturePoint>> = _trail
 
-    /**
-     * Updates the key geometry and, when the subtype changed, loads its word corpus. Both happen
-     * off the main thread; a gesture before completion simply yields no suggestions.
-     */
     fun setLayout(keys: List<GlideKey>, subtype: Subtype) {
         if (keys == preparedKeys && subtype == preparedSubtype) {
             return
@@ -128,7 +111,6 @@ class GlideTypingManager(
         }
     }
 
-    /** Reloads the word list after a word was learned, without waiting for a layout change. */
     fun reloadLexicon() {
         val subtype = preparedSubtype ?: return
         synchronized(frequencyCache) { frequencyCache.clear() }
@@ -175,17 +157,12 @@ class GlideTypingManager(
         addedPointCount = 0
     }
 
-    /**
-     * Scores glide candidates by how well they continue the text before the cursor. Runs while the finger is still
-     * moving (one model call, ~1 ms); a glide that finishes first is decoded without context.
-     */
     private fun prepareContextScorer(forGlide: Int) {
         val textBefore = imeControllerProvider()?.snapshotState()?.content?.surroundingText?.textBefore
             ?.toString() ?: return
         scope.launch {
             val truncated = textBefore.length >= TRUNCATION_HINT_CHARS
             val logProbs = predictor.nextWordLogProbs(textBefore, truncated) ?: return@launch
-            // The user's own word sequences are mixed in, so a word they use after this context ranks higher.
             val personal = if (nlpManager.isPersonalLearningActive()) nlpManager.personalNgram else null
             val history = personal?.historyOf(textBefore, truncated)
             val alpha = if (personal != null && history != null) personal.alpha(history) else 0.0
@@ -235,8 +212,6 @@ class GlideTypingManager(
             return
         }
         synchronized(pointsLock) {
-            // The outcome list is the recognizer's complete path: every streamed point plus the release point, which
-            // never arrives as a move. Without it the decoder misses where the stroke really ended.
             if (points.isNotEmpty()) {
                 classifier.clear()
                 points.forEach { classifier.addGesturePoint(it) }
@@ -272,7 +247,6 @@ class GlideTypingManager(
         var requestId = 0
         val proceed = synchronized(classifierLock) {
             if (commit) {
-                // A commit must never be dropped; it only needs to suppress stale previews.
                 suppressPreview = true
             } else if (requestInFlight.getAndSet(true)) {
                 return@synchronized false
@@ -314,8 +288,6 @@ class GlideTypingManager(
                         imeController.updateState {
                             val shiftState = state.flags.inputShiftState
                             val cased = suggestions.map { applyShiftState(it, shiftState) }
-                            // Auto-space between words: a glided word after a manually typed
-                            // word or letter must not be appended without a separator.
                             if (state.editor.getTextBeforeCursor(1).lastOrNull()?.isLetterOrDigit() == true) {
                                 emitText(" ".asK3String())
                             }
@@ -323,8 +295,6 @@ class GlideTypingManager(
                             val textBeforeWord = state.editor.getTextBeforeCursor(64)
                             emitText(committed.asK3String())
                             if (isProseField()) nlpManager.learnWord(textBeforeWord, cased.first())
-                            // Keep every candidate (the committed one included, so the user can switch
-                            // back) as a one-tap replacement for the word that was just inserted.
                             alternatives = cased.mapIndexed { index, word ->
                                 GlideSuggestionCandidate(
                                     text = word,
@@ -355,7 +325,6 @@ class GlideTypingManager(
     }
 }
 
-/** Cases a glided [word] the way a typed word would be cased under [shiftState]. */
 internal fun applyShiftState(word: String, shiftState: InputShiftState): String = when (shiftState) {
     InputShiftState.CAPS_LOCK -> word.uppercase()
     InputShiftState.UNSHIFTED -> word

@@ -43,35 +43,25 @@ data class GlideKey(
 interface GlideTypingClassifier {
     val ready: Boolean
 
-    /** Word corpus for the active subtype, plus a lazily-consulted frequency lookup. */
     fun setWordData(words: List<String>, frequencyOf: (String) -> Double)
 
-    /** Key geometry of the active layout, in normalized keyboard coordinates. */
     fun setLayout(keys: List<GlideKey>)
 
     fun addGesturePoint(point: GesturePoint)
 
     fun getSuggestions(maxSuggestionCount: Int): List<String>
 
-    /** Snapshot of the collected samples, so decoding can run without blocking [addGesturePoint]. */
     fun snapshotPoints(): List<GesturePoint> = emptyList()
 
-    /** Decodes a previously taken [snapshotPoints] snapshot. Implementations without one ignore it. */
     fun getSuggestionsFor(points: List<GesturePoint>, maxSuggestionCount: Int): List<String> =
         getSuggestions(maxSuggestionCount)
 
-    /**
-     * Optional extra score per candidate word (e.g. a weighted next-word language-model log-probability given
-     * the text before the cursor). Implementations that cannot use it ignore it.
-     */
     fun setContextScorer(scorer: ((String) -> Double)?) {}
 
     fun clear()
 }
 
 /**
- * Classifies gestures by comparing them with an "ideal gesture".
- *
  * Check out Étienne Desticourt's excellent write up at
  * https://github.com/AnySoftKeyboard/AnySoftKeyboard/pull/1870
  */
@@ -136,7 +126,6 @@ class StatisticalGlideTypingClassifier : GlideTypingClassifier {
                 val normalizedWordGesture = wordGesture.normalizeByBoxSide()
                 val shapeDistance = calcShapeDistance(normalizedWordGesture, normalizedUserGesture)
                 val locationDistance = calcLocationDistance(wordGesture, userGesture)
-                // Negative log likelihood: gaussian fit costs plus a weighted word prior.
                 val shapeCost = shapeDistance * shapeDistance / (2f * SHAPE_STD * SHAPE_STD)
                 val locationCost = locationDistance * locationDistance / (2f * locationStd * locationStd)
                 val cost = shapeCost + locationCost + FREQUENCY_WEIGHT * frequencyCost
@@ -184,7 +173,6 @@ class StatisticalGlideTypingClassifier : GlideTypingClassifier {
         words: List<String>,
         keysByCharacter: Map<Int, GlideKey>,
     ) {
-        /** Fast access to words by their first and last character. */
         private val wordTree = HashMap<Pair<Int, Int>, ArrayList<String>>()
 
         init {
@@ -390,22 +378,16 @@ class StatisticalGlideTypingClassifier : GlideTypingClassifier {
     }
 
     private companion object {
-        /** Allowed gesture length variance, as a factor of the key radius. */
         private const val PRUNING_LENGTH_THRESHOLD = 16.0
 
-        /** How many nearest keys are kept at each end of the gesture during pruning. */
         private const val START_END_KEY_WINDOW = 3
 
-        /** Weight of the word frequency prior relative to the geometric fit costs. */
         private const val FREQUENCY_WEIGHT = 0.1f
 
-        /** Resolution of the resampled gesture. */
         private const val SAMPLING_POINTS = 200
 
-        /** Std. deviation for normalized shapes; independent of keyboard and key size. */
         private const val SHAPE_STD = 22.08f
 
-        /** Std. deviation for locations, as a factor of the key radius. */
         private const val LOCATION_STD = 0.5109f
     }
 }
