@@ -23,8 +23,7 @@ import kotlin.math.abs
  * source; this lifts it so the loudest recent sample sits near [targetPeak] of full scale, at most [maxGain] times.
  *
  * The tracked peak jumps up at once (so a loud chunk is never clipped) and decays over about a second, so the gain
- * does not pump up in every short pause between words. 0.95 per 100 ms chunk halves the tracked peak in ~1.4 s; the
- * earlier 0.98 took ~3.4 s, long enough for a quieter word after a loud one to arrive under-amplified.
+ * does not pump up in every short pause between words.
  */
 class AutoGain(
     private val maxGain: Float = 16f,
@@ -33,7 +32,6 @@ class AutoGain(
 ) {
     private var envelope = 0f
 
-    /** Current gain, for tests and logs. */
     var gain: Float = 1f
         private set
 

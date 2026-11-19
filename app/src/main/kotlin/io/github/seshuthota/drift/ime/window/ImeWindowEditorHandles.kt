@@ -434,8 +434,6 @@ private fun Modifier.imeWindowEditorHandle(
             }
         }
         .pointerInput(Unit) {
-            // TODO evaluate if using (current - initial position) results in less rounding errors
-            //  drawback: we need the coords via onGloballyPositioned
             var accumulatedOffset = Offset.Zero
             var initialSpec = ImeWindowSpec.Fallback
             var currentSpec = ImeWindowSpec.Fallback

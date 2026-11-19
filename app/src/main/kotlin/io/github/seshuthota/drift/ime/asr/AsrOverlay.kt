@@ -76,11 +76,6 @@ fun isAsrActive(): Boolean {
     return state != AsrState.Idle
 }
 
-/**
- * Colours of the voice panel, taken from the keyboard theme so the panel looks like the keys it replaces: plain
- * text and the idle button follow a normal key, the recording button follows the enter key (the theme's accent) and
- * secondary text follows the space bar's label.
- */
 private data class VoicePanelColors(
     val text: Color,
     val secondaryText: Color,
@@ -114,11 +109,6 @@ private fun rememberVoicePanelColors(): VoicePanelColors {
     )
 }
 
-/**
- * Full-height voice panel that replaces the keyboard while local voice input is active. One big button in the
- * centre reflects the state (active while dictating, muted while the last audio is finished) and ends dictation
- * when tapped; the close button in the top-right cancels and returns to the keyboard.
- */
 @Composable
 fun AsrPanel(height: Dp) {
     val context = LocalContext.current
@@ -127,7 +117,6 @@ fun AsrPanel(height: Dp) {
     val amplitude by controller.amplitude.collectAsState()
     val colors = rememberVoicePanelColors()
 
-    // No background of its own: the keyboard window's themed background shows through, as behind the keys.
     Box(modifier = Modifier.fillMaxWidth().height(height)) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Column(

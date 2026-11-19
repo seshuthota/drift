@@ -55,8 +55,8 @@ class ImeRootView(val ims: DriftImeService) : AbstractComposeView(ims) {
     init {
         isHapticFeedbackEnabled = true
         layoutParams = LayoutParams(
-            /* width = */ LayoutParams.MATCH_PARENT,
-            /* height = */ LayoutParams.MATCH_PARENT,
+            LayoutParams.MATCH_PARENT,
+            LayoutParams.MATCH_PARENT,
         )
     }
 

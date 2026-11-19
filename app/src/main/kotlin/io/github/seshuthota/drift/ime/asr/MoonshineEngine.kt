@@ -70,7 +70,6 @@ class MoonshineEngine : StreamingAsrEngine {
 
     override fun start() {
         val instance = checkNotNull(transcriber) { "no moonshine model is loaded" }
-        // A cancelled dictation never reached stop(); end its stream so its lines do not leak into this one.
         if (running) runCatching { instance.stop() }
         synchronized(pending) {
             pending.clear()
@@ -95,7 +94,6 @@ class MoonshineEngine : StreamingAsrEngine {
 
     override fun setContext(text: String) {
         val instance = checkNotNull(transcriber) { "no moonshine model is loaded" }
-        // Key-term biasing is a hint: a model or text it cannot use must not stop the dictation.
         runCatching { instance.setContext(text) }.onFailure { flogInfo { "voice: context not applied: ${it.message}" } }
     }
 

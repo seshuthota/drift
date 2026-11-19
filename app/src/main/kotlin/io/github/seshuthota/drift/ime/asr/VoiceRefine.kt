@@ -68,7 +68,6 @@ private fun wordCount(text: String): Int = if (text.isEmpty()) 0 else text.count
 
 private val WHITESPACE = Regex("\\s+")
 
-/** A refined text with fewer than this share of the streamed words is treated as a dropped phrase. */
 private const val MIN_KEPT_WORD_RATIO = 0.6
 
 const val MAX_CONTEXT_BEFORE = 1_000

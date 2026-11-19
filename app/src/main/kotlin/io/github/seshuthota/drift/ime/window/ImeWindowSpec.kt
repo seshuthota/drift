@@ -26,9 +26,6 @@ import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.width
 import kotlin.math.abs
 
-/**
- * The window spec describes the computed window props and constraints which is used within the UI.
- */
 sealed class ImeWindowSpec {
     /**
      * The computed window props, constrained to the root bounds.
@@ -80,16 +77,10 @@ sealed class ImeWindowSpec {
         smartbarRowCount: Int,
     ): ImeWindowSpec
 
-    /**
-     * Calculates the row height for given baseline [keyboardHeight].
-     */
     fun calcRowHeight(keyboardHeight: Dp): Dp {
         return keyboardHeight / constraints.baselineRowCount
     }
 
-    /**
-     * Calculates the Smartbar row height for given baseline [keyboardHeight].
-     */
     fun calcSmartbarRowHeight(keyboardHeight: Dp): Dp {
         val defRowHeight = calcRowHeight(constraints.defKeyboardHeight)
         val rowHeight = calcRowHeight(keyboardHeight)
@@ -114,9 +105,6 @@ sealed class ImeWindowSpec {
         return keyboardHeight
     }
 
-    /**
-     * Specialized spec for fixed mode.
-     */
     data class Fixed(
         val fixedMode: ImeWindowMode.Fixed,
         override val props: ImeWindowProps.Fixed,
@@ -133,13 +121,11 @@ sealed class ImeWindowSpec {
             var paddingBottom = props.paddingBottom
 
             if (offset.x < 0.dp) {
-                // move to left
                 val newPaddingLeft = (paddingLeft + offset.x)
                     .coerceAtLeast(0.dp)
                 paddingRight -= (newPaddingLeft - paddingLeft)
                 paddingLeft = newPaddingLeft
             } else {
-                // move to right
                 val newPaddingRight = (paddingRight - offset.x)
                     .coerceAtLeast(0.dp)
                 paddingLeft -= (newPaddingRight - paddingRight)
@@ -147,7 +133,6 @@ sealed class ImeWindowSpec {
             }
 
             if (fixedMode == ImeWindowMode.Fixed.NORMAL && paddingLeft != 0.dp && paddingRight != 0.dp) {
-                // maybe snap to center
                 if (abs((paddingLeft - paddingRight).value).dp <= constraints.snapToCenterWidth) {
                     val avgPadding = (paddingLeft + paddingRight) / 2
                     paddingLeft = avgPadding
@@ -216,9 +201,6 @@ sealed class ImeWindowSpec {
         }
     }
 
-    /**
-     * Specialized spec for floating mode.
-     */
     data class Floating(
         val floatingMode: ImeWindowMode.Floating,
         override val props: ImeWindowProps.Floating,

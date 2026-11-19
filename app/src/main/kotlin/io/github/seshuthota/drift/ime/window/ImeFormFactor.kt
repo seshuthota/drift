@@ -35,9 +35,6 @@ data class ImeFormFactor(
     val sizeClass: WindowSizeClass,
     val typeGuess: Type,
 ) {
-    /**
-     * Identifies a type guess.
-     */
     enum class Type {
         PHONE_PORTRAIT,
         PHONE_LANDSCAPE,
@@ -48,16 +45,8 @@ data class ImeFormFactor(
     }
 
     companion object {
-        /**
-         * The form factor for a zero-size window.
-         */
         val Zero = of(DpRect(0.dp, 0.dp, 0.dp, 0.dp))
 
-        /**
-         * Constructs a new form factor based on a given root window size.
-         *
-         * @param boundsDp The root window bounds in dp.
-         */
         fun of(boundsDp: DpRect): ImeFormFactor {
             typealias BP = WindowSizeClass.Companion
             val sizeClass = WindowSizeClass.BREAKPOINTS_V2.computeWindowSizeClass(

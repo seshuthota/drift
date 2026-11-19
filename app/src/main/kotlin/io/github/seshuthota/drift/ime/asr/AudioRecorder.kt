@@ -111,7 +111,6 @@ class AudioRecorder(private val context: Context) {
     /** Stops the capture. Synchronized: the IME thread may cancel while a stop is running. Safe to call twice. */
     @Synchronized
     fun stop() {
-        // The capture loop may already have ended (the microphone was taken away); the record still needs releasing.
         val audioRecord = record ?: return
         recording = false
         record = null
@@ -145,7 +144,6 @@ class AudioRecorder(private val context: Context) {
             }
             val rms = sqrt(sum / chunk.size).toFloat()
             val db = if (rms <= 1e-6f) -120f else 20f * log10(rms)
-            // Speech sits around -40..-15 dBFS, so raw RMS (0.01..0.2) would leave the level meter nearly flat.
             _amplitude.value = ((db - METER_FLOOR_DB) / (METER_CEIL_DB - METER_FLOOR_DB)).coerceIn(0f, 1f)
             peakDb = maxOf(peakDb, db)
             if (++peakChunks == LEVEL_LOG_CHUNKS) {
@@ -170,7 +168,6 @@ class AudioRecorder(private val context: Context) {
     }
 }
 
-/** True when the microphone runtime permission is granted. */
 fun Context.hasRecordAudioPermission(): Boolean {
     return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
         PackageManager.PERMISSION_GRANTED

@@ -36,9 +36,8 @@ import androidx.compose.ui.unit.width
  * All calculations should be wrapped in [calculation], to ensure they are lazily evaluated in-case a child
  * class overrides a property used in the calculation.
  *
- * All constraints for a specific property and mode + sub-mode should be designed in a way that the
- * condition `0dp >= min >= def >= max` always holds. Any potential floating point rounding errors must
- * be handled by the calculation, e.g. by using proper coerce{AtLeast,AtMost,In} rules.
+ * Any potential floating point rounding errors must be handled by the calculation, e.g. by using proper
+ * coerce{AtLeast,AtMost,In} rules.
  *
  * Additionally, all of the above must be valid for all non-negative root bounds, including zero bounds.
  * Negative bounds, or non-real bounds are undefined behavior and most likely lead to a crash.
