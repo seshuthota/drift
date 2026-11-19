@@ -75,10 +75,6 @@ class GestureRecognizer {
 
     fun isGliding(pointerId: Long): Boolean = pointers[pointerId]?.phase == Phase.GLIDING
 
-    /**
-     * Starts tracking a pointer. [keyWidthPx] is the width of the key the pointer went down on and
-     * defines both the glide start distance and the glide point spacing.
-     */
     fun onDown(
         pointerId: Long,
         x: Float,
@@ -103,10 +99,6 @@ class GestureRecognizer {
         pointers[pointerId] = pointer
     }
 
-    /**
-     * Feeds a move sample and returns the glide signals it produced, if any. Promotes the press to a
-     * glide as soon as distance, velocity and duration qualify.
-     */
     fun onMove(pointerId: Long, x: Float, y: Float, timeMillis: Long): List<GestureSignal> {
         val pointer = pointers[pointerId] ?: return emptyList()
         pointer.addSample(GesturePoint(x, y, timeMillis))
@@ -116,7 +108,6 @@ class GestureRecognizer {
             if (pointer.shouldStartGlide(x, y, timeMillis)) {
                 pointer.phase = Phase.GLIDING
                 signals += GestureSignal.GlideStarted(pointerId)
-                // Replay the buffered path so the trail starts where the finger started.
                 for (sample in pointer.samples) {
                     if (pointer.acceptGlidePoint(sample)) {
                         signals += GestureSignal.GlidePoint(pointerId, sample.x, sample.y)
@@ -134,10 +125,6 @@ class GestureRecognizer {
         return signals
     }
 
-    /**
-     * Ends the pointer and classifies it. The pointer is no longer tracked afterwards, regardless of
-     * the outcome.
-     */
     fun onUp(pointerId: Long, x: Float, y: Float, timeMillis: Long): GestureOutcome {
         val pointer = pointers.remove(pointerId) ?: return GestureOutcome.Tap
         pointer.addSample(GesturePoint(x, y, timeMillis))
@@ -173,12 +160,6 @@ class GestureRecognizer {
         return GestureOutcome.Tap
     }
 
-    /**
-     * A glide between neighbouring keys (`we`, `as`, `op`) ends before the finger is a full key width away, so it
-     * never started in [onMove]. On release (after flicks were taken as swipes) it still counts as a glide when the
-     * finger ended at least [GestureConfig.shortGlideFraction] key widths away, quickly enough. Neighbouring
-     * letters are side by side or diagonal, so a mostly vertical move (a slow swipe up or down) stays a tap.
-     */
     private fun Pointer.isShortGlide(x: Float, y: Float, timeMillis: Long): Boolean {
         if (!glideEligible || !config.glideEnabled) return false
         val duration = timeMillis - downTimeMillis
@@ -188,9 +169,6 @@ class GestureRecognizer {
         return distance >= keyWidthPx * config.shortGlideFraction && distance / duration > config.glideMinVelocityPxPerMs
     }
 
-    /**
-     * Drops the pointer. Returns true when it was gliding, so the caller can clear the trail.
-     */
     fun onCancel(pointerId: Long): Boolean {
         val pointer = pointers.remove(pointerId) ?: return false
         return pointer.phase == Phase.GLIDING

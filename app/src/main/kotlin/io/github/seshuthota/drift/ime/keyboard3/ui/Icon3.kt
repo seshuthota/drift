@@ -122,8 +122,6 @@ fun Icon3(
                 ImeWindowMode.FIXED -> context.vectorResource(R.drawable.ic_floating_keyboard)
                 ImeWindowMode.FLOATING -> context.vectorResource(R.drawable.ic_floating_keyboard_disable)
             }
-            // TODO incognito mode???
-            // TODO char width/kata/hira icons???
             else -> staticIcon3(value, context)
         }
     }
@@ -164,7 +162,7 @@ fun staticIcon3(value: K3Descriptor, context: Context): ImageVector? {
         ImeIcons.ShiftLock -> context.vectorResource(R.drawable.ic_shift_lock)
         ImeIcons.ShiftOff -> context.vectorResource(R.drawable.ic_shift_off)
         ImeIcons.ShiftOn -> context.vectorResource(R.drawable.ic_shift_on)
-        ImeIcons.ShowKeyboard -> Icons.Default.KeyboardDoubleArrowUp // TODO
+        ImeIcons.ShowKeyboard -> Icons.Default.KeyboardDoubleArrowUp
         ImeIcons.SelectAll -> Icons.Default.SelectAll
         ImeIcons.Settings -> Icons.Default.Settings
         ImeIcons.SpaceBar -> Icons.Default.SpaceBar

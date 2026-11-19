@@ -23,13 +23,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
-/**
- * Opt-in real-use recording for glide tuning. One JSON line per committed glide:
- * timestamp, decode time, editor kind, the top three candidates, and the normalized trace.
- *
- * Enabled by `prefs.devtools.glideDiagnostics`. The file lives in
- * `Android/data/<applicationId>/files/diagnostics/glide.jsonl` and can be pulled with adb.
- */
 internal object GlideDiagnostics {
     private const val FILE_NAME = "glide.jsonl"
     private const val MAX_BYTES = 8L * 1024 * 1024

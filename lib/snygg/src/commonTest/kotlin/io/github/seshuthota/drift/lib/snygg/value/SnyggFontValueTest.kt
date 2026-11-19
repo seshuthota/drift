@@ -16,10 +16,8 @@ class SnyggFontValueTest {
         @Test
         fun `deserialize font style values`() {
             val pairs = listOf(
-                // valid
                 "normal" to SnyggFontStyleValue(FontStyle.Normal),
                 "italic" to SnyggFontStyleValue(FontStyle.Italic),
-                 // invalid
                 "invalid" to null,
                 "monospaced" to null,
                 "level 3000" to null,
@@ -32,10 +30,8 @@ class SnyggFontValueTest {
         @Test
         fun `serialize font style values`() {
             val pairs = listOf(
-                // valid
                 SnyggFontStyleValue(FontStyle.Normal) to "normal",
                 SnyggFontStyleValue(FontStyle.Italic) to "italic",
-                // invalid
                 SnyggDefinedVarValue("shenanigans") to null,
                 SnyggUndefinedValue to null,
             )
@@ -57,7 +53,6 @@ class SnyggFontValueTest {
         @Test
         fun `deserialize font weight values`() {
             val pairs = listOf(
-                // valid
                 "thin" to SnyggFontWeightValue(FontWeight(100)),
                 "extra-light" to SnyggFontWeightValue(FontWeight(200)),
                 "light" to SnyggFontWeightValue(FontWeight(300)),
@@ -76,7 +71,6 @@ class SnyggFontValueTest {
                 "700" to SnyggFontWeightValue(FontWeight(700)),
                 "800" to SnyggFontWeightValue(FontWeight(800)),
                 "900" to SnyggFontWeightValue(FontWeight(900)),
-                // invalid
                 "invalid" to null,
                 "monospaced" to null,
                 "level 3000" to null,
@@ -98,7 +92,6 @@ class SnyggFontValueTest {
                 SnyggFontWeightValue(FontWeight(700)) to "bold",
                 SnyggFontWeightValue(FontWeight(800)) to "extra-bold",
                 SnyggFontWeightValue(FontWeight(900)) to "black",
-                // invalid
                 SnyggDefinedVarValue("shenanigans") to null,
                 SnyggUndefinedValue to null,
             )

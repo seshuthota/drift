@@ -21,7 +21,6 @@ import io.github.seshuthota.drift.lib.devtools.flogError
 import io.github.seshuthota.drift.lib.snygg.value.SnyggAssetResolver
 import java.net.URI
 
-// TODO this class needs a proper rewrite
 class DriftAssetResolver(val theme: ThemeController.Theme) : SnyggAssetResolver {
     override fun resolveAbsolutePath(uri: String) = runCatching {
         val uri = URI.create(uri)
@@ -30,7 +29,6 @@ class DriftAssetResolver(val theme: ThemeController.Theme) : SnyggAssetResolver 
         val extensionRef = checkNotNull(theme.extensionRef) { "Loaded directory was null" }
         check(extensionRef.isCache || extensionRef.isInternal)
         val storage = checkNotNull(theme.storage) { "Storage was null" }
-        // resolve implies within storage bounds & exists
         val (fs, extPath) = storage.resolve(extensionRef)
         val assetPath = fs.canonicalizeOrNull(
             path = extPath / (uri.path ?: "").removePrefix("/"),

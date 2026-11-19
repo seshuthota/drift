@@ -71,10 +71,8 @@ class NlpManager(context: Context) {
     private val providers = guardedByLock {
         mapOf(
             LatinLanguageProvider.ProviderId to ProviderInstanceWrapper(LatinLanguageProvider(context)),
-            //HanShapeBasedLanguageProvider.ProviderId to ProviderInstanceWrapper(HanShapeBasedLanguageProvider(context)),
         )
     }
-    // lock unnecessary because values constant
     private val providersForceSuggestionOn = mutableMapOf<String, Boolean>()
 
     private val internalSuggestionsGuard = Mutex()
@@ -113,22 +111,10 @@ class NlpManager(context: Context) {
         }
     }
 
-    /**
-     * Gets the punctuation rule from the currently active subtype and returns it. Falls back to a default one if the
-     * subtype does not exist or defines an invalid punctuation rule.
-     *
-     * @return The punctuation rule or a fallback.
-     */
     fun getActivePunctuationRule(): PunctuationRule {
         return getPunctuationRule(subtypeManager.activeSubtype)
     }
 
-    /**
-     * Gets the punctuation rule from the given subtype and returns it. Falls back to a default one if the subtype does
-     * not exist or defines an invalid punctuation rule.
-     *
-     * @return The punctuation rule or a fallback.
-     */
     fun getPunctuationRule(subtype: Subtype): PunctuationRule {
         return PunctuationRule.Fallback
     }
@@ -143,11 +129,6 @@ class NlpManager(context: Context) {
             ?: FallbackNlpProvider
     }
 
-    /**
-     * Creates and preloads the suggestion provider for [subtype] synchronously. Glide typing needs
-     * the word corpus immediately and must not depend on the asynchronous preload kicked off when
-     * the subtype became active (or on the system spell checker having warmed the provider).
-     */
     suspend fun ensureSuggestionProviderPreloaded(subtype: Subtype) {
         providers.withLock { providers ->
             providers[subtype.nlpProviders.suggestion]?.let { wrapper ->
@@ -171,10 +152,6 @@ class NlpManager(context: Context) {
         }
     }
 
-    /**
-     * Spell wrapper helper which calls the spelling provider and returns the result. Coroutine management must be done
-     * by the source spell checker service.
-     */
     suspend fun spell(
         subtype: Subtype,
         word: String,
@@ -189,7 +166,7 @@ class NlpManager(context: Context) {
             followingWords = followingWords,
             maxSuggestionCount = maxSuggestionCount,
             allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
-            isPrivateSession = false// TODO keyboardManager.activeState.isIncognitoMode,
+            isPrivateSession = false
         )
     }
 
@@ -202,7 +179,6 @@ class NlpManager(context: Context) {
     }
 
     fun providerForcesSuggestionOn(subtype: Subtype): Boolean {
-        // Using a cache because I have no idea how fast the runBlocking is
         return providersForceSuggestionOn.getOrPut(subtype.nlpProviders.suggestion) {
             runBlocking {
                 getSuggestionProvider(subtype).forcesSuggestionOn
@@ -213,9 +189,10 @@ class NlpManager(context: Context) {
     fun isSuggestionOn(): Boolean =
         prefs.suggestion.enabled.get()
             || prefs.emoji.suggestionEnabled.get()
-            // Glide previews and post-glide alternatives are delivered through the candidate row.
             || prefs.glide.enabled.get()
             || providerForcesSuggestionOn(subtypeManager.activeSubtype)
+
+    private fun isPrivateSession(): Boolean = imeController.snapshotState().flags.isIncognitoMode
 
     fun suggest(subtype: Subtype, content: K3Content) {
         val reqTime = SystemClock.uptimeMillis()
@@ -227,7 +204,7 @@ class NlpManager(context: Context) {
                         content = content,
                         maxCandidateCount = prefs.emoji.suggestionCandidateMaxCount.get(),
                         allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
-                        isPrivateSession = false // TODO keyboardManager.activeState.isIncognitoMode,
+                        isPrivateSession = isPrivateSession()
                     )
                 }
                 else -> emptyList()
@@ -245,7 +222,7 @@ class NlpManager(context: Context) {
                         content = content,
                         maxCandidateCount = 8,
                         allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
-                        isPrivateSession = false // TODO keyboardManager.activeState.isIncognitoMode,
+                        isPrivateSession = isPrivateSession()
                     )
                 }
             }
@@ -281,10 +258,6 @@ class NlpManager(context: Context) {
         return activeCandidates.firstOrNull { it.isEligibleForAutoCommit }
     }
 
-    /**
-     * The auto-commit candidate for exactly [content], computed synchronously. Used when a word separator is typed:
-     * the asynchronous suggestions may still be for an earlier keystroke. Blocks for one provider call (a few ms).
-     */
     fun autoCommitCandidateFor(subtype: Subtype, content: K3Content): SuggestionCandidate? {
         if (!prefs.suggestion.enabled.get()) return null
         return runBlocking {
@@ -293,7 +266,7 @@ class NlpManager(context: Context) {
                 content = content,
                 maxCandidateCount = 3,
                 allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
-                isPrivateSession = false,
+                isPrivateSession = isPrivateSession(),
             )
         }.firstOrNull { it.isEligibleForAutoCommit }
     }
@@ -302,7 +275,6 @@ class NlpManager(context: Context) {
         return runBlocking { candidate.sourceProvider?.removeSuggestion(subtype, candidate) == true }.also { result ->
             if (result) {
                 scope.launch {
-                    // Need to re-trigger the suggestions algorithm
                     if (candidate is ClipboardSuggestionCandidate) {
                         assembleCandidates()
                     } else {
@@ -313,10 +285,6 @@ class NlpManager(context: Context) {
         }
     }
 
-    /**
-     * Records a committed word for personal learning. [immediate] is an autocorrect undo.
-     * No-op unless the preference is on and the field is not incognito. Work happens off the caller thread.
-     */
     fun noteTypedWord(word: String, immediate: Boolean) {
         if (!prefs.correction.personalLearning.get()) return
         if (imeController.snapshotState().flags.isIncognitoMode) return
@@ -335,17 +303,13 @@ class NlpManager(context: Context) {
         }
     }
 
-    /** The user's word sequences; the latin provider and glide mix them into the next-word model. */
     val personalNgram: PersonalNgram by appContext.personalNgram()
 
-    /** The last word handed to [learnWord] (text before it, word), so deleting it right away takes it back. */
     private var lastLearned: Pair<String, String>? = null
 
-    /** Personal learning is on and the field is not incognito. Callers also check that the field takes prose. */
     fun isPersonalLearningActive(): Boolean =
         prefs.correction.personalLearning.get() && !imeController.snapshotState().flags.isIncognitoMode
 
-    /** [word] was committed after [textBeforeWord]. Main thread; the counting happens off it. */
     fun learnWord(textBeforeWord: CharSequence, word: String) {
         if (word.isBlank() || !isPersonalLearningActive()) return
         val before = textBeforeWord.toString()
@@ -353,7 +317,6 @@ class NlpManager(context: Context) {
         scope.launch { personalNgram.learn(before, before.length >= TRUNCATION_HINT_CHARS, word) }
     }
 
-    /** The word committed after [textBeforeWord] changed from [old] to [new] (a glide pick or an autocorrect undo). */
     fun replaceLearnedWord(textBeforeWord: CharSequence, old: String, new: String) {
         if (!isPersonalLearningActive()) return
         val before = textBeforeWord.toString()
@@ -365,10 +328,6 @@ class NlpManager(context: Context) {
         }
     }
 
-    /**
-     * A backspace is about to delete the character before the end of [textBefore]. When it reaches into the word
-     * just learned (its separator first, then the word itself), the word was wrong and is taken back.
-     */
     fun onBackspace(textBefore: CharSequence) {
         val (before, word) = lastLearned ?: return
         val text = textBefore.toString()
@@ -411,7 +370,7 @@ class NlpManager(context: Context) {
                         content = imeController.snapshotState().content,
                         maxCandidateCount = 8,
                         allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
-                        isPrivateSession = false // TODO keyboardManager.activeState.isIncognitoMode,
+                        isPrivateSession = isPrivateSession()
                     ).ifEmpty {
                         buildList {
                             internalSuggestionsGuard.withLock {
@@ -428,19 +387,9 @@ class NlpManager(context: Context) {
     }
 
     fun autoExpandCollapseSmartbarActions(list1: List<*>?, list2: List<*>?) {
-        if (!prefs.smartbar.enabled.get()) {// || !prefs.smartbar.sharedActionsAutoExpandCollapse.get()) {
+        if (!prefs.smartbar.enabled.get()) {
             return
         }
-        // TODO: this is a mess and needs to be cleaned up in v0.5 with the NLP development
-        /*if (keyboardManager.inputEventDispatcher.isRepeatableCodeLastDown()
-            && !keyboardManager.inputEventDispatcher.isPressed(KeyCode.DELETE)
-            && !keyboardManager.inputEventDispatcher.isPressed(KeyCode.FORWARD_DELETE)
-            || keyboardManager.activeState.isActionsOverflowVisible
-        ) {
-            return // We do not auto switch if a repeatable action key was last pressed or if the actions overflow
-                   // menu is visible to prevent annoying UI changes
-        }*/
-        // An editor's inline autocompletion (browser address bars) is not a user selection.
         val isSelection = !imeController.snapshotState().content.isTypingPosition()
         val isExpanded = shouldExpandSharedActions(list1, list2, isSelection)
         scope.launch {
@@ -481,11 +430,9 @@ class NlpManager(context: Context) {
         override val providerId = "io.github.seshuthota.drift.nlp.providers.clipboard"
 
         override suspend fun create() {
-            // Do nothing
         }
 
         override suspend fun preload(subtype: Subtype) {
-            // Do nothing
         }
 
         override suspend fun suggest(
@@ -495,11 +442,9 @@ class NlpManager(context: Context) {
             allowPossiblyOffensive: Boolean,
             isPrivateSession: Boolean,
         ): List<SuggestionCandidate> {
-            // Check if enabled
             if (!prefs.clipboard.suggestionEnabled.get()) return emptyList()
 
             val text = buildString {
-                // TODO hack
                 append(content.surroundingText.textBefore)
                 append(content.surroundingText.textSelected)
                 append(content.surroundingText.textAfter)
@@ -528,8 +473,6 @@ class NlpManager(context: Context) {
                             if (match.value != text && isUniqueMatch) {
                                 add(ClipboardSuggestionCandidate(
                                     clipboardItem = currentItem.copy(
-                                        // TODO: adjust regex of phone number so we don't need to manually strip the
-                                        //  parentheses from the match results
                                         text = if (match.value.startsWith("(") && match.value.endsWith(")")) {
                                             match.value.substring(1, match.value.length - 1)
                                         } else {
@@ -553,7 +496,6 @@ class NlpManager(context: Context) {
         }
 
         override suspend fun notifySuggestionReverted(subtype: Subtype, candidate: SuggestionCandidate) {
-            // Do nothing
         }
 
         override suspend fun removeSuggestion(subtype: Subtype, candidate: SuggestionCandidate): Boolean {
@@ -573,29 +515,20 @@ class NlpManager(context: Context) {
         }
 
         override suspend fun destroy() {
-            // Do nothing
         }
 
         private fun validateClipboardItem(currentItem: ClipboardItem?, lastItemId: Long, contentText: String) =
             currentItem?.takeIf {
-                // Check if already used
                 it.id != lastItemId
-                    // Check if content is empty
                     && contentText.isBlank()
-                    // Check if clipboard content has any valid characters
                     && !currentItem.text.isNullOrBlank()
                     && !blankStrRegex.matches(currentItem.text)
             }
     }
 }
 
-/** The editor context window is ~50 chars; at or above this the text is assumed to be cut. */
 private const val TRUNCATION_HINT_CHARS = 48
 
-/**
- * The shared smartbar row shows actions instead of suggestions when there is nothing to suggest (no candidates and
- * no inline autofill suggestions) or when the user has selected text, where actions such as copy are what they need.
- */
 internal fun shouldExpandSharedActions(candidates: List<*>?, inlineSuggestions: List<*>?, isSelection: Boolean): Boolean {
     return isSelection || (candidates.isNullOrEmpty() && inlineSuggestions.isNullOrEmpty())
 }

@@ -107,7 +107,7 @@ enum class ExtensionImportScreenType(
     EXT_LANGUAGEPACK(
         id = "ext-languagepack",
         titleResId = R.string.ext__import__ext_languagepack,
-        acceptManifest = { false }, // TODO
+        acceptManifest = { false },
     );
 }
 
@@ -260,7 +260,6 @@ fun ExtensionImportScreen(
                     try {
                         storage.deleteRecursively(workspaceRef)
                     } catch (_: IOException) {
-                        // ignore
                     }
                 }
             }
@@ -270,9 +269,6 @@ fun ExtensionImportScreen(
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents(),
         onResult = { uriList ->
-            // If uri is null it indicates that the selection activity
-            //  was cancelled (mostly by pressing the back button), so
-            //  we don't display an error message here.
             if (uriList.isEmpty()) return@rememberLauncherForActivityResult
             for (uri in uriList) {
                 launchImportJob(uri)

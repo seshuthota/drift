@@ -21,9 +21,6 @@ import dev.patrickgold.jetpref.datastore.model.PreferenceSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/**
- * Alias for mapping form factor guesses to window configs.
- */
 typealias ImeWindowConfigByType = Map<ImeFormFactor.Type, ImeWindowConfig>
 
 /**
@@ -47,9 +44,6 @@ data class ImeWindowConfig(
     val floatingMode: ImeWindowMode.Floating = ImeWindowMode.Floating.NORMAL,
     val floatingProps: Map<ImeWindowMode.Floating, ImeWindowProps.Floating> = emptyMap(),
 ) {
-    /**
-     * Helper for serializing [ImeWindowConfigByType] to prefs.
-     */
     object ByTypeSerializer : PreferenceSerializer<ImeWindowConfigByType> {
         override fun serialize(value: ImeWindowConfigByType): String {
             return Json.encodeToString(value)

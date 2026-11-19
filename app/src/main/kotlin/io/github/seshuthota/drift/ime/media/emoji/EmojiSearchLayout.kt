@@ -62,9 +62,6 @@ import org.k3lp.runtime.K3SurroundingText
 import org.k3lp.runtime.K3TextRange
 import java.lang.ref.WeakReference
 
-// TODO: this is a proff-of-concept / feasibility check for in-ime-ui text fields
-//  a proper nice UX for this layout and official release with follow in a separate PR
-//  See: https://github.com/seshuthota/drift/issues/45
 @Composable
 fun EmojiSearchLayout(
     modifier: Modifier = Modifier,

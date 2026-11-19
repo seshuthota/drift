@@ -21,10 +21,6 @@ import io.kotest.matchers.floats.shouldBeGreaterThan
 import io.kotest.matchers.floats.shouldBeLessThan
 import io.kotest.matchers.shouldBe
 
-/**
- * Key centers are the medians of where the training strokes for that letter begin and end.
- * Acoustic and frequency terms are the 1M model's scores on a straight line between those centers.
- */
 class GlideEndpointPenaltyTest : FunSpec({
     val o = 0.84375f to 0.1766f
     val k = 0.7998f to 0.5149f

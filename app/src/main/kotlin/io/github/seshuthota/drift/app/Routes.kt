@@ -62,11 +62,7 @@ import io.github.seshuthota.drift.app.settings.gestures.GesturesScreen
 import io.github.seshuthota.drift.app.settings.keyboard.FnKeyScreen
 import io.github.seshuthota.drift.app.settings.keyboard.InputFeedbackScreen
 import io.github.seshuthota.drift.app.settings.keyboard.KeyboardScreen
-import io.github.seshuthota.drift.app.settings.localization.LanguagePackManagerScreen
-import io.github.seshuthota.drift.app.settings.localization.LanguagePackManagerScreenAction
 import io.github.seshuthota.drift.app.settings.localization.LocalizationScreen
-import io.github.seshuthota.drift.app.settings.localization.SelectLocaleScreen
-import io.github.seshuthota.drift.app.settings.localization.SubtypeEditorScreen
 import io.github.seshuthota.drift.app.settings.media.MediaScreen
 import io.github.seshuthota.drift.app.settings.smartbar.SmartbarScreen
 import io.github.seshuthota.drift.app.settings.theme.ThemeScreen
@@ -112,22 +108,6 @@ object Routes {
         @Serializable
         @Deeplink("settings/localization")
         object Localization
-
-        @Serializable
-        @Deeplink("settings/localization/select-locale")
-        object SelectLocale
-
-        @Serializable
-        @Deeplink("settings/localization/language-pack-manage")
-        data class LanguagePackManager(val action: LanguagePackManagerScreenAction)
-
-        @Serializable
-        @Deeplink("settings/localization/subtype/add")
-        object SubtypeAdd
-
-        @Serializable
-        @Deeplink("settings/localization/subtype/edit")
-        data class SubtypeEdit(val id: Long)
 
         @Serializable
         @Deeplink("settings/theme")
@@ -289,16 +269,6 @@ object Routes {
             composableWithDeepLink(Settings.Home::class) { HomeScreen() }
 
             composableWithDeepLink(Settings.Localization::class) { LocalizationScreen() }
-            composableWithDeepLink(Settings.SelectLocale::class) { SelectLocaleScreen() }
-            composableWithDeepLink(Settings.LanguagePackManager::class) { navBackStack ->
-                val payload = navBackStack.toRoute<Settings.LanguagePackManager>()
-                LanguagePackManagerScreen(payload.action)
-            }
-            composableWithDeepLink(Settings.SubtypeAdd::class) { SubtypeEditorScreen(null) }
-            composableWithDeepLink(Settings.SubtypeEdit::class) { navBackStack ->
-                val payload = navBackStack.toRoute<Settings.SubtypeEdit>()
-                SubtypeEditorScreen(payload.id)
-            }
 
             composableWithDeepLink(Settings.Theme::class) { ThemeScreen() }
             composableWithDeepLink(Settings.ThemeSelection::class) { navBackStack ->

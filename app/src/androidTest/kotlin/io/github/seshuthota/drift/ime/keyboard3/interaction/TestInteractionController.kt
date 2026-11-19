@@ -30,7 +30,6 @@ internal val TestTiming = InteractionTimingOptions(
     doubleTapTimeout = 300.milliseconds,
 )
 
-/** Interaction controller that keeps every timing default and drops feedback and toasts. */
 internal object NoOpInteractionController : InteractionController {
     override val activeSystemTimingOptions: StateFlow<InteractionTimingOptions> =
         MutableStateFlow(TestTiming)

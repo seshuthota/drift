@@ -37,12 +37,6 @@ import kotlinx.coroutines.launch
 import io.github.seshuthota.drift.lib.kotlin.tryOrNull
 import androidx.core.net.toUri
 
-/**
- * Allows apps to access images and videos on the clipboard.
- *
- * This is sometimes called by the UI thread, so all functions are non blocking.
- * Database accesses are performed async.
- */
 class ClipboardMediaProvider : ContentProvider() {
     private var clipboardFilesDao: ClipboardFilesDao? = null
     private val cachedFileInfos: HashMap<Long, ClipboardFileInfo> = hashMapOf()
@@ -98,7 +92,6 @@ class ClipboardMediaProvider : ContentProvider() {
             if (projection.contains(MediaStore.Images.Media.ORIENTATION)) {
                 clipboardFilesDao?.getCursorByIdWithColumns(id, MediaStore.Images.Media.ORIENTATION)
             } else {
-                //Return null if the projection query is invalid
                 return null
             }
         }
@@ -129,7 +122,6 @@ class ClipboardMediaProvider : ContentProvider() {
         val id = ContentUris.parseId(uri)
         val file = ClipboardFileStorage.getFileForId(context!!, id)
 
-        // Nothing has permission to write anyway.
         return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
     }
 
@@ -139,7 +131,6 @@ class ClipboardMediaProvider : ContentProvider() {
                 return try {
                     values as ContentValues
                     val mediaUri = Uri.parse(values.getAsString(Columns.MediaUri))
-                    // Get the orientation of the image
                     val exifInterface = ExifInterface(context!!.contentResolver.openInputStream(mediaUri)!!)
                     var rotation = 0
                     val orientation = exifInterface.getAttributeInt(

@@ -255,7 +255,6 @@ class ExtensionController(
                 isLegacyMode -> backupFilesDirRef.subRef(BackupDefaults.OLD_EXT_IME_THEME_PATH)
                 else -> backupFilesDirRef.subRef(EXTENSIONS_PATH)
             }
-            // TODO better error reporting
             for (entryRef in storage.listOrNull(extensionsDirRef) ?: emptyList()) {
                 val extSrcRef = when {
                     isLegacyMode -> {
@@ -303,22 +302,56 @@ class ExtensionController(
                 require(existingExtension.manifest::class == manifest::class) {
                     "Attempted to update extension to different type, which is not supported."
                 }
-                val extDstRef = userSource.ref.subRef(manifest.meta.id)
-                storage.deleteRecursively(extDstRef)
-                // TODO this destroys the currently indexed extension in error cases!!!
-                storage.copyRecursively(extSrcRef, extDstRef)
-            } else {
-                val extDstRef = userSource.ref.subRef(manifest.meta.id)
-                storage.copyRecursively(extSrcRef, extDstRef)
+            }
+            val extDstRef = userSource.ref.subRef(manifest.meta.id)
+            val stagedRef = userSource.ref.subRef(STAGING_PREFIX + manifest.meta.id)
+            val backupRef = userSource.ref.subRef(BACKUP_PREFIX + manifest.meta.id)
+            storage.deleteRecursively(stagedRef)
+            try {
+                storage.copyRecursively(extSrcRef, stagedRef)
+            } catch (e: Throwable) {
+                storage.deleteRecursively(stagedRef)
+                throw e
+            }
+            storage.deleteRecursively(backupRef)
+            val hadInstalledCopy = storage.exists(extDstRef)
+            if (hadInstalledCopy) {
+                storage.atomicMove(extDstRef, backupRef)
+            }
+            try {
+                storage.atomicMove(stagedRef, extDstRef)
+            } catch (e: Throwable) {
+                if (hadInstalledCopy) {
+                    storage.atomicMove(backupRef, extDstRef)
+                }
+                storage.deleteRecursively(stagedRef)
+                throw e
+            }
+            storage.deleteRecursively(backupRef)
+        }
+
+        private fun recoverInterruptedImports(source: MutableSource) {
+            val entries = storage.listOrNull(source.ref) ?: return
+            val names = entries.map { it.okioPathName }.toSet()
+            for (entryRef in entries) {
+                val name = entryRef.okioPathName
+                when {
+                    name.startsWith(STAGING_PREFIX) -> storage.deleteRecursively(entryRef)
+                    name.startsWith(BACKUP_PREFIX) -> {
+                        val extId = name.removePrefix(BACKUP_PREFIX)
+                        if (extId.isNotEmpty() && extId !in names) {
+                            storage.atomicMove(entryRef, source.ref.subRef(extId))
+                        } else {
+                            storage.deleteRecursively(entryRef)
+                        }
+                    }
+                }
             }
         }
 
         private fun indexExtensions(source: MutableSource) {
             source.clear()
             if (!storage.canAccessStorage(source.ref)) {
-                // If we do not have access to the underlying medium all operations below would fail.
-                // This can happen if we are initialized before first device-unlock (in direct boot mode
-                // on Android).
                 return
             }
             if (source.ref.isInternal) {
@@ -332,6 +365,16 @@ class ExtensionController(
                         )
                     )
                     return
+                }
+                try {
+                    recoverInterruptedImports(source)
+                } catch (e: Throwable) {
+                    source.reports.add(
+                        ExtensionIndexViolation.UnexpectedError(
+                            cause = e,
+                            sourceRange = source.ref.asSourceRange(),
+                        )
+                    )
                 }
             }
             val extRefList =
@@ -348,12 +391,14 @@ class ExtensionController(
                 }
             for (extRef in extRefList) {
                 val extId = extRef.okioPathName
+                if (extId.startsWith(STAGING_PREFIX) || extId.startsWith(BACKUP_PREFIX)) {
+                    continue
+                }
                 val manifestRef = extRef.subRef(ExtensionDefaults.MANIFEST_FILE_NAME)
                 val manifest =
                     try {
                         storage.readJson<ExtensionManifest>(manifestRef, ExtensionJson)
                     } catch (e: Throwable) {
-                        // TODO fine-grained violations
                         source.reports.add(
                             ExtensionIndexViolation.UnexpectedError(
                                 cause = e,
@@ -410,6 +455,8 @@ class ExtensionController(
 
     companion object {
         const val EXTENSIONS_PATH = "extensions"
+        private const val STAGING_PREFIX = ".staging-"
+        private const val BACKUP_PREFIX = ".backup-"
 
         val ExtensionJson = Json {
             classDiscriminator = "$"

@@ -26,9 +26,6 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import io.github.seshuthota.drift.lib.kotlin.tryOrNull
 
-/**
- * An extension component, typically a layout, theme, file, etc. descriptor.
- */
 @Serializable
 sealed interface ExtensionComponent {
     val id: String

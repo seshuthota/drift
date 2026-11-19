@@ -27,14 +27,8 @@ import io.github.seshuthota.drift.lib.compose.toDpRect
  * units, dp and px. The px are measured by compose, and converted to dp using the current screen density.
  */
 sealed interface ImeInsets {
-    /**
-     * The bounds in dp.
-     */
     val boundsDp: DpRect
 
-    /**
-     * The bounds in px.
-     */
     val boundsPx: IntRect
 
     /**
@@ -79,12 +73,6 @@ sealed interface ImeInsets {
         }
     }
 
-    /**
-     * Insets of the window within the root window.
-     *
-     * @property boundsDp The bounds of the window in dp.
-     * @property boundsPx The bounds of the window in px.
-     */
     data class Window(
         override val boundsDp: DpRect,
         override val boundsPx: IntRect,

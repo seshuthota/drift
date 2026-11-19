@@ -70,12 +70,10 @@ fun QuickActionButton(
             modifier = modifier.aspectRatio(1f),
         ) { display ->
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                // Render foreground
                 Display3(
                     display = display,
                     elementName = "$elementName-icon",
                 )
-                // Render additional info if this is a tile
                 if (type != QuickActionBarType.INTERACTIVE_BUTTON) {
                     SnyggText(
                         elementName = "$elementName-text",

@@ -117,7 +117,6 @@ fun UserDictionaryScreen(type: UserDictionaryType) = DriftScreen {
 
     fun buildUi() {
         if (currentLocale != null) {
-            //subtitle = getDisplayNameForLocale(currentLocale)
             val locale = if (currentLocale == AllLanguagesLocale) null else currentLocale
             wordList = userDictionaryDao()?.queryAll(locale) ?: emptyList()
             if (wordList.isEmpty()) {
@@ -125,7 +124,6 @@ fun UserDictionaryScreen(type: UserDictionaryType) = DriftScreen {
             }
         }
         if (currentLocale == null) {
-            //subtitle = null
             languageList = userDictionaryDao()
                 ?.queryLanguageList()
                 ?.sortedBy { it?.displayLanguage() }
@@ -138,8 +136,6 @@ fun UserDictionaryScreen(type: UserDictionaryType) = DriftScreen {
     val importDictionary = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri ->
-            // If uri is null it indicates that the selection activity was cancelled (mostly
-            // by pressing the back button), so we don't display an error message here.
             if (uri == null) return@rememberLauncherForActivityResult
             val db = when (type) {
                 UserDictionaryType.DRIFT -> dictionaryManager.driftUserDictionaryDatabase()
@@ -170,8 +166,6 @@ fun UserDictionaryScreen(type: UserDictionaryType) = DriftScreen {
     val exportDictionary = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument(),
         onResult = { uri ->
-            // If uri is null it indicates that the selection activity was cancelled (mostly
-            // by pressing the back button), so we don't display an error message here.
             if (uri == null) return@rememberLauncherForActivityResult
             val db = when (type) {
                 UserDictionaryType.DRIFT -> dictionaryManager.driftUserDictionaryDatabase()
@@ -285,7 +279,6 @@ fun UserDictionaryScreen(type: UserDictionaryType) = DriftScreen {
                     JetPrefListItem(
                         modifier = Modifier.rippleClickable {
                             scope.launch {
-                                // Delay makes UI ripple visible and experience better
                                 delay(150)
                                 currentLocale = language
                                 buildUi()
@@ -353,7 +346,6 @@ fun UserDictionaryScreen(type: UserDictionaryType) = DriftScreen {
                             freq = freq.toInt(10),
                             shortcut = shortcut.trim().takeIf { it.isNotBlank() },
                             locale = locale.trim().takeIf { it.isNotBlank() }?.let {
-                                // Normalize tag
                                 DriftLocale.fromTag(it).localeTag()
                             },
                         )

@@ -72,12 +72,6 @@ enum class ItemType(val value: Int) {
     }
 }
 
-/**
- * Represents an item on the clipboard.
- *
- * If type == ItemType.IMAGE there must be a uri set
- * if type == ItemType.TEXT there must be a text set
- */
 @Serializable
 @Entity(tableName = CLIPBOARD_HISTORY_TABLE)
 data class ClipboardItem(
@@ -99,9 +93,6 @@ data class ClipboardItem(
     val isRemoteDevice: Boolean = false,
 ) {
     companion object {
-        /**
-         * So that every item doesn't have to allocate its own array.
-         */
         private val TEXT_PLAIN = listOf("text/plain")
         private val MEDIA_PROJECTION = arrayOf(OpenableColumns.DISPLAY_NAME)
         private const val CLIPBAORD_TEXT_MAX_DISPLAY_LENGTH = 5000
@@ -119,12 +110,6 @@ data class ClipboardItem(
             )
         }
 
-        /**
-         * Returns a new ClipboardItem based on a ClipData.
-         *
-         * @param data The ClipData to clone.
-         * @param cloneUri Whether to store the image using [ClipboardMediaProvider].
-         */
         fun fromClipData(context: Context, data: ClipData, cloneUri: Boolean) : ClipboardItem {
             val dataItem = data.getItemAt(0)
             val type = when {
@@ -207,9 +192,6 @@ data class ClipboardItem(
         }
     }
 
-    /**
-     * Creates a new ClipData which has the same contents as this.
-     */
     fun toClipData(context: Context): ClipData {
         return when (type) {
             ItemType.TEXT -> {
@@ -221,11 +203,8 @@ data class ClipboardItem(
         }
     }
 
-    /**
-     * Instructs the content provider to delete this URI. If not an image, is a noop
-     */
     fun close(context: Context) {
-        if (type == ItemType.IMAGE) {
+        if (type != ItemType.TEXT) {
             tryOrNull { context.contentResolver.delete(this.uri!!, null, null) }
         }
     }
@@ -264,10 +243,6 @@ class Converters {
         return value?.let { ItemType.fromInt(it) }
     }
 
-    /**
-     * Only works because the string array is a mimetype.
-     * DOES NOT USE A GENERALIZED FORMAT.
-     */
     @TypeConverter
     fun mimeTypesToString(mimeTypes: List<String>): String {
         return mimeTypes.joinToString(",")
@@ -300,7 +275,7 @@ interface ClipboardHistoryDao {
     fun delete(id: Long)
 
     @Query("DELETE FROM $CLIPBOARD_HISTORY_TABLE WHERE ${BaseColumns._ID} = :id AND not isPinned ")
-    fun deleteIfUnpinned(id: Long)
+    fun deleteIfUnpinned(id: Long): Int
 
     @Delete
     fun delete(items: List<ClipboardItem>)

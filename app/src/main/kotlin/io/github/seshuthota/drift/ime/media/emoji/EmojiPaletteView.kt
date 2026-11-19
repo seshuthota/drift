@@ -286,7 +286,6 @@ fun EmojiPaletteView(
             pageCount = { calculatePageNumbers() }
         )
 
-        // Reset the pager to the first page when emojiHistory is enabled
         LaunchedEffect(emojiHistoryEnabled) {
             pagerState.animateScrollToPage(0)
         }
@@ -302,7 +301,6 @@ fun EmojiPaletteView(
             // Every page needs its own lazyGridState in order to scroll correctly
             val lazyGridState = rememberLazyGridState()
 
-            // Update the lazyGridState and active category on scroll
             LaunchedEffect(pagerState) {
                 snapshotFlow { pagerState.currentPage }.collect { page ->
                     lazyGridState.scrollToItem(0)
@@ -313,8 +311,6 @@ fun EmojiPaletteView(
 
             val category = pageNumberToCategory(page)
             val emojiMapping = if (category == EmojiCategory.RECENTLY_USED) {
-                // Purposely using remember here to prevent recomposition, as this would cause rapid
-                // emoji changes for the user when in recently used category.
                 remember(recentlyUsedVersion) {
                     val data = prefs.emoji.historyData.get()
                     EmojiMappingForView(

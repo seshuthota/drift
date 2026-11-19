@@ -22,20 +22,6 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.TimeUnit
 
-/**
- * The user's own word sequences, learned from what they commit and mixed into the next-word model.
- *
- * Counts words, word pairs and word triples inside sentences and combines them with Witten-Bell interpolation. The
- * mixture is `P = (1 - a) P_lstm + a P_user` with `a = BETA * n / (n + K)`, where `n` is how often the previous word
- * was followed by anything; without such evidence `a` is a small constant once anything has been learned. Measured
- * with `ml/nwp/personal_eval.py` on 25 OASST2 writers the LSTM never saw: 20.1 → 23.4 % top-1 and 32.3 → 37.1 %
- * top-3, better top-1 for 24 of 25 writers.
- *
- * Only triples are stored (one TSV line `p2 p1 word count` each); pairs and single words are their sums. When the
- * table outgrows [MAX_ENTRIES] every count is halved and zeros are dropped, so old habits fade. Thread-safe; the file
- * is written on a background thread a few seconds after the last change. Before the user unlocks the phone after a
- * reboot the file cannot be read, so the model stays empty and learns nothing rather than overwrite it.
- */
 class PersonalNgram(
     private val file: File?,
     /** False while credential storage is locked (direct boot): nothing is read, learned or written until then. */
@@ -53,7 +39,6 @@ class PersonalNgram(
         private val WORD_RE = Regex("""[a-z]+(?:'[a-z]+)?""")
     }
 
-    /** The two words before the next one inside its sentence; [SENTENCE] marks a sentence start. */
     data class History(val p2: String, val p1: String)
 
     private val lock = Any()
@@ -69,7 +54,6 @@ class PersonalNgram(
     }
     private var pendingSave: ScheduledFuture<*>? = null
 
-    /** The history for a word typed right after [textBefore]. [truncated]: the text does not start the field. */
     fun historyOf(textBefore: CharSequence, truncated: Boolean): History {
         val words = NwpText.tokens(textBefore, truncated).filter { it != "," }
         val p1 = words.lastOrNull() ?: SENTENCE
@@ -77,11 +61,9 @@ class PersonalNgram(
         return History(p2, p1)
     }
 
-    /** Records that [word] was committed after [textBefore]. Words with digits or symbols are ignored. */
     fun learn(textBefore: CharSequence, truncated: Boolean, word: String) =
         change(historyOf(textBefore, truncated), word, +1)
 
-    /** Takes back an earlier [learn] of [word] after [textBefore] (the word was corrected or deleted). */
     fun unlearn(textBefore: CharSequence, truncated: Boolean, word: String) =
         change(historyOf(textBefore, truncated), word, -1)
 
@@ -111,7 +93,6 @@ class PersonalNgram(
         if (next > 0) map[word] = next else map.remove(word)
     }
 
-    /** Weight of the personal model for [history]: 0 when nothing has been learned. */
     fun alpha(history: History): Double {
         return synchronized(lock) {
             if (!ensureLoaded() || total <= 0) return 0.0
@@ -120,7 +101,6 @@ class PersonalNgram(
         }
     }
 
-    /** Interpolated personal probability of [raw] after [history]. */
     fun prob(history: History, raw: String): Double {
         return synchronized(lock) {
             if (!ensureLoaded() || total <= 0) return 0.0
@@ -136,11 +116,9 @@ class PersonalNgram(
         }
     }
 
-    /** Mixes a next-word model probability for [word] with the personal one. */
     fun mix(history: History, alpha: Double, word: String, modelProb: Double): Double =
         if (alpha <= 0.0) modelProb else (1 - alpha) * modelProb + alpha * prob(history, word)
 
-    /** Words seen after [history] (triples first), most frequent first (ties alphabetical), starting with [prefix]. */
     fun candidates(history: History, prefix: String, limit: Int): List<String> {
         return synchronized(lock) {
             if (!ensureLoaded()) return emptyList()
@@ -155,7 +133,6 @@ class PersonalNgram(
         }
     }
 
-    /** How often [raw] was committed. */
     fun countOf(raw: String): Int {
         return synchronized(lock) {
             if (!ensureLoaded()) return 0
@@ -196,7 +173,6 @@ class PersonalNgram(
         total += count
     }
 
-    /** Reads the file once storage is available. False while it is locked. */
     private fun ensureLoaded(): Boolean {
         if (loaded) return true
         if (!storageReady()) return false
@@ -226,7 +202,6 @@ class PersonalNgram(
         }
     }
 
-    /** Writes the table now; for tests and shutdown. */
     fun flush() {
         val target = file ?: return
         synchronized(lock) {

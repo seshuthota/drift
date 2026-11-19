@@ -154,7 +154,6 @@ fun ExtensionEditScreen(extensionId: String?, type: ExtensionType) {
     val isCreateExt = extensionId == null
 
     LaunchedEffect(extensionId, type, storage) {
-        // no key for extensionIndex, else we have an unintended re-copy during save!
         editorState = EditorState.Loading
         val workspaceRef = try {
             storage.createWorkspace()
@@ -329,7 +328,6 @@ fun ExtensionEditScreen(extensionId: String?, type: ExtensionType) {
                                     editorAction = EditorAction.ManageComponent(component)
                                 },
                                 onDeleteComponent = { component ->
-                                    // TODO also delete stylesheet json??
                                     editorState = state.copy(
                                         components = state.components.copy(
                                             themeStylesheets = state.components.themeStylesheets
@@ -340,7 +338,6 @@ fun ExtensionEditScreen(extensionId: String?, type: ExtensionType) {
                             )
                         }
                         ExtensionType.KEYBOARD3 -> {
-                            //
                         }
                     }
                     is EditorState.Error -> {
@@ -448,15 +445,21 @@ fun ExtensionEditScreen(extensionId: String?, type: ExtensionType) {
                                     state.components.themeStylesheets.any { it.id == componentId }
                                 },
                                 onUpdate = { updatedComponent ->
+                                    val originalComponent = action.component
+                                    val themeStylesheets = state.components.themeStylesheets.map { component ->
+                                        if (component.id == originalComponent.id) {
+                                            updatedComponent
+                                        } else {
+                                            component
+                                        }
+                                    }
+                                    val oldStylesheetPath = originalComponent.stylesheetPath()
+                                    if (themeStylesheets.none { it.stylesheetPath() == oldStylesheetPath }) {
+                                        storage.delete(state.workspaceRef.subRef(oldStylesheetPath))
+                                    }
                                     editorState = state.copy(
                                         components = state.components.copy(
-                                            themeStylesheets = state.components.themeStylesheets.map { component ->
-                                                if (component.id == updatedComponent.id) {
-                                                    updatedComponent
-                                                } else {
-                                                    component
-                                                }
-                                            },
+                                            themeStylesheets = themeStylesheets,
                                         ),
                                     )
                                     editorAction = EditorAction.None
@@ -465,14 +468,11 @@ fun ExtensionEditScreen(extensionId: String?, type: ExtensionType) {
                                     editorAction = EditorAction.None
                                 },
                             )
-                            // TODO ThemeEditorScreen(workspace, action.editor)
                         }
                         else -> {
-                            // Render nothing
                         }
                     }
                     else -> {
-                        // Render nothing
                         Box(modifier = Modifier.fillMaxSize())
                     }
                 }

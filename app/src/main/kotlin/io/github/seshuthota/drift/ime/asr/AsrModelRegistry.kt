@@ -17,17 +17,10 @@
 package io.github.seshuthota.drift.ime.asr
 
 /**
- * Built-in ASR model catalog. Rows are data; another size or language of the same family only adds a row, and a
- * different family adds a row plus a [StreamingAsrEngine] for its [AsrModelSpec.engineId].
- *
  * `decoder_kv_with_attention.ort` (32 MB) is left out: Moonshine only loads it when present, logs a warning
  * otherwise, and its own non-English models ship without it; it serves word-level timing, which Drift does not use.
  *
- * Moonshine sizes and SHA-256 were measured from the downloaded files (Small 2026-11-17, Medium 2026-11-18); the
- * folder in the URL is Moonshine's own release tag. Weights: MIT, Moonshine AI. Tiny (~45 MB) was removed on
- * 2026-11-18: in daily use it was clearly less accurate than Small (~142 MB). [AsrModelManager.removeUnlisted]
- * deletes its files, and a stored Tiny selection falls back to the first listed model. Medium (~270 MB, about twice
- * Small's compute and memory) is opt-in until `AsrModelComparisonTest` on the user's own clips shows it is worth it.
+ * The folder in the URL is Moonshine's own release tag.
  */
 object AsrModelRegistry {
     const val MOONSHINE = "moonshine"

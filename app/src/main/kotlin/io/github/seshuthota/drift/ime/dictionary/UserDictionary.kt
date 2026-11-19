@@ -141,7 +141,6 @@ interface UserDictionaryDatabase {
             var isFirstLine = true
             src.forEachLine { line ->
                 if (isFirstLine) {
-                    // Ignore
                     isFirstLine = false
                 } else {
                     var word: String? = null
@@ -506,7 +505,7 @@ object UserDictionaryValidation {
         validator { input ->
             val str = input.trim()
             when {
-                input.isBlank() -> resultValid() // Is optional
+                input.isBlank() -> resultValid()
                 !str.matches(WordRegex) -> resultInvalid(error = R.string.settings__udm__dialog__shortcut_error_invalid, "regex" to WordRegex)
                 else -> resultValid()
             }
@@ -519,7 +518,7 @@ object UserDictionaryValidation {
         validator { input ->
             val str = input.trim()
             when {
-                input.isBlank() -> resultValid() // Is optional
+                input.isBlank() -> resultValid()
                 tryOrNull { DriftLocale.fromTag(str) } == null -> resultInvalid(error = R.string.settings__udm__dialog__locale_error_invalid)
                 else -> resultValid()
             }

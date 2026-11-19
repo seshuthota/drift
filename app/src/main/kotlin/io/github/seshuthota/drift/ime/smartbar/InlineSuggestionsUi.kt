@@ -74,13 +74,6 @@ fun InlineSuggestionsStyleCache() {
     }
 }
 
-/**
- * Creates a new inline suggestion UI bundle.
- *
- * @param context The context of the parent view/controller.
- *
- * @return A bundle containing all necessary attributes for the inline suggestion views to properly display.
- */
 @SuppressLint("RestrictedApi")
 @RequiresApi(Build.VERSION_CODES.R)
 fun createInlineSuggestionUiStyleBundle(context: Context): Bundle? {
@@ -176,7 +169,6 @@ fun InlineSuggestionsUi(
                 factory = { inlineSuggestion.view },
                 update = { view ->
                     view.isZOrderedOnTop = isZOrderedOnTop
-                    // TODO scroll clip can probably also be done in Jetpack Compose
                     val xMin = scrollState.value
                     val xMax = scrollState.value + scrollState.viewportSize
                     view.clipBounds = android.graphics.Rect(

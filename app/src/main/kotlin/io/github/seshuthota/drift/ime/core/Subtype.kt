@@ -37,9 +37,6 @@ data class Subtype(
     val nlpProviders: SubtypeNlpProviderMap = SubtypeNlpProviderMap(),
 ) {
     companion object {
-        /**
-         * Subtype to use when prefs do not contain any valid subtypes.
-         */
         val DEFAULT = Subtype(
             id = -1,
             primaryLocale = DriftLocale.from("en", "US"),
@@ -48,19 +45,12 @@ data class Subtype(
         )
     }
 
-    /**
-     * Returns an accumulated list of all locales of this subtype.
-     */
     fun locales(): List<DriftLocale> {
         val locales = mutableListOf(primaryLocale)
         locales.addAll(secondaryLocales)
         return locales
     }
 
-    /**
-     * Converts this object into its short string representation, used for debugging. Format:
-     *  <id>/<language_tag>/<currency_set_name>
-     */
     fun toShortString(): String {
         val languageTag = primaryLocale.languageTag()
         return "$id/$languageTag"

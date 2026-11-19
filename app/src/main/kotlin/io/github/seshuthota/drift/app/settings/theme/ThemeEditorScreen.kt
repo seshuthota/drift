@@ -142,9 +142,9 @@ private val LenientConfig = SnyggJsonConfiguration.of(
 )
 
 private enum class StylesheetLoadingStrategy {
-    TRY_LOAD_OR_ASK_ON_CONFLICT, // default state
-    TRY_LOAD_OR_EMPTY, // user chose to not auto-fix errors
-    TRY_LOAD_OR_PARSE_LENIENT; // user chose to auto-fix errors
+    TRY_LOAD_OR_ASK_ON_CONFLICT,
+    TRY_LOAD_OR_EMPTY,
+    TRY_LOAD_OR_PARSE_LENIENT;
 }
 
 @Composable
@@ -227,7 +227,6 @@ fun ThemeEditorScreen(
     var showFineTuneDialog by rememberSaveable { mutableStateOf(false) }
 
     fun handleBackPress() {
-        // TODO proper error handling
         val stylesheetText = stylesheetEditor.build().toJson().getOrThrow()
         storage.writeText(workspaceRef.subRef(stylesheetComponent.stylesheetPath()), stylesheetText)
         onUpdate(stylesheetComponent)
@@ -315,7 +314,6 @@ fun ThemeEditorScreen(
                         previewFieldController.focusRequester.requestFocus()
                     }
                     DisplayKbdAfterDialogs.NEVER -> {
-                        // Do nothing
                     }
                     DisplayKbdAfterDialogs.REMEMBER -> {
                         if (oldFocusState) {
@@ -326,13 +324,9 @@ fun ThemeEditorScreen(
             }
         }
 
-        // TODO: (priority = low)
-        //  Drift scrollbar does not like lazy lists with non-constant item heights.
-        //  Consider building a custom scrollbar tailored for this list specifically.
         val lazyListState = rememberLazyListState()
         LazyColumn(
             modifier = Modifier
-                //.driftScrollbar(lazyListState, isVertical = true)
                 .padding(horizontal = ScreenHorizontalPadding),
             contentPadding = contentPadding,
             state = lazyListState,
@@ -557,9 +551,7 @@ fun ThemeEditorScreen(
                 component = stylesheetComponent,
                 checkIdAlreadyUsed = checkIdAlreadyUsed,
                 onConfirm = { newComponent ->
-                    val oldComponent = stylesheetComponent
                     stylesheetComponent = newComponent
-                    // TODO if id has changed move file
                     showEditComponentMetaDialog = false
                 },
                 onDismiss = {

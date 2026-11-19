@@ -63,9 +63,6 @@ sealed interface NlpProvider {
     suspend fun destroy()
 }
 
-/**
- * Interface for an NLP provider specializing in spell check services.
- */
 interface SpellingProvider : NlpProvider {
     /**
      * Spell check given [word] in the primary (and optionally secondary if defined) language of given [subtype], and
@@ -107,9 +104,6 @@ interface SpellingProvider : NlpProvider {
     ): SpellingResult
 }
 
-/**
- * Interface for an NLP provider specializing in next/current-word suggestion and autocorrect services.
- */
 interface SuggestionProvider : NlpProvider {
     /**
      * Callback from the editor logic that the editor content has changed and that new suggestions should be generated
@@ -218,8 +212,6 @@ interface SuggestionProvider : NlpProvider {
             val isWord = it.ruleStatus != BreakIterator.WORD_NONE
             if (isWord) {
                 val start = it.previous().let { pos ->
-                    // Include Emoji indicator in local composing. This is required so that emoji suggestion indicator'
-                    // can be detected in the composing text.
                     (pos - 1).takeIf { updatedPos ->
                         textBeforeSelection.getOrNull(updatedPos) == EmojiSuggestionType.LEADING_COLON.prefix.first()
                     } ?: pos
@@ -235,18 +227,13 @@ interface SuggestionProvider : NlpProvider {
         get() = false
 }
 
-/**
- * Fallback NLP provider which implements all provider variants. Is used in case no other providers can be found.
- */
 object FallbackNlpProvider : SpellingProvider, SuggestionProvider {
     override val providerId = "io.github.seshuthota.drift.nlp.providers.fallback"
 
     override suspend fun create() {
-        // Do nothing
     }
 
     override suspend fun preload(subtype: Subtype) {
-        // Do nothing
     }
 
     override suspend fun spell(
@@ -272,11 +259,9 @@ object FallbackNlpProvider : SpellingProvider, SuggestionProvider {
     }
 
     override suspend fun notifySuggestionAccepted(subtype: Subtype, candidate: SuggestionCandidate) {
-        // Do nothing
     }
 
     override suspend fun notifySuggestionReverted(subtype: Subtype, candidate: SuggestionCandidate) {
-        // Do nothing
     }
 
     override suspend fun removeSuggestion(subtype: Subtype, candidate: SuggestionCandidate): Boolean {
@@ -292,6 +277,5 @@ object FallbackNlpProvider : SpellingProvider, SuggestionProvider {
     }
 
     override suspend fun destroy() {
-        // Do nothing
     }
 }

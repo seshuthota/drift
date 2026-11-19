@@ -27,13 +27,6 @@ import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.sqrt
 
-/**
- * Runs the dataset-trained CTC swipe encoder (see `ml/REPORT.md`) and decodes with a
- * lexicon-constrained CTC prefix beam search over the active subtype's word list.
- *
- * All state is guarded by the caller's lock (see [GlideTypingManager]); no Android UI APIs are
- * touched. The ONNX session is created lazily off the main thread.
- */
 internal class NeuralGlideTypingClassifier internal constructor(
     private val modelBytes: () -> ByteArray,
 ) : GlideTypingClassifier {
@@ -49,11 +42,6 @@ internal class NeuralGlideTypingClassifier internal constructor(
         const val FRAMES = 32
         const val BEAM_WIDTH = 120
         const val TOP_CHARS = 12
-        /**
-         * Weight of [io.github.seshuthota.drift.ime.nlp.latin.LatinLanguageProvider.getFrequencyForWord], a 0–1
-         * log-frequency (`ln(1 + count) / ln(1 + maxCount)`). 6.87 is `0.4 * ln(1 + maxCount)` for the shipping
-         * list, the dev-tuned prior `0.4 * ln(1 + count)` from `ml/PLAN.md`.
-         */
         const val FREQUENCY_WEIGHT = 6.87
         const val MIN_CHAR_PROB = 1e-7
         const val MODEL_ASSET = "swipe/ctc_swipe.onnx"
@@ -70,10 +58,6 @@ internal class NeuralGlideTypingClassifier internal constructor(
     private var frequencyOf: (String) -> Double = { 0.0 }
     private var trie: SwipeTrie? = null
 
-    /**
-     * Key-sequence forms that map to more than the plain word, e.g. `dont` -> [`don't`, `dont`] and
-     * `im` -> [`I'm`, `im`]. Plain words that are only spelled one way are not stored here.
-     */
     private var surfaceForms: Map<String, List<String>> = emptyMap()
     private var contextScorer: ((String) -> Double)? = null
 
@@ -97,7 +81,6 @@ internal class NeuralGlideTypingClassifier internal constructor(
                 plainWords.add(word)
             }
         }
-        // Apostrophes are not on the letter keys, so a contraction is glided as its letters alone.
         val surfaceForms = HashMap<String, MutableList<String>>()
         for (word in words) {
             if (!word.contains(APOSTROPHE)) {
@@ -116,7 +99,6 @@ internal class NeuralGlideTypingClassifier internal constructor(
         trie.trimToSize()
         this.surfaceForms = surfaceForms
         this.trie = trie
-        // Warm the session up while the caller is still on a background thread.
         ensureSession()
     }
 
@@ -214,7 +196,6 @@ internal class NeuralGlideTypingClassifier internal constructor(
         }
     }
 
-    /** Resamples the collected path to 64 arc-length points in the [0,1] keyboard box. */
     private fun featurize(points: List<GesturePoint>): FloatArray? {
         val count = points.size
         if (count < 2) {
@@ -277,7 +258,6 @@ internal class NeuralGlideTypingClassifier internal constructor(
         return features
     }
 
-    /** [minX, maxX, minY, maxY] covering the a-z key rectangles of the active layout. */
     private fun letterBounds(): FloatArray? {
         var minX = Float.MAX_VALUE
         var maxX = -Float.MAX_VALUE
@@ -378,8 +358,6 @@ internal class NeuralGlideTypingClassifier internal constructor(
             }
         }
 
-        // Every spelling of every decoded key sequence is scored on its own, so the frequency prior and the
-        // context scorer can choose between e.g. `its` and `it's` that share one swipe.
         val scorer = contextScorer
         val scored = ArrayList<Pair<String, Double>>(beams.size)
         for ((prefix, state) in beams) {
@@ -409,7 +387,6 @@ internal class NeuralGlideTypingClassifier internal constructor(
         return result.toList()
     }
 
-    /** Squared distance from the stroke ends to the first and last letters, in the 0–1 letter box. */
     private fun endpointPenalty(letters: String, startX: Float, startY: Float, endX: Float, endY: Float): Float {
         if (letters.length < 2) {
             return 0f
@@ -432,7 +409,6 @@ internal class NeuralGlideTypingClassifier internal constructor(
         return x to y
     }
 
-    /** `i'm` -> `I'm`: the pronoun is capitalized; every other contraction keeps the dictionary spelling. */
     private fun displayForm(word: String): String {
         return if (word.startsWith("i$APOSTROPHE")) "I" + word.substring(1) else word
     }
@@ -455,15 +431,8 @@ internal class NeuralGlideTypingClassifier internal constructor(
     }
 }
 
-/**
- * Cost of the stroke starting away from the first letter and ending away from the last, in squared
- * keyboard-box distance. 20 lets a straight o→k stroke rank `ok` ahead of `of`: the encoder prefers
- * `of` there by about 1.6 nats, and frequency widens that. On the sealed 4k set this moves top-1
- * from 90.33% to 90.50%, with length 2 unchanged.
- */
 internal const val GLIDE_ENDPOINT_WEIGHT = 20.0
 
-/** Squared distance from a stroke's ends to a word's first and last key centers. */
 internal fun glideEndpointPenalty(
     startX: Float,
     startY: Float,
@@ -481,10 +450,6 @@ internal fun glideEndpointPenalty(
     return dsx * dsx + dsy * dsy + dex * dex + dey * dey
 }
 
-/**
- * Fallback chain: neural classifier first, statistical template matcher if the model cannot
- * produce candidates (missing asset, unsupported op, empty result).
- */
 internal class HybridGlideTypingClassifier(context: Context) : GlideTypingClassifier {
     private val neural = NeuralGlideTypingClassifier(context)
     private val statistical = StatisticalGlideTypingClassifier()
@@ -532,10 +497,6 @@ internal class HybridGlideTypingClassifier(context: Context) : GlideTypingClassi
     }
 }
 
-/**
- * Compact prefix trie for the beam search: nodes and edges live in parallel arrays so the whole
- * ~50k-word dictionary costs a few MB instead of a hash set of every prefix string.
- */
 internal class SwipeTrie {
     private var firstEdge = IntArray(INITIAL_CAPACITY) { -1 }
     private var terminal = BooleanArray(INITIAL_CAPACITY)
@@ -573,7 +534,6 @@ internal class SwipeTrie {
         terminal[node] = true
     }
 
-    /** Drops the spare capacity left by doubling growth; call once all words are inserted. */
     fun trimToSize() {
         terminal = terminal.copyOf(nodeCount)
         firstEdge = firstEdge.copyOf(nodeCount)

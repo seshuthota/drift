@@ -196,7 +196,7 @@ fun RestoreScreen(isSetup: Boolean) {
                     return@launch
                 }
                 restoreScreenState = RestoreScreenState.Parsing(fileName)
-                delay(500.milliseconds) // to give the animations breathing room
+                delay(500.milliseconds)
                 var workspaceRef: DriftRef? = null
                 try {
                     workspaceRef = storage.createWorkspace()
@@ -611,9 +611,6 @@ private fun SharedTransitionScope.CookieBadge(
     }
 }
 
-/**
- * See: https://developer.android.com/reference/kotlin/androidx/compose/material3/Button.composable
- */
 @Composable
 private fun SharedTransitionScope.SelectFileButton(
     compact: Boolean,

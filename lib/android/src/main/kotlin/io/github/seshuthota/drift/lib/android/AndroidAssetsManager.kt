@@ -25,11 +25,6 @@ import java.io.IOException
 import java.io.Reader
 import java.nio.charset.Charset
 
-/**
- * Public typealias for the Android AssetManager class, which provides a basic API to read files which are statically
- * shipped in the APK assets. The typealias is used to allow both the Drift and Android asset managers to coexist
- * without name clashes.
- */
 typealias AndroidAssetManager = android.content.res.AssetManager
 
 /**
@@ -109,11 +104,9 @@ private fun AndroidAssetManager.copyApkAssets(base: String, path: String, dst: F
     val apkAssetsPath = if (base.isBlank()) path else if (path.isBlank()) base else "$base/$path"
     val list = this.list(apkAssetsPath) ?: return
     if (list.isEmpty()) {
-        // Is file
         val file = dst.subFile(path)
         this.copy(apkAssetsPath, file)
     } else {
-        // Is directory
         val dir = dst.subDir(path)
         dir.mkdirs()
         for (entry in list) {

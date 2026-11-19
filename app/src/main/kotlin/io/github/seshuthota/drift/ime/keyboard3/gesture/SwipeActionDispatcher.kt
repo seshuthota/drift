@@ -23,16 +23,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.k3lp.lib.text.asK3String
 
-/**
- * Executes the operations produced by [SwipeActionResolver] against the IME state. All edits happen
- * inside a single `updateState` block so they are applied in order and on the state thread.
- */
 class SwipeActionDispatcher(
     private val imeController: ImeController,
     private val scope: CoroutineScope,
 ) {
     companion object {
-        /** Guards against absurd counts from an over-long swipe. */
         private const val MAX_REPEAT = 64
     }
 

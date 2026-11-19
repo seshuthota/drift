@@ -21,18 +21,8 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-/**
- * Public typealias for [java.io.File]. As a file object can either be a file
- * or a directory, this typealias allows you to be more verbose on what you
- * expect, in this case a file system directory.
- */
 typealias FsDir = java.io.File
 
-/**
- * Public typealias for [java.io.File]. As a file object can either be a file
- * or a directory, this typealias allows you to be more verbose on what you
- * expect, in this case a file system file.
- */
 typealias FsFile = java.io.File
 
 @Suppress("NOTHING_TO_INLINE")
@@ -55,4 +45,4 @@ inline fun <reified T> FsFile.writeJson(value: T, config: StringFormat = Json) {
     return this.writeText(text)
 }
 
-inline val FsFile/* and FsDir */.parentDir: FsDir? get() = this.parentFile
+inline val FsFile.parentDir: FsDir? get() = this.parentFile

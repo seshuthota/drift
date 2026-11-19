@@ -26,9 +26,6 @@ data class AsrModelFile(
     val bytes: Long,
 )
 
-/**
- * A downloadable ASR model. The registry is data only: adding a model means adding a row here, no engine change.
- */
 data class AsrModelSpec(
     val id: String,
     val displayName: String,

@@ -35,14 +35,6 @@ import java.lang.ref.WeakReference
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-/**
- * The one-pass decode on the real Moonshine Small model and the guarded text swap. Downloads the model (~142 MB)
- * when it is not installed yet. The clip is espeak-ng speech of two sentences. Run on a device:
- *
- *     CLASS=io.github.seshuthota.drift.ime.asr.VoiceRefineDeviceTest
- *     ./gradlew :app:connectedDebugAndroidTest \
- *         -Pandroid.testInstrumentationRunnerArguments.class=$CLASS
- */
 @RunWith(AndroidJUnit4::class)
 class VoiceRefineDeviceTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -76,7 +68,6 @@ class VoiceRefineDeviceTest {
                 val lower = text.lowercase()
                 assertTrue("\"$text\"", "report" in lower && "friday" in lower && "monday" in lower)
             }
-            // A second stream after the one-pass decode still works.
             engine.start()
             engine.addAudio(pcm.copyOf(16_000))
             engine.stop()
@@ -93,7 +84,6 @@ class VoiceRefineDeviceTest {
         assertTrue(editor.replaceLiveText(" send the report to pre anka", " send the report to Priyanka"))
         assertEquals("Hi. send the report to Priyanka", connection.text.toString())
 
-        // The user moved on: the dictated text is no longer directly before the cursor.
         connection.commitText(" thanks", 1)
         assertFalse(editor.replaceLiveText(" send the report to Priyanka", " anything"))
         assertEquals("Hi. send the report to Priyanka thanks", connection.text.toString())
@@ -124,7 +114,6 @@ class VoiceRefineDeviceTest {
         return controller.snapshotState().editor
     }
 
-    /** Reads the samples of a 16 kHz mono PCM16 WAV from the test assets. */
     private fun readWav(path: String): ShortArray {
         val bytes = instrumentation.context.assets.open(path).use { it.readBytes() }
         val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)

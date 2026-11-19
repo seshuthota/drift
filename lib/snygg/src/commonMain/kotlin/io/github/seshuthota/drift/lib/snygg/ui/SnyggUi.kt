@@ -278,8 +278,6 @@ internal fun SnyggTheme.rememberQuery(
     }
 }
 
-/// Modifier helpers
-
 internal fun Modifier.snyggBackground(
     style: SnyggSinglePropertySet,
     default: Color = Color.Unspecified,
@@ -360,8 +358,6 @@ internal fun Modifier.snyggIconSize(
         }
     }
 }
-
-/// SnyggValue helpers
 
 internal fun SnyggValue.colorOrDefault(default: Color): Color {
     return when (this) {

@@ -124,4 +124,16 @@ class MimeTypeFilterTest : FunSpec({
             filter.matches("x-application-custom/x-font-otf") shouldBe true
         }
     }
+
+    test("constructing a filter writes nothing to stdout") {
+        val original = System.out
+        val captured = java.io.ByteArrayOutputStream()
+        try {
+            System.setOut(java.io.PrintStream(captured, true))
+            mimeTypeFilterOf("image/*", "video/mp4")
+        } finally {
+            System.setOut(original)
+        }
+        captured.toString() shouldBe ""
+    }
 })

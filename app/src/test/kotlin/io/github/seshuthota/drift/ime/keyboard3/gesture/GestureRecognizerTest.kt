@@ -118,7 +118,6 @@ class GestureRecognizerTest : FunSpec({
             recognizer.onMove(1L, 50f, 0f, 20L) shouldHaveSize 0
             val signals = recognizer.onMove(1L, 150f, 0f, 40L)
             signals.first().shouldBeInstanceOf<GestureSignal.GlideStarted>()
-            // Buffered samples (0,0), (50,0), (150,0) all clear the quarter-key spacing.
             signals.filterIsInstance<GestureSignal.GlidePoint>().shouldHaveSize(3)
         }
 

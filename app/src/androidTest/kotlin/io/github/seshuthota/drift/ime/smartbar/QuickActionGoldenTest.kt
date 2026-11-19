@@ -64,14 +64,6 @@ import org.k3lp.lib.text.K3Descriptor
 import org.k3lp.lib.text.asK3String
 import java.lang.ref.WeakReference
 
-/**
- * Smartbar quick actions: a tap on a rendered [QuickActionButton] goes through [ImeController] and reaches the
- * editor or the IME state. Run on a device:
- *
- *     CLASS=io.github.seshuthota.drift.ime.smartbar.QuickActionGoldenTest
- *     ./gradlew :app:connectedDebugAndroidTest \
- *         -Pandroid.testInstrumentationRunnerArguments.class=$CLASS
- */
 @RunWith(AndroidJUnit4::class)
 class QuickActionGoldenTest {
     @get:Rule

@@ -16,9 +16,6 @@
 
 package io.github.seshuthota.drift.lib.util
 
-/**
- * Helper object containing methods to validate and extract network names and components from strings.
- */
 @Suppress("RegExpRedundantEscape", "RegExpUnnecessaryNonCapturingGroup")
 object NetworkUtils {
     private val Ipv4Regex = """(?<Ipv4>(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))""".toRegex()

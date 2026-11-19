@@ -22,43 +22,6 @@ import io.github.seshuthota.drift.ime.keyboard3.touch.InputShiftState
 import io.github.seshuthota.drift.ime.sheet.isAnyBottomSheetVisible
 import io.github.seshuthota.drift.ime.text.key.KeyVariation
 
-/**
- * This class is a helper managing the state of the text input logic which
- * affects the keyboard view in rendering and layouting the keys.
- *
- * The state class can hold flags or small unsigned integers, all added up
- * at max 64-bit though.
- *
- * The structure of this 8-byte state register is as follows: (Lower 4 bytes are pretty experimental rn)
- *
- * <Byte 3> | <Byte 2> | <Byte 1> | <Byte 0> | Description
- * ---------|----------|----------|----------|---------------------------------
- *          |          |          | 1111     | Active [KeyVariation]
- *          |          |       11 |          | InputShiftState
- *          |          |     1    |          | Is manual selection mode
- *          |          |    1     |          | Is manual selection mode (start)
- *          |          |   1      |          | Is manual selection mode (end)
- *          |          | 1        |          | Is incognito mode
- *          |        1 |          |          | Is quick actions overflow visible
- *          |       1  |          |          | Is quick actions editor visible
- *          |    1     |          |          | Is composing enabled
- *          |   1      |          |          | Is character half-width enabled
- *          |  1       |          |          | Is Kana Kata enabled
- *          | 1        |          |          | Is Kana small
- *      111 |          |          |          | Ime Ui Mode
- *     1    |          |          |          | Layout Direction (0=LTR, 1=RTL)
- *
- * <Byte 7> | <Byte 6> | <Byte 5> | <Byte 4> | Description
- * ---------|----------|----------|----------|---------------------------------
- *          |          |          |        1 | Subtype selection dialog visible
- *        1 |          |          |          | Devtools: Show drag&drop helpers
- *
- * The resulting structure is only relevant during a runtime lifespan and
- * thus can easily be changed without worrying about destroying some saved state.
- *
- * @property rawValue The internal register used to store the flags and region ints that
- *  this keyboard state represents.
- */
 @JvmInline
 value class ImeStateFlags(val rawValue: ULong = STATE_ALL_ZERO) {
     companion object {

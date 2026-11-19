@@ -62,10 +62,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Model management for local voice input: permission, download/delete/select models, and whether the engine
- * stays in memory. Downloading is the only network use of the whole feature.
- */
 @Composable
 fun VoiceInputScreen() {
     val context = LocalContext.current
@@ -80,7 +76,6 @@ fun VoiceInputScreen() {
 
     var installedIds by remember { mutableStateOf(modelManager.installedModels().map { it.spec.id }.toSet()) }
     val storedModelId by prefs.voice.modelId.collectAsState()
-    // A stored id of a removed model falls back to the first one, as AsrController does.
     val selectedId = modelManager.spec(storedModelId)?.id ?: modelManager.models().firstOrNull()?.id
     val keepLoaded by prefs.voice.keepModelLoaded.collectAsState()
     val plainMic by prefs.voice.plainMicSource.collectAsState()

@@ -84,8 +84,6 @@ fun DriftSimpleCard(
             disabledContainerColor = backgroundColor,
             disabledContentColor = contentColor,
         )
-        //backgroundColor = backgroundColor,
-        //contentColor = contentColor,
     ) {
         Row(
             modifier = Modifier.padding(contentPadding),
@@ -189,8 +187,6 @@ fun DriftInfoCard(
     )
 }
 
-// TODO: Rework internal implementation (with same API and visual appearance) of DriftOutlinedBox
-//  to avoid too much nesting and improve performance
 @Composable
 fun DriftOutlinedBox(
     modifier: Modifier = Modifier,

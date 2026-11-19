@@ -99,7 +99,6 @@ object NlpInlineAutofill {
     }
 
     fun clearInlineSuggestions() {
-        // Increment sequence id to invalidate eventual pending suggestions
         clearInlineSuggestions(generateSequenceId())
     }
 

@@ -33,16 +33,11 @@ import org.k3lp.model.K3ImportResolver
 import org.k3lp.model.K3Model
 import org.k3lp.model.compileToModel
 
-/**
- * Keyboard definitions shipped with the foundation extension, in fallback order. The first entry
- * is used when no keyboard matches the active subtype's language.
- */
 private val FOUNDATION_KEYBOARD_FILES = listOf(
     "keyboard/qwerty.xml",
     "keyboard/qwertz.xml",
 )
 
-// TODO this is just a placeholder testing code, must be replaced by proper extension-aware logic
 @OptIn(WillRequireMigrationToRichErrors::class)
 suspend fun loadFoundationKeyboards(storage: Storage): List<K3Model> {
     suspend fun loadAssetFile(path: String): TextSourceFile {
@@ -74,10 +69,6 @@ suspend fun loadFoundationKeyboards(storage: Storage): List<K3Model> {
     }
 }
 
-/**
- * Selects the keyboard whose declared locale language matches [primaryLocale], falling back to
- * the first English keyboard and then to the first keyboard in [keyboards].
- */
 fun selectFoundationKeyboard(
     keyboards: List<K3Model>,
     primaryLocale: DriftLocale?,

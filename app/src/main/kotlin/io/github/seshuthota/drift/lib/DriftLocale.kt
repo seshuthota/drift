@@ -29,36 +29,20 @@ import kotlinx.serialization.encoding.Encoder
  * Project-specific locale class wrapping [java.util.Locale]. The wrapping is
  * necessary to provide consistent language display names and tags across the
  * whole code base.
- *
- * This class would be ideal for Kotlin's value classes, though AndroidX.Room
- * does not like this at all, so this is a "normal" class.
- *
- * To construct a DriftLocale, use one of the many from() methods provided.
- *
  * @see java.util.Locale
  */
 @Serializable(with = DriftLocale.Serializer::class)
 class DriftLocale private constructor(val base: Locale) {
     companion object {
-        /** Delimiter for a language tag. */
         private const val DELIMITER_LANGUAGE_TAG = '-'
-        /** Delimiter for a locale tag. */
         private const val DELIMITER_LOCALE_TAG = '_'
 
-        /** Delimiter regex to split language/locale tags. */
         private val DELIMITER_SPLITTER = """[${DELIMITER_LANGUAGE_TAG}${DELIMITER_LOCALE_TAG}]""".toRegex()
 
-        /** Constant locale for ROOT */
         val ROOT = from("", "", "")
 
-        /** Constant locale for ENGLISH */
         val ENGLISH = from("en", "", "")
 
-        /**
-         * Wraps a [java.util.Locale] and returns the [DriftLocale].
-         *
-         * @return The wrapped locale.
-         */
         fun from(javaLocale: Locale) = DriftLocale(javaLocale)
 
         /**
@@ -110,39 +94,16 @@ class DriftLocale private constructor(val base: Locale) {
             else -> from(str)
         }
 
-        /**
-         * Gets the current value of the default locale for this instance of
-         * the Java Virtual Machine.
-         *
-         * @see java.util.Locale.getDefault
-         */
         fun default() = DriftLocale(Locale.getDefault())
 
-        /**
-         * Returns a list of all installed locales.
-         *
-         * @see java.util.Locale.getAvailableLocales
-         */
         fun installedSystemLocales(): List<DriftLocale> = Locale.getAvailableLocales().map { from(it) }
 
-        /**
-         * Returns a list of all installed locales and custom locales.
-         *
-         */
         fun extendedAvailableLocales(): List<DriftLocale> {
             val systemLocales = installedSystemLocales()
             return systemLocales
         }
     }
 
-    /**
-     * Builds a locale or language tag for this locale by using [delimiter].
-     *
-     * @param delimiter The delimiter to use between the components.
-     *
-     * @return The generated tag for this locale. May be an empty string if
-     *  [language], [country] and [variant] are not specified.
-     */
     private fun buildLocaleString(delimiter: Char) = buildString {
         val language = base.language
         val country = base.country
@@ -158,55 +119,22 @@ class DriftLocale private constructor(val base: Locale) {
         append(variant)
     }
 
-    /**
-     * Returns the language code of this locale.
-     *
-     * @see java.util.Locale.getLanguage
-     */
     val language: String get() = base.language
 
-    /**
-     * Returns the country/region code for this locale.
-     *
-     * @see java.util.Locale.getCountry
-     */
     val country: String get() = base.country
 
-    /**
-     * Returns the variant code for this locale.
-     *
-     * @see java.util.Locale.getVariant
-     */
     val variant: String get() = base.variant
 
-    /**
-     * Returns a three-letter abbreviation of this locale's language.
-     *
-     * @see java.util.Locale.getISO3Language
-     */
     val iso3Language: String get() = base.isO3Language
 
-    /**
-     * Returns a three-letter abbreviation of this locale's country.
-     *
-     * @see java.util.Locale.getISO3Country
-     */
     val iso3Country: String get() = base.isO3Country
 
-    /**
-     * Returns true if this language has a capitalization concept, false otherwise.
-     * TODO: this is absolutely not exhaustive and hard-coded, find solution based on ICU or system
-     */
     val supportsCapitalization: Boolean
         get() = when (language) {
             "zh", "ko", "th", "bn", "hi" -> false
             else -> true
         }
 
-    /**
-     * Returns true if suggestions in this language should have spaces added after, false otherwise.
-     * TODO: this is absolutely not exhaustive and hard-coded, find solution based on ICU or system
-     */
     val supportsAutoSpace: Boolean
         get() = when (language) {
             "zh", "ko", "jp", "th" -> false
@@ -239,28 +167,12 @@ class DriftLocale private constructor(val base: Locale) {
      */
     fun localeTag(): String = buildLocaleString(DELIMITER_LOCALE_TAG)
 
-    /**
-     * Returns the name of this locale's language, localized to [locale].
-     *
-     * @see java.util.Locale.getDisplayLanguage
-     */
     fun displayLanguage(locale: DriftLocale = default()): String {
         return base.getDisplayLanguage(locale.base).titlecase(locale)
     }
 
-    /**
-     * Returns the name of this locale's country, localized to [locale].
-     *
-     * @see java.util.Locale.getDisplayCountry
-     */
     fun displayCountry(locale: DriftLocale = default()): String = base.getDisplayCountry(locale.base)
 
-    /**
-     * Returns a name for the locale's variant code that is appropriate for
-     * display to the user.
-     *
-     * @see java.util.Locale.getDisplayVariant
-     */
     fun displayVariant(locale: DriftLocale = default()): String = base.getDisplayVariant(locale.base)
 
     /**
@@ -305,9 +217,6 @@ class DriftLocale private constructor(val base: Locale) {
      */
     override fun toString() = "DriftLocale { l=${base.language} c=${base.country} v=${base.variant} }"
 
-    /**
-     * Equality check for this locale.
-     */
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
@@ -319,16 +228,10 @@ class DriftLocale private constructor(val base: Locale) {
         return true
     }
 
-    /**
-     * Returns the hash code for this locale.
-     */
     override fun hashCode(): Int {
         return base.hashCode()
     }
 
-    /**
-     * The JSON (de)serializer for DriftLocale.
-     */
     class Serializer : KSerializer<DriftLocale> {
         override val descriptor: SerialDescriptor =
             PrimitiveSerialDescriptor("DriftLocale", PrimitiveKind.STRING)

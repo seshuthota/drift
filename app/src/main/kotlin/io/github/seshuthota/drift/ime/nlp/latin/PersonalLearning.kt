@@ -16,19 +16,9 @@
 
 package io.github.seshuthota.drift.ime.nlp.latin
 
-/**
- * Decides when a word the user typed should join the on-device lexicon.
- *
- * An unknown word is learned after [REPEATS] commits. A word restored by undoing autocorrect
- * is learned on that undo. Counts live for the process; the dictionary entry is what persists.
- */
 internal class PersonalLearning {
     private val counts = HashMap<String, Int>()
 
-    /**
-     * Returns the normalized word once it should be saved, or null while it is still being counted.
-     * [key] is already the result of [keyOf].
-     */
     fun observe(key: String, immediate: Boolean): String? {
         if (immediate) {
             counts.remove(key)
@@ -48,7 +38,6 @@ internal class PersonalLearning {
 
         private val WORD = Regex("[a-z]+(?:'[a-z]+)*")
 
-        /** Lowercase letters with optional internal apostrophes, or null when the text is not a learnable word. */
         fun keyOf(raw: String): String? {
             val normalized = NwpText.normalize(raw).trim('\'')
             if (normalized.length !in 2..32 || !WORD.matches(normalized)) return null

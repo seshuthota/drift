@@ -167,7 +167,7 @@ private fun SmartbarMainRow(modifier: Modifier = Modifier) {
         SnyggIconButton(
             elementName = DriftImeUi.SmartbarSharedActionsToggle.elementName,
             onClick = {
-                if (/* was */ sharedActionsExpanded) {
+                if (sharedActionsExpanded) {
                     imeController.updateStateBlocking {
                         state = state.copy(
                             flags = state.flags
@@ -252,7 +252,7 @@ private fun SmartbarMainRow(modifier: Modifier = Modifier) {
         SnyggIconButton(
             DriftImeUi.SmartbarExtendedActionsToggle.elementName,
             onClick = {
-                if (/* was */ extendedActionsExpanded) {
+                if (extendedActionsExpanded) {
                     imeController.updateStateBlocking {
                         state = state.copy(
                             flags = state.flags
@@ -269,7 +269,6 @@ private fun SmartbarMainRow(modifier: Modifier = Modifier) {
             val transition = updateTransition(extendedActionsExpanded, label = "smartbarSecondaryRowToggleBtn")
             val alpha by transition.animateFloat(label = "alpha") { if (it) 1f else 0f }
             val rotation by transition.animateFloat(label = "rotation") { if (it) 180f else 0f }
-            // Expanded icon
             SnyggIcon(
                 DriftImeUi.SmartbarExtendedActionsToggle.elementName,
                 modifier = Modifier
@@ -277,7 +276,6 @@ private fun SmartbarMainRow(modifier: Modifier = Modifier) {
                     .rotate(rotation),
                 imageVector = Icons.Default.UnfoldLess,
             )
-            // Not expanded icon
             SnyggIcon(
                 DriftImeUi.SmartbarExtendedActionsToggle.elementName,
                 modifier = Modifier

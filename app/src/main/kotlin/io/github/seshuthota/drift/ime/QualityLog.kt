@@ -27,11 +27,8 @@ import java.io.File
 import java.util.concurrent.Executors
 
 /**
- * Opt-in, on-device record of how typing went, so glide, prediction and voice quality can be measured from real use
- * instead of benchmarks. Enabled by `prefs.devtools.qualityLog`; nothing is written in incognito mode or outside
- * prose fields (the callers check that). One JSON object per line in
- * `Android/data/<applicationId>/files/diagnostics/quality.jsonl`, pulled with adb and analysed by
- * `ml/quality/analyze.py`. The file rotates to `quality.1.jsonl` at [MAX_BYTES].
+ * One JSON object per line in `Android/data/<applicationId>/files/diagnostics/quality.jsonl`, pulled with adb and
+ * analysed by `ml/quality/analyze.py`. The file rotates to `quality.1.jsonl` at [MAX_BYTES].
  *
  * Events (`e`):
  * - `layout`: letter key geometry in the same normalized space as glide points, written when it changes.
@@ -66,7 +63,6 @@ object QualityLog {
     @Volatile
     private var appContext: Context? = null
 
-    // Tracker state, guarded by [lock].
     private var lastGlideId = 0L
     private var pendingGlide: Long? = null
     private var deletedGlide: Long? = null
@@ -136,7 +132,6 @@ object QualityLog {
         write(JSONObject().put("e", "glide_pick").put("id", id).put("w", word).put("rank", rank))
     }
 
-    /** Called for every backspace the user presses. */
     fun backspace() {
         if (!isEnabled()) return
         val now = System.currentTimeMillis()
@@ -265,7 +260,6 @@ object QualityLog {
         clips.dropLast(MAX_CLIPS).forEach { it.delete() }
     }
 
-    /** 16-bit mono PCM in a RIFF/WAVE container. */
     internal fun wav(pcm: ShortArray, sampleRate: Int): ByteArray {
         val dataBytes = pcm.size * 2
         val out = java.nio.ByteBuffer.allocate(44 + dataBytes).order(java.nio.ByteOrder.LITTLE_ENDIAN)

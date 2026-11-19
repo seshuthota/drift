@@ -45,9 +45,6 @@ data class Keyboard3Extension(
         }
     }
 
-    /**
-     * Describes an importable XML element in the `import` directory.
-     */
     @Serializable
     data class ImportComponent(
         override val id: String,
@@ -61,8 +58,6 @@ data class Keyboard3Extension(
     }
 
     /**
-     * Describes a keyboard3 component in the `keyboard` directory.
-     *
      * See: https://unicode.org/reports/tr35/tr35-keyboards.html#element-info
      */
     @Serializable
@@ -76,8 +71,6 @@ data class Keyboard3Extension(
     ) : ExtensionComponent
 
     /**
-     * Describes a keyboardTest3 component in the `test` directory.
-     *
      * See: https://github.com/unicode-org/cldr/tree/main/keyboards/test#test-element-info
      */
     @Serializable

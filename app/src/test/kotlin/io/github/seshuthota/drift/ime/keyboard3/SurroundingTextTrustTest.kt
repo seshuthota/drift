@@ -34,7 +34,6 @@ class SurroundingTextTrustTest : FunSpec({
     }
 
     test("ChatGPT's link chip, read as on-screen text, is not trusted") {
-        // Stored text: "https://example.com/abc" (23 chars), cursor reported at 23.
         val chip = "⁦￼ https://example.com/a…⁩"
         isSurroundingTextTrustworthy(K3TextRange(23, 23), text(chip)) shouldBe false
     }
@@ -45,7 +44,6 @@ class SurroundingTextTrustTest : FunSpec({
     }
 
     test("an object placeholder anywhere around the cursor is not trusted") {
-        // A long link shown truncated is shorter on screen than stored, so only the placeholder gives it away.
         isSurroundingTextTrustworthy(K3TextRange(60, 60), text("￼ https://a.co…")) shouldBe false
         isSurroundingTextTrustworthy(K3TextRange(0, 0), text("", after = "￼ link")) shouldBe false
     }
@@ -55,8 +53,6 @@ class SurroundingTextTrustTest : FunSpec({
     }
 
     test("a chip the narrow EditorInfo window misses is still not trusted") {
-        // Stored text is "https://example.com/abc" (23 chars) and the chip's label fits within the cursor, so the
-        // 20-character EditorInfo window alone looks clean; only the live read shows the placeholder.
         val initialWindow = text("https://example.com/a…")
         val live = text("⁦￼ https://example.com/a…")
         isSurroundingTextTrustworthy(K3TextRange(23, 23), initialWindow) shouldBe true

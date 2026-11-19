@@ -18,14 +18,6 @@ package io.github.seshuthota.drift.lib.snygg.value
 
 import io.github.seshuthota.drift.lib.kotlin.getKeyByValue
 
-/**
- * SnyggValueEncoder is responsible for the representation of a [SnyggValue] specification and for providing methods
- * for encoding and decoding a [SnyggValue] for the serialization process.
- *
- * A SnyggValueEncoder is typically implemented in the Companion of a SnyggValue subclass, as this allows to use the
- * value class name in the Snygg stylesheet spec's `supportedValues` field. This is not a requirement though and any
- * subclass / object is allowed to be used.
- */
 interface SnyggValueEncoder {
     /**
      * Describes the format of the [SnyggValue] in the serialized state of the value in the Json file. This spec is
@@ -73,7 +65,6 @@ abstract class SnyggEnumLikeValueEncoder<V> internal constructor(
 
     final override fun defaultValue() = construct(default)
 
-    @Suppress("UNCHECKED_CAST")
     final override fun serialize(v: SnyggValue) = runCatching<String> {
         val entry = destruct(v)
         val map = snyggIdToValueMapOf(
@@ -86,7 +77,7 @@ abstract class SnyggEnumLikeValueEncoder<V> internal constructor(
         val map = snyggIdToValueMapOf()
         spec.parse(v, map)
         val entry = serializationMapping.getOrElse(map.getString(serializationId)) {
-            error("Given value \"v\" is not valid")
+            error("Given value \"${map.getString(serializationId)}\" is not valid")
         }
         return@runCatching construct(entry)
     }

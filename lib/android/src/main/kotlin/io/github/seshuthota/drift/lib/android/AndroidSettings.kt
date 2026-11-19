@@ -38,7 +38,6 @@ abstract class AndroidSettingsHelper(
                     val value = field.get(null) as? String ?: continue
                     yield(field.name to value)
                 } catch (e: Exception) {
-                    // Cannot access field, continue on to next one
                 }
             }
         }

@@ -90,9 +90,6 @@ fun ExtensionDetailScreen(
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument(FileRegistry.FlexExtension.mediaType),
         onResult = { uri ->
-            // If uri is null it indicates that the selection activity
-            //  was cancelled (mostly by pressing the back button), so
-            //  we don't display an error message here.
             if (uri == null) {
                 return@rememberLauncherForActivityResult
             }
@@ -274,8 +271,6 @@ private fun ExtensionDetails(
             content = { Text(stringRes(R.string.ext__meta__issue_tracker)) },
             supportingContent = { Text(meta.issueTracker ?: "(not set)") },
         )
-        // TODO: display human-readable License name instead of
-        //  SPDX identifier
         SegmentedListItem(
             shapes = ListItemDefaults.segmentedShapes(7, count),
             content = { Text(stringRes(R.string.ext__meta__license)) },

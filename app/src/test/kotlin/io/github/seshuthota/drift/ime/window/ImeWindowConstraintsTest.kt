@@ -44,7 +44,6 @@ class ImeWindowConstraintsTest : FunSpec({
                 val constraints = ImeWindowConstraints.of(rootInsets, fixedMode)
 
                 assertSoftly {
-                    // no tolerance here, potential rounding errors must be mitigated by constraints itself
                     0.dp.shouldBeLessThanOrEqualTo(constraints.minKeyboardWidth)
                     constraints.minKeyboardWidth.shouldBeLessThanOrEqualTo(constraints.defKeyboardWidth)
                     constraints.defKeyboardWidth.shouldBeLessThanOrEqualTo(constraints.maxKeyboardWidth)
@@ -57,7 +56,6 @@ class ImeWindowConstraintsTest : FunSpec({
                 val constraints = ImeWindowConstraints.of(rootInsets, fixedMode)
 
                 assertSoftly {
-                    // no tolerance here, potential rounding errors must be mitigated by constraints itself
                     0.dp.shouldBeLessThanOrEqualTo(constraints.minKeyboardHeight)
                     constraints.minKeyboardHeight.shouldBeLessThanOrEqualTo(constraints.defKeyboardHeight)
                     constraints.defKeyboardHeight.shouldBeLessThanOrEqualTo(constraints.maxKeyboardHeight)
@@ -70,7 +68,6 @@ class ImeWindowConstraintsTest : FunSpec({
                 val constraints = ImeWindowConstraints.of(rootInsets, fixedMode)
 
                 assertSoftly {
-                    // no tolerance here, potential rounding errors must be mitigated by constraints itself
                     0.dp.shouldBeLessThanOrEqualTo(constraints.minPaddingHorizontal)
                     constraints.minPaddingHorizontal.shouldBeLessThanOrEqualTo(constraints.defPaddingHorizontal)
                     constraints.defPaddingHorizontal.shouldBeLessThanOrEqualTo(constraints.maxPaddingHorizontal)
@@ -96,7 +93,6 @@ class ImeWindowConstraintsTest : FunSpec({
                 val constraints = ImeWindowConstraints.of(rootInsets, floatingMode)
 
                 assertSoftly {
-                    // no tolerance here, potential rounding errors must be mitigated by constraints itself
                     0.dp.shouldBeLessThanOrEqualTo(constraints.minKeyboardWidth)
                     constraints.minKeyboardWidth.shouldBeLessThanOrEqualTo(constraints.defKeyboardWidth)
                     constraints.defKeyboardWidth.shouldBeLessThanOrEqualTo(constraints.maxKeyboardWidth)
@@ -109,7 +105,6 @@ class ImeWindowConstraintsTest : FunSpec({
                 val constraints = ImeWindowConstraints.of(rootInsets, floatingMode)
 
                 assertSoftly {
-                    // no tolerance here, potential rounding errors must be mitigated by constraints itself
                     0.dp.shouldBeLessThanOrEqualTo(constraints.minKeyboardHeight)
                     constraints.minKeyboardHeight.shouldBeLessThanOrEqualTo(constraints.defKeyboardHeight)
                     constraints.defKeyboardHeight.shouldBeLessThanOrEqualTo(constraints.maxKeyboardHeight)

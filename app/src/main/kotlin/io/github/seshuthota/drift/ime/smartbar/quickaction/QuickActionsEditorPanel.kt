@@ -73,7 +73,6 @@ fun QuickActionsEditorPanel() {
     val prefs by DriftPreferenceStore
     val imeController = LocalImeController.current
 
-    // We get the current arrangement once and do not observe on purpose
     val actionArrangement = remember { prefs.smartbar.actionArrangement.get() }
     var stickyAction by remember(actionArrangement) {
         mutableStateOf(actionArrangement.stickyAction ?: NoopAction)
@@ -92,8 +91,6 @@ fun QuickActionsEditorPanel() {
 
     fun findItemForOffsetOrClosestInRow(offset: IntOffset): LazyGridItemInfo? {
         var closestItemInRow: LazyGridItemInfo? = null
-        // Using manual for loop with indices instead of firstOrNull() because this method gets
-        // called a lot and firstOrNull allocates an iterator for each call
         for (index in gridState.layoutInfo.visibleItemsInfo.indices) {
             val item = gridState.layoutInfo.visibleItemsInfo[index]
             if (offset.y in item.offset.y..(item.offset.y + item.size.height)) {
@@ -248,7 +245,6 @@ fun QuickActionsEditorPanel() {
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Extra box wrapper is needed to enforce size constraint but still allow for Snygg margin to be used
             Box(modifier = Modifier.size(48.dp)) {
                 SnyggIconButton(
                     elementName = DriftImeUi.SmartbarActionsEditorHeaderButton.elementName,

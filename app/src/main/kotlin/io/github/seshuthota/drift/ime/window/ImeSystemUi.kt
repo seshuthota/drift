@@ -113,9 +113,6 @@ fun ImeSystemUi() {
     }
 }
 
-/**
- * Mimics a system caption bar in a floating window.
- */
 @Composable
 fun ImeSystemUiFloating() {
     val windowController = LocalWindowController.current
@@ -136,7 +133,7 @@ fun ImeSystemUiFloating() {
     val isNonDefaultSize by remember {
         derivedStateOf {
             when (val spec = windowSpec) {
-                is ImeWindowSpec.Fixed -> false // wtf
+                is ImeWindowSpec.Fixed -> false
                 is ImeWindowSpec.Floating -> {
                     val defaultProps = spec.constraints.defaultProps
                     val props = spec.props

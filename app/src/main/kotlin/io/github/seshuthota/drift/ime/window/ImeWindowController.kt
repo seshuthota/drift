@@ -34,29 +34,12 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import io.github.seshuthota.drift.lib.kotlin.collectIn
 
-/**
- * The window controller is responsible for managing everything related to window config, spec, insets,
- * actions, editor move, and editor resize.
- *
- * This class is designed so it does not contain any references to Android framework classes, allowing it
- * and its inner classes to be unit tested on JVM desktop.
- *
- * @property prefs The preference data store from which the window config is read from / where the window
- *  config is written to.
- * @property scope The coroutine scope in which suspending operations and flow collection should run in.
- */
 class ImeWindowController(
     private val prefs: DriftPreferenceModel,
     val scope: CoroutineScope,
 ) {
-    /**
-     * Access to window-related actions.
-     */
     val actions = Actions()
 
-    /**
-     * Access to window config editor.
-     */
     val editor = Editor()
 
     /**
@@ -83,21 +66,12 @@ class ImeWindowController(
     val activeWindowInsets: StateFlow<ImeInsets.Window?>
         field = MutableStateFlow(null)
 
-    /**
-     * Holds the active window config for the current type guess based on the root insets.
-     */
     val activeWindowConfig: StateFlow<ImeWindowConfig>
         field = MutableStateFlow(ImeWindowConfig.Default)
 
-    /**
-     * Holds the active window spec, which is computed based on the root insets and window config.
-     */
     val activeWindowSpec: StateFlow<ImeWindowSpec>
         field = MutableStateFlow(ImeWindowSpec.Fallback)
 
-    /**
-     * Holds the state if the window is currently shown to the user, as reported by the IME service class.
-     */
     val isWindowShown: StateFlow<Boolean>
         field = MutableStateFlow(false)
 
@@ -121,8 +95,6 @@ class ImeWindowController(
             prefs.keyboard.fontSizeMultiplierPortrait.asFlow(),
             prefs.keyboard.fontSizeMultiplierLandscape.asFlow(),
         ) { rootInsets, keySpacingFactorH, keySpacingFactorV, multiplierP, multiplierL ->
-            // TODO: this should adhere to form factor
-            // TODO: font scale needs a rework anyways, change this in font scale rework PR!
             val rootBounds = rootInsets.boundsDp
             ImeWindowSpec.UserPreferredOptions(
                 keySpacingFactorH = keySpacingFactorH / 100f,
@@ -163,18 +135,11 @@ class ImeWindowController(
     /**
      * Updates the window config in the preferences. It will only update the window config for the type guess of
      * the active root insets, and will keep other window configs intact.
-     *
-     * This function is thread-safe under the assumption that:
-     * a) The window config pref is only written to by this update function. On other concurrent write accesses
-     *    to the underlying pref the behavior is undefined.
-     * b) The active root insets do not change while the update in ongoing. A snapshot of the active root insets
-     *    will be taken once before any update attempt, and any inset change afterward will not be reflected.
      */
     fun updateWindowConfig(function: (ImeWindowConfig) -> ImeWindowConfig) {
         val rootInsets = activeRootInsets.value
         val typeGuess = rootInsets.formFactor.typeGuess
         scope.launch {
-            // not bullet-proof sync, but good enough considering this is only triggered by tap actions
             updateConfigMutex.withLock {
                 val newWindowConfig = activeWindowConfig.updateAndGet(function)
                 val byType = prefs.keyboard.windowConfig.get()
@@ -244,7 +209,6 @@ class ImeWindowController(
     }
 
     fun onConfigurationChanged(@Suppress("UNUSED_PARAMETER") newConfig: Configuration) {
-        // As of writing newConfig is unused, but kept for forward-compatibility.
         editor.disable()
     }
 
@@ -288,9 +252,6 @@ class ImeWindowController(
         }
     }
 
-    /**
-     * Wrapper class for window-related actions.
-     */
     inner class Actions {
         fun toggleFloatingWindow() {
             updateWindowConfig { config ->
@@ -398,16 +359,7 @@ class ImeWindowController(
         }
     }
 
-    /**
-     * The window config editor is the in-window UI for moving and/or resizing the window without having to
-     * go to the settings. It both manages the state of the editor, and contains some utility functions.
-     */
     inner class Editor {
-        /**
-         * The state of the editor.
-         *
-         * @see EditorState
-         */
         val state: StateFlow<EditorState>
             field = MutableStateFlow(EditorState.INACTIVE)
 
@@ -531,29 +483,14 @@ class ImeWindowController(
         val isMoveGesture: Boolean = false,
         val isResizeGesture: Boolean = false,
     ) {
-        /**
-         * The editor is disabled.
-         */
         INACTIVE,
 
-        /**
-         * The editor is enabled without any ongoing gesture.
-         */
         ACTIVE(isEnabled = true),
 
-        /**
-         * The editor is enabled and a move gesture is ongoing.
-         */
         ACTIVE_MOVE_GESTURE(isEnabled = true, isMoveGesture = true),
 
-        /**
-         * The editor is enabled and a resize gesture is ongoing.
-         */
         ACTIVE_RESIZE_GESTURE(isEnabled = true, isResizeGesture = true);
 
-        /**
-         * Indicates if any editor gesture is ongoing. If true, implies that the editor is enabled.
-         */
         val isAnyGesture: Boolean
             get() = isMoveGesture || isResizeGesture
     }

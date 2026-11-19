@@ -42,7 +42,6 @@ import kotlinx.coroutines.withContext
 import kotlin.math.abs
 import kotlin.math.log10
 
-/** Observable state of the local voice input flow. */
 sealed interface AsrState {
     data object Idle : AsrState
     data object Recording : AsrState
@@ -50,7 +49,6 @@ sealed interface AsrState {
     data class Error(val reason: AsrError) : AsrState
 }
 
-/** Why voice input stopped; the overlay maps these to strings. */
 sealed interface AsrError {
     data object MissingPermission : AsrError
     data object MissingModel : AsrError
@@ -59,18 +57,6 @@ sealed interface AsrError {
 }
 
 /**
- * Owns the microphone and the engine for IME voice input: start/stop, model resolution, and the text commits. The
- * mic action only ever calls [toggle] or [cancel], so the IME UI has no audio logic.
- *
- * Dictation is live: every captured chunk is fed to a [StreamingAsrEngine], the text of the line being spoken is
- * shown in the field as composing (underlined) text, and it is committed when the engine ends the line at a pause
- * or dictation stops.
- *
- * The field's text around the cursor is given to the engine as context, so words already there are recognized more
- * often. When dictation ends, [VoiceRefineMode] decides whether the whole recording is decoded once more in one pass:
- * the result is logged, and in [VoiceRefineMode.REPLACE] it replaces the streamed text if that text is still
- * directly before the cursor.
- *
  * Threading: [toggle], [start], [stopAndTranscribe], [cancel] and [release] are called on the main thread, and every
  * other change to the current session is posted there too, so a session is only ever replaced on one thread.
  * Engine calls go through [engineLock], so the model is never freed while a call is still running.
@@ -92,7 +78,6 @@ class AsrController(
     /** Microphone level, 0..1. Reset to 0 when not recording. */
     val amplitude: StateFlow<Float> = recorder.amplitude
 
-    /** One dictation: its queue of audio chunks, the worker that feeds them to the engine, and its preview. */
     private class Session(
         val startedAtMs: Long,
         val modelId: String,
@@ -103,13 +88,11 @@ class AsrController(
         val queue = Channel<ShortArray>(Channel.UNLIMITED)
         var worker: Job? = null
 
-        /** Quality-log material: committed lines, per-second peak level and gain, and the raw audio if kept. */
         val finals: MutableList<String> = java.util.Collections.synchronizedList(mutableListOf())
         val peakDb: MutableList<Float> = java.util.Collections.synchronizedList(mutableListOf())
         val gain: MutableList<Float> = java.util.Collections.synchronizedList(mutableListOf())
         val clip: ShortPcmBuffer? = if (keepClip) ShortPcmBuffer(MAX_CLIP_SAMPLES) else null
 
-        /** The audio the engine heard (after gain), for the one-pass decode at the end. */
         val audio: ShortPcmBuffer? =
             if (refineMode != VoiceRefineMode.OFF) ShortPcmBuffer(MAX_REFINE_SAMPLES) else null
 
@@ -117,7 +100,6 @@ class AsrController(
         val typed = StringBuilder()
         var typedEditor: ImeEditor? = null
 
-        /** One-pass result for the quality log. */
         var refined: String? = null
         var refineMs: Long? = null
         var refineResult: String? = null
@@ -127,7 +109,6 @@ class AsrController(
         /** Space put before the current line, fixed when its first text appears. Main thread only. */
         var linePrefix: String? = null
 
-        /** The field a live preview is showing in, so it can still be removed after the field changed. Main only. */
         var previewEditor: ImeEditor? = null
     }
 
@@ -143,7 +124,6 @@ class AsrController(
                 if (session != null) fail(AsrError.MicrophoneBusy)
             }
         }
-        // Models that are no longer in the registry (e.g. the removed Whisper ones) only take up space.
         scope.launch(Dispatchers.IO) { modelManager.removeUnlisted() }
     }
 
@@ -194,7 +174,6 @@ class AsrController(
         current.worker = scope.launch { streamAll(current, installed) }
     }
 
-    /** Feeds every captured chunk to the engine as it arrives and shows the engine's events. */
     private suspend fun streamAll(current: Session, installed: InstalledAsrModel) {
         try {
             engineLock.withLock {
@@ -285,7 +264,6 @@ class AsrController(
         }
     }
 
-    /** Removes the live preview from the field, if one is showing. Main thread only. */
     private fun clearPreview(current: Session) {
         current.previewEditor?.setLivePreview("")
         current.previewEditor = null
@@ -294,10 +272,6 @@ class AsrController(
 
     private fun editor(): ImeEditor? = imeControllerProvider()?.snapshotState()?.editor
 
-    /**
-     * A space when the text before the cursor does not already end in whitespace. Also ends any composing word
-     * typed before dictation, so the preview is written after it instead of replacing it.
-     */
     private fun spacePrefix(editor: ImeEditor): String {
         editor.finishComposing()
         return if (editor.getTextBeforeCursor(1).lastOrNull()?.isWhitespace() == false) " " else ""
@@ -309,15 +283,11 @@ class AsrController(
         if (_state.value != AsrState.Recording) return
         val elapsed = SystemClock.elapsedRealtime() - current.startedAtMs
         flogInfo { "voice: stop requested by $reason after ${elapsed}ms" }
-        // A tap landing right after the panel opens is the finger that opened it, not a request to stop.
         if (elapsed < MIN_RECORDING_MS) return
         _state.value = AsrState.Transcribing
         scope.launch(Dispatchers.Main) {
-            // The last word is often still being spoken when the stop is tapped, and the audio still buffered in the
-            // recorder would be dropped by an immediate stop, so keep capturing briefly. A cancel() meanwhile wins.
             delay(STOP_TAIL_MS)
             if (session !== current) return@launch
-            // Stopped here, on the main thread, so a later cancel()/start() can never stop a newer recording.
             recorder.stop()
             current.queue.close()
             current.worker?.join()
@@ -370,9 +340,7 @@ class AsrController(
         flogInfo { "voice: one-pass ${current.refineMs}ms ${current.refineResult}: \"$streamed\" -> \"$refined\"" }
     }
 
-    /** Drops what is still unprocessed without typing it. Called on field or window changes and by the close button. */
     fun cancel() {
-        // Always stop: the capture loop may have ended on its own and the record still needs releasing.
         recorder.stop()
         teardown()
         if (_state.value != AsrState.Idle) {
@@ -394,7 +362,6 @@ class AsrController(
         imeControllerProvider()?.endExternalEdit()
         current.queue.close()
         current.worker?.cancel()
-        // A cancelled or failed dictation frees the model too; otherwise it stays loaded until the next normal stop.
         if (!prefs.voice.keepModelLoaded.get()) closeEngineWhenIdle()
     }
 
@@ -441,7 +408,6 @@ class AsrController(
         }
     }
 
-    /** Frees the model and hands the freed pages back to the system, which the allocator would otherwise keep. */
     private fun closeEngine() {
         engine.close()
         val purged = purgeNativeMemory()
@@ -461,13 +427,8 @@ class AsrController(
         /** The recorder delivers ~100 ms chunks. */
         private const val CHUNKS_PER_SECOND = 10
 
-        /** Kept clips are capped at two minutes (3.8 MB). */
         private const val MAX_CLIP_SAMPLES = AudioRecorder.SAMPLE_RATE * 120
 
-        /**
-         * Recordings longer than this are not decoded again at the end: a one-pass decode of long audio takes
-         * seconds and is more likely to drop a phrase than the streamed lines.
-         */
         private const val MAX_REFINE_SAMPLES = AudioRecorder.SAMPLE_RATE * 30
     }
 }

@@ -63,15 +63,6 @@ value class DriftRef private constructor(val uri: Uri) : SourceFileRef {
 
         private val OKIO_ROOT_PATH = "/".toPath()
 
-        /**
-         * Constructs a new [DriftRef] pointing to a UI screen within the app
-         * user interface.
-         *
-         * @param path The relative path of the UI screen this ref should point
-         *  too, including optional data arguments.
-         *
-         * @return The newly constructed reference.
-         */
         fun app(path: String) = Uri.Builder().run {
             scheme(SCHEME_DRIFT)
             authority(AUTHORITY_APP_UI)
@@ -79,15 +70,6 @@ value class DriftRef private constructor(val uri: Uri) : SourceFileRef {
             DriftRef(build())
         }
 
-        /**
-         * Constructs a new [DriftRef] pointing to a resource within the
-         * Drift APK assets.
-         *
-         * @param path The relative path from the APK assets root the resource
-         *  is located.
-         *
-         * @return The newly constructed reference.
-         */
         fun assets(path: String) = Uri.Builder().run {
             scheme(SCHEME_DRIFT)
             authority(AUTHORITY_ASSETS)
@@ -95,14 +77,6 @@ value class DriftRef private constructor(val uri: Uri) : SourceFileRef {
             DriftRef(build())
         }
 
-        /**
-         * Constructs a new [DriftRef] pointing to a resource within the
-         * cache storage of Drift.
-         *
-         * @param path The relative path from the cache root directory.
-         *
-         * @return The newly constructed reference.
-         */
         fun cache(path: String) = Uri.Builder().run {
             scheme(SCHEME_DRIFT)
             authority(AUTHORITY_CACHE)
@@ -110,14 +84,6 @@ value class DriftRef private constructor(val uri: Uri) : SourceFileRef {
             DriftRef(build())
         }
 
-        /**
-         * Constructs a new [DriftRef] pointing to a resource within the
-         * internal storage of Drift.
-         *
-         * @param path The relative path from the internal storage root directory.
-         *
-         * @return The newly constructed reference.
-         */
         fun internal(path: String) = Uri.Builder().run {
             scheme(SCHEME_DRIFT)
             authority(AUTHORITY_INTERNAL)
@@ -125,24 +91,8 @@ value class DriftRef private constructor(val uri: Uri) : SourceFileRef {
             DriftRef(build())
         }
 
-        /**
-         * Constructs a new reference from given [uri], this can point to any
-         * destination, regardless of within Drift or not.
-         *
-         * @param uri The destination, denoted by a system URI format.
-         *
-         * @return The newly constructed reference.
-         */
         fun from(uri: Uri) = DriftRef(uri)
 
-        /**
-         * Constructs a new reference from given [str], this can point to any
-         * destination, regardless of within Drift or not.
-         *
-         * @param str An RFC 2396-compliant, encoded URI string.
-         *
-         * @return The newly constructed reference.
-         */
         fun from(str: String): DriftRef {
             // First two entries only kept due to backwards-compatibility reasons.
             return when {
@@ -152,13 +102,6 @@ value class DriftRef private constructor(val uri: Uri) : SourceFileRef {
             }
         }
 
-        /**
-         * Constructs a new reference from given [url], which is a URL.
-         *
-         * @param url An URL pointing to a web page. If the scheme is missing, `https` is assumed.
-         *
-         * @return The newly constructed reference.
-         */
         fun fromUrl(url: String): DriftRef {
             return DriftRef(when {
                 url.startsWith(URL_HTTP_PREFIX) ||
@@ -168,15 +111,6 @@ value class DriftRef private constructor(val uri: Uri) : SourceFileRef {
             })
         }
 
-        /**
-         * Constructs a new reference from given [scheme] and [path], this can
-         * point to any destination, regardless of within Drift or not.
-         *
-         * @param scheme The scheme of this reference.
-         * @param path The relative path of this reference.
-         *
-         * @return The newly constructed reference.
-         */
         fun from(scheme: String, path: String) = Uri.Builder().run {
             scheme(scheme)
             encodedPath(path)
@@ -184,70 +118,33 @@ value class DriftRef private constructor(val uri: Uri) : SourceFileRef {
         }
     }
 
-    /**
-     * True if the scheme and authority indicates a reference to an app user interface
-     * component (screen), false otherwise.
-     */
     val isAppUi: Boolean
         get() = uri.scheme == SCHEME_DRIFT && uri.authority == AUTHORITY_APP_UI
 
-    /**
-     * True if the scheme and authority indicates a reference to a Drift APK asset
-     * resource, false otherwise.
-     */
     val isAssets: Boolean
         get() = uri.scheme == SCHEME_DRIFT && uri.authority == AUTHORITY_ASSETS
 
-    /**
-     * True if the scheme indicates a reference to a Drift cache
-     * resource, false otherwise.
-     */
     val isCache: Boolean
         get() = uri.scheme == SCHEME_DRIFT && uri.authority == AUTHORITY_CACHE
 
-    /**
-     * True if the scheme indicates a reference to a Drift internal
-     * storage resource, false otherwise.
-     */
     val isInternal: Boolean
         get() = uri.scheme == SCHEME_DRIFT && uri.authority == AUTHORITY_INTERNAL
 
-    /**
-     * True if the scheme references any other external resource (URL, content
-     * resolver, etc.), false otherwise.
-     */
     val isExternal: Boolean
         get() = uri.scheme != SCHEME_DRIFT
 
-    /**
-     * Returns the scheme of this URI, or an empty string if no scheme is
-     * specified.
-     */
     val scheme: String
         get() = uri.scheme ?: ""
 
-    /**
-     * Returns the authority of this URI, or an empty string if no authority
-     * is specified.
-     */
     val authority: String
         get() = uri.authority ?: ""
 
     val okioAbsPath: Path
         get() = uri.path?.toPath(normalize = true) ?: OKIO_ROOT_PATH
 
-    /**
-     * Returns the relative path of this URI, without a leading forward slash.
-     * Works only for assets, cache or internal references.
-     */
     val okioRelPath: Path
         get() = okioAbsPath.relativeTo(OKIO_ROOT_PATH)
 
-    /**
-     * Returns the name segment of the relative path, that is the last segment in
-     * relative path separated by a slash. Returns the full relative path if no
-     * slashes are present.
-     */
     val okioPathName: String
         get() = okioAbsPath.name
 
@@ -260,13 +157,6 @@ value class DriftRef private constructor(val uri: Uri) : SourceFileRef {
             })
         }
 
-    /**
-     * Returns a new reference appending given [relPathStr] to this ref.
-     *
-     * @param relPathStr The relative path to append.
-     *
-     * @return The newly constructed reference.
-     */
     fun subRef(relPathStr: String): DriftRef {
         val relPath = relPathStr.toPath(normalize = true)
         require(relPath.isRelative)
@@ -285,9 +175,6 @@ value class DriftRef private constructor(val uri: Uri) : SourceFileRef {
         return relPath.toString()
     }
 
-    /**
-     * Returns the encoded string representation of this URI.
-     */
     override fun toString(): String {
         return uri.toString()
     }

@@ -79,7 +79,6 @@ fun SelectSubtypePanel(modifier: Modifier = Modifier) {
                         elementName = DriftImeUi.SubtypePanelListItem.elementName,
                         onClick = {
                             subtypeManager.switchToSubtypeById(it.id)
-                            // TODO keyboardManager.activeState.isSubtypeSelectionVisible = false
                         },
                         leadingImageVector = when {
                             currentlySelected == it.id -> Icons.Default.RadioButtonChecked

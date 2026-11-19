@@ -30,9 +30,6 @@ import kotlinx.serialization.UseSerializers
 import io.github.seshuthota.drift.lib.compose.DpSizeSerializer
 import kotlin.math.sqrt
 
-/**
- * The window props describe the necessary properties for window placement and sizing.
- */
 sealed interface ImeWindowProps {
     /**
      * The keyboard height describes the baseline height the keyboard would have for 4 rows and 0 smartbar rows.

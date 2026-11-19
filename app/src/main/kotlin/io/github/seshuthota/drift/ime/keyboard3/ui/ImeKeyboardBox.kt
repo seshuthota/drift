@@ -128,7 +128,6 @@ fun ImeKeyboardBox(
         when (spaceBarMode) {
             SpaceBarMode.NOTHING -> K3String.Empty
             SpaceBarMode.CURRENT_LANGUAGE -> {
-                // TODO this might not be the right locale, get from new suntypes once impl
                 val locale = DriftLocale.from(model.locales.getOrElse(0) { "en" })
                 when (displayLanguageNamesIn) {
                     DisplayLanguageNamesIn.SYSTEM_LOCALE -> locale.displayName()
@@ -149,7 +148,6 @@ fun ImeKeyboardBox(
         val activeTouchKeyboard = remember(activeTouchModel, deviceWidthMm) {
             activeTouchModel.selectKeyboard(deviceWidthMm)
         }
-        // TODO this launched effect is a hack, there must be a better way
         LaunchedEffect(activeTouchKeyboard) {
             imeController.updateState {
                 state = state.copy(effRowCount = activeTouchKeyboard.rowCount)
@@ -264,7 +262,7 @@ fun ImeKeyboardBox(
                         val peekLine = trackedPeekPointer.peekLine
                         if (peekLine != null) {
                             drawLine(
-                                color = Color.Red, // TODO customizable
+                                color = Color.Red,
                                 start = peekLine.start,
                                 end = peekLine.end,
                                 strokeWidth = peekLineWidthPx,
@@ -280,7 +278,7 @@ fun ImeKeyboardBox(
                         }
                         drawPath(
                             path = path,
-                            color = Color(0xFF2196F3).copy(alpha = 0.7f), // TODO customizable
+                            color = Color(0xFF2196F3).copy(alpha = 0.7f),
                             style = Stroke(
                                 width = peekLineWidthPx,
                                 cap = StrokeCap.Round,
@@ -396,7 +394,6 @@ private fun ImeKeyboardKeyBox(
             putAttr(ImeUiAttrs.ShiftState, inputShiftState)
         }
     }
-    // TODO some keys an be disabled (copy cut etc)
     val selector = if (isPressed) SnyggSelector.PRESSED else SnyggSelector.NONE
     val multiTapKeys = touchKey.multiTapKeys
 
@@ -415,7 +412,7 @@ private fun ImeKeyboardKeyBox(
                 for ((index, multiTapKey) in multiTapKeys.withIndex()) {
                     Display3(
                         modifier = if (touchKey.shouldHighlightPendingMultiTapKey && index == multiTapIndex) {
-                            Modifier.background(Color.Red) // TODO customizable
+                            Modifier.background(Color.Red)
                         } else Modifier,
                         display = multiTapKey.display,
                     )
@@ -434,7 +431,6 @@ private fun ImeKeyboardKeyBox(
                 display = touchKey.longPressKeyHint,
             )
         }
-        // TODO flick hints
     }
     LongPressBox(
         longPress = longPress,

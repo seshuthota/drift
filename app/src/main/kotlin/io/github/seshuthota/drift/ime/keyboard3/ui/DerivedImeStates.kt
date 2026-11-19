@@ -52,7 +52,6 @@ fun rememberDerivedEnabledState(
     val androidKeyguardManager = remember {
         context.systemService(AndroidKeyguardManager::class)
     }
-    // TODO observe it.isDeviceLocked || it.isKeyguardLocked
     val isDeviceLocked by remember { mutableStateOf(false) }
 
     return remember(output) {

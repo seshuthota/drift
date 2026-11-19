@@ -18,14 +18,7 @@ package io.github.seshuthota.drift.app.apptheme
 
 import androidx.compose.ui.graphics.Color
 
-/* Legacy Colors
-val Green500 = Color(0xFF4CAF50)
-val Green700 = Color(0xFF388E3C)
-val Orange700 = Color(0xFFF57C00)
-val Orange900 = Color(0xFFE65100)
-*/
 
-//Colors created with the material theme builder
 
 val primaryLight = Color(0xFF006E1C)
 val onPrimaryLight = Color(0xFFFFFFFF)

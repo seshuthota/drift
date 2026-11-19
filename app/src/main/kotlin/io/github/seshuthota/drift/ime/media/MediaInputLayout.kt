@@ -87,7 +87,6 @@ fun MediaInputLayout(
                     modifier = Modifier.fillMaxHeight(),
                 )
                 Spacer(modifier = Modifier.weight(1f))
-                // TODO no feature gate once emoji search PR is implemented!
                 val experimentalEmojiSearch by prefs.emoji.experimentalEmojiSearchEnabled.collectAsState()
                 if (experimentalEmojiSearch) {
                     SnyggButton(

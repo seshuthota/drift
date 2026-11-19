@@ -29,15 +29,6 @@ import java.io.File
 import java.security.MessageDigest
 import kotlin.math.ln
 
-/**
- * Replays 200 real FUTO traces through the shipped ONNX model, lexicon beam, frequency prior and
- * endpoint term. `ml/ctc/export_kotlin_fixture.py` writes the fixture and Python's top-3 for the
- * same rows and the same layout, so this test also catches divergence between the app and the
- * Python evaluation that produced the published accuracy figures.
- *
- * The fixture is a regression guard, not a benchmark: 200 rows put a 95 % interval of roughly
- * ±4 pt on the accuracy floor.
- */
 class NeuralGlideAccuracyTest : FunSpec({
     val fixture = loadFixture()
     val dictionary = loadDictionary()
@@ -85,8 +76,6 @@ class NeuralGlideAccuracyTest : FunSpec({
         }
         val total = rows.size.toDouble()
         println("NeuralGlideAccuracy kotlin: top1=${top1 / total} top3=${top3 / total}")
-        // Python scores 0.950 top-1 / 0.970 top-3 on the same featurized traces; the app decodes them at
-        // 0.940 / 0.985. Rebaseline only together with the fixture and the parity test below.
         top1 / total shouldBeGreaterThanOrEqual 0.90
         top3 / total shouldBeGreaterThanOrEqual 0.97
     }
@@ -107,8 +96,6 @@ class NeuralGlideAccuracyTest : FunSpec({
         }
         val total = rows.size.toDouble()
         println("NeuralGlideAccuracy parity: top1=${sameTop1 / total} top3=${sameTop3 / total}")
-        // Known differences: Kotlin scores contraction surface forms (`scotland's` over `scotland`)
-        // and keeps one more non-blank character per frame than `beam.ctc_beam`.
         withClue(mismatches.take(5).joinToString("; ")) {
             sameTop1 / total shouldBeGreaterThanOrEqual 0.97
             sameTop3 / total shouldBeGreaterThanOrEqual 0.99
@@ -116,11 +103,6 @@ class NeuralGlideAccuracyTest : FunSpec({
     }
 })
 
-/**
- * QWERTY letter geometry in the FUTO canvas coordinates. Mirrors `layout()` in
- * `ml/ctc/export_kotlin_fixture.py`; the letter bounds are exactly [0, 1] on both axes, so the
- * fixture features can be replayed without a coordinate transform.
- */
 private fun qwertyLayout(): List<GlideKey> {
     val keys = mutableListOf<GlideKey>()
     val rows = listOf(
@@ -142,7 +124,6 @@ private fun qwertyLayout(): List<GlideKey> {
     return keys
 }
 
-/** [minX, width, minY, height] of the letter keys, as `NeuralGlideTypingClassifier.letterBounds` computes it. */
 private fun letterBounds(keys: List<GlideKey>): FloatArray {
     var minX = Float.MAX_VALUE
     var maxX = -Float.MAX_VALUE

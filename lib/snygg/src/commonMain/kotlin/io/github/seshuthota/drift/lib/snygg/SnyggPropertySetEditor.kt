@@ -113,10 +113,8 @@ class SnyggSinglePropertySetEditor(initProperties: Map<String, SnyggValue>? = nu
     }
 
     internal fun inheritImplicitly(parentStyle: SnyggSinglePropertySet) {
-        // TODO: pattern properties??
         for ((property, propertySpec) in SnyggSpec.elementsSpec.properties) {
             if (propertySpec.inheritsImplicitly() && !properties.contains(property)) {
-                // inherit implicitly
                 setProperty(property, parentStyle.properties[property])
             }
         }

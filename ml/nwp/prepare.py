@@ -23,18 +23,17 @@ import argparse
 import gzip
 import json
 import os
-import re
 import zlib
 from multiprocessing import Pool
 
 import numpy as np
 import pyarrow.parquet as pq
 
+import tokenizer
+
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 DICT_PATH = os.path.join(ROOT, "app/src/main/assets/ime/dict/data.json")
-SPECIALS = ["<unk>", "<s>", ","]
 UNK, BOS, COMMA = 0, 1, 2
-TOKEN_RE = re.compile(r"[a-z0-9]+(?:'[a-z]+)?|[.!?]+|,|\n")
 
 _word_to_id = None
 
@@ -45,26 +44,12 @@ def load_dict_words(path=DICT_PATH):
 
 def _init(words):
     global _word_to_id
-    _word_to_id = {w: i + len(SPECIALS) for i, w in enumerate(words)}
+    _word_to_id = {w: i + len(tokenizer.SPECIALS) for i, w in enumerate(words)}
 
 
 def tokenize(text):
     """Text -> list of ids (dictionary order). Starts with <s>, collapses repeated <s>."""
-    text = text.lower().replace("’", "'").replace("‘", "'")
-    out = [BOS]
-    for tok in TOKEN_RE.findall(text):
-        c = tok[0]
-        if c == "\n" or c in ".!?":
-            if out[-1] != BOS:
-                out.append(BOS)
-        elif c == ",":
-            if out[-1] not in (BOS, COMMA):
-                out.append(COMMA)
-        else:
-            out.append(_word_to_id.get(tok, UNK))
-    if out[-1] != BOS:
-        out.append(BOS)
-    return out
+    return tokenizer.tokenize(text, _word_to_id)
 
 
 def _tok_batch(texts):
@@ -134,7 +119,7 @@ def main():
     args = ap.parse_args()
 
     words = load_dict_words()
-    vocab_size = len(SPECIALS) + len(words)
+    vocab_size = len(tokenizer.SPECIALS) + len(words)
     assert vocab_size < 65535
     _init(words)
 
@@ -170,11 +155,11 @@ def main():
 
     # Re-order word ids by training frequency (specials keep 0..2).
     counts = np.bincount(web_train, minlength=vocab_size) + np.bincount(chat_train, minlength=vocab_size)
-    order = np.argsort(-counts[len(SPECIALS):], kind="stable") + len(SPECIALS)
+    order = np.argsort(-counts[len(tokenizer.SPECIALS):], kind="stable") + len(tokenizer.SPECIALS)
     new_id = np.empty(vocab_size, dtype=np.uint16)
-    new_id[:len(SPECIALS)] = np.arange(len(SPECIALS))
-    new_id[order] = np.arange(len(SPECIALS), vocab_size)
-    vocab = SPECIALS + [words[i - len(SPECIALS)] for i in order]
+    new_id[:len(tokenizer.SPECIALS)] = np.arange(len(tokenizer.SPECIALS))
+    new_id[order] = np.arange(len(tokenizer.SPECIALS), vocab_size)
+    vocab = tokenizer.SPECIALS + [words[i - len(tokenizer.SPECIALS)] for i in order]
 
     os.makedirs(args.out, exist_ok=True)
     for name, arr in [
@@ -190,8 +175,8 @@ def main():
         print(f"{name}: {len(arr):,} tokens, unk {unk:.2%}", flush=True)
     with open(os.path.join(args.out, "vocab.txt"), "w", encoding="utf-8") as f:
         f.write("\n".join(vocab) + "\n")
-    total = counts[len(SPECIALS):].sum()
-    sorted_counts = np.sort(counts[len(SPECIALS):])[::-1]
+    total = counts[len(tokenizer.SPECIALS):].sum()
+    sorted_counts = np.sort(counts[len(tokenizer.SPECIALS):])[::-1]
     for k in (5_000, 10_000, 20_000, 30_000):
         print(f"top-{k} words cover {sorted_counts[:k].sum() / total:.2%} of in-vocab tokens")
     print(json.dumps({"vocab_size": vocab_size, "chat_train_msgs": len(chat_train_txt),

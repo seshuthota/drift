@@ -33,10 +33,6 @@ val SubtypeJsonConfig = Json {
     isLenient = false
 }
 
-/**
- * Class which acts as a high level helper for the raw implementation of subtypes in the prefs. Additionally provides
- * helper methods for the in-keyboard language switch process.
- */
 class SubtypeManager(context: Context) {
     private val prefs by DriftPreferenceStore
     private val scope = CoroutineScope(Dispatchers.Default)
@@ -71,13 +67,6 @@ class SubtypeManager(context: Context) {
         prefs.localization.subtypes.set(listRaw)
     }
 
-    /**
-     * Gets the active subtype and returns it. If the activeSubtypeId points to a non-existent
-     * subtype, this method tries to determine a new active subtype.
-     *
-     * @return The active subtype or null, if the subtype list is empty or no new active subtype
-     *  could be determined.
-     */
     private fun evaluateActiveSubtype(list: List<Subtype>) = scope.launch {
         val activeSubtypeId = prefs.localization.activeSubtypeId.get()
         val subtype = list.find { it.id == activeSubtypeId } ?: list.firstOrNull() ?: Subtype.DEFAULT
@@ -87,13 +76,6 @@ class SubtypeManager(context: Context) {
         activeSubtype = subtype
     }
 
-    /**
-     * Adds a given [subtype] to the subtype list, if it does not exist.
-     *
-     * @param subtype The subtype which should be added.
-     * @return True if the subtype was added, false otherwise. A return value of false indicates
-     *  that the subtype already exists.
-     */
     fun addSubtype(subtype: Subtype): Boolean {
         val subtypeToAdd = subtype.copy(id = System.currentTimeMillis())
         val subtypeList = subtypes
@@ -105,23 +87,11 @@ class SubtypeManager(context: Context) {
         return true
     }
 
-    /**
-     * Gets a subtype by the given [id].
-     *
-     * @param id The id of the subtype you want to get.
-     * @return The subtype or null, if no matching subtype could be found.
-     */
     fun getSubtypeById(id: Long): Subtype? {
         val subtypeList = subtypes
         return subtypeList.find { it.id == id }
     }
 
-    /**
-     * Modifies an existing subtype with the newly provided details. In order to determine which
-     * subtype should be updated, the id must be the same.
-     *
-     * @param subtypeToModify The subtype with the new details but same id.
-     */
     fun modifySubtypeWithSameId(subtypeToModify: Subtype) {
         val subtypeList = subtypes
         val index = subtypeList.indexOfFirst { subtypeToModify.id == it.id }
@@ -137,12 +107,6 @@ class SubtypeManager(context: Context) {
         }
     }
 
-    /**
-     * Removes a given [subtypeToRemove]. Nothing happens if the given [subtypeToRemove] does not
-     * exist.
-     *
-     * @param subtypeToRemove The subtype which should be removed.
-     */
     fun removeSubtype(subtypeToRemove: Subtype) {
         val subtypeList = subtypes
         val indexToRemove = subtypeList.indexOf(subtypeToRemove)
@@ -159,9 +123,6 @@ class SubtypeManager(context: Context) {
         }
     }
 
-    /**
-     * Switch to the previous subtype in the subtype list if possible.
-     */
     fun switchToPrevSubtype() = scope.launch {
         val subtypeList = subtypes
         val cachedActiveSubtype = activeSubtype
@@ -182,9 +143,6 @@ class SubtypeManager(context: Context) {
         activeSubtype = newActiveSubtype
     }
 
-    /**
-     * Switch to the next subtype in the subtype list if possible.
-     */
     fun switchToNextSubtype() = scope.launch {
         val subtypeList = subtypes
         val cachedActiveSubtype = activeSubtype

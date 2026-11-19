@@ -123,7 +123,6 @@ private data class LastUpKey(
     val uptimeMillis: Long,
 )
 
-// TODO the sync of this class is a bit messy
 class PointerTracker(
     val touchKeyboard: TouchKeyboard,
     val imeController: ImeController,
@@ -175,7 +174,6 @@ class PointerTracker(
 
         val peekLayerId = downKey.attrs.layerId
         if (peekLayerId != null) {
-            // this is a peek key action
             trackedMultiTapSeq.value?.let { multiTapSeq ->
                 multiTapSeq.commit()
             }
@@ -209,7 +207,6 @@ class PointerTracker(
                 downKey = downKey,
                 longPress = if (downKey.isSuitableForPopup) {
                     val anchorBounds = downKey.bounds.let { bounds ->
-                        // TODO this is only tested for PHONE_PORTRAIT, test+fix other form factors!
                         val w = 0.1f
                         val h = bounds.height * 0.9f
                         val x = bounds.bottomCenter.x - w / 2f
@@ -332,8 +329,6 @@ class PointerTracker(
                         }
                     }
                 if (gestureRecognizer.isGliding(move.id.value)) {
-                    // Gliding is never a long press: drop any pending or already shown popup and
-                    // prevent the popup from following the finger.
                     if (trackedPointer.longPress !== LongPress.None) {
                         trackedPointer.longPress.extendedJob?.cancel()
                         trackedOutputPointer.value = trackedPointer.copy(longPress = LongPress.None)
@@ -388,8 +383,6 @@ class PointerTracker(
             val gestureOutcome = gestureRecognizer.onUp(up.id.value, up.position.x, up.position.y, up.uptimeMillis)
             val isTap = gestureOutcome == GestureOutcome.Tap
             if (!isTap) {
-                // A recognized gesture replaces the key press entirely, so a pending multi-tap
-                // sequence must not commit behind it.
                 cancelMultiTap()
             }
 
@@ -408,7 +401,6 @@ class PointerTracker(
             }
             when (gestureOutcome) {
                 is GestureOutcome.Glide -> gestureListener?.let { listener ->
-                    // A short glide between neighbouring keys is only recognized on release.
                     if (!wasGliding) listener.onGlideStart()
                     listener.onGlideComplete(gestureOutcome.points.map { it.normalized(size) })
                 }
@@ -426,7 +418,7 @@ class PointerTracker(
         }
         trackedMultiTapSeq.update { multiTapSeq ->
             if (multiTapSeq != null) {
-                multiTapSeq.commitJob?.cancel() // should never happen, but still ensure we never have 2 active jobs
+                multiTapSeq.commitJob?.cancel()
                 multiTapSeq.copy(
                     commitJob = scope.launch {
                         val timingOptions = interactionController.activeTimingOptions.value
@@ -554,19 +546,10 @@ private fun GesturePoint.normalized(size: IntSize): GesturePoint {
     return copy(x = normalizeX(x, size), y = normalizeY(y, size))
 }
 
-/**
- * Glide decoding uses the key positions of the base letter layer, so it is only meaningful on the
- * letter layers. On symbol and numeric layers a glide would be decoded against letters that are
- * not on screen.
- */
 private fun K3LayerId.isGlideLayer(): Boolean {
     return this == ImeLayerIds.Base || this == ImeLayerIds.Shift || this == ImeLayerIds.Caps
 }
 
-/**
- * Glide typing must not start on keys whose movement has a dedicated meaning: space, shift and the
- * delete family. Mirrors the exclusion list of the previous gesture implementation.
- */
 private fun TouchKey.isGlideEligible(): Boolean {
     if (isShiftKey) {
         return false
@@ -594,7 +577,6 @@ fun rememberPointerTracker(
     val swipeDistanceDp by prefs.gestures.swipeDistanceThreshold.collectAsState()
     val swipeVelocityDpPerS by prefs.gestures.swipeVelocityThreshold.collectAsState()
     val glideEnabled by prefs.glide.enabled.collectAsState()
-    // TODO make configurable
     val peekDistanceSqMin = with(density) { 30.dp.toPx().pow(2) }
     val gestureConfig = remember(density, swipeDistanceDp, swipeVelocityDpPerS, glideEnabled) {
         GestureConfig(
@@ -642,10 +624,6 @@ fun Modifier.trackPointerInput(
 ) = this.pointerInput(pointerTracker, model) {
     try {
         coroutineScope {
-            // One ordered consumer owns all state mutations. Previously every change got its own
-            // coroutine, which allows the scheduler to reorder samples and makes gesture timing
-            // nondeterministic. awaitPointerEventScope is a restricted suspension scope, hence the
-            // hand-off through a channel instead of calling the (suspending) handlers inline.
             val eventChannel = Channel<PointerEventBatch>(Channel.UNLIMITED)
             launch {
                 for (batch in eventChannel) {

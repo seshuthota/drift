@@ -23,8 +23,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.seshuthota.drift.ime.keyboard3.ImeActions
-import io.github.seshuthota.drift.ime.keyboard3.touch.InputShiftState
-import io.github.seshuthota.drift.ime.text.key.KeyCode
 import io.github.seshuthota.drift.lib.snygg.SnyggSelector
 import io.github.seshuthota.drift.lib.snygg.SnyggStylesheet
 import org.k3lp.lib.text.asK3String
@@ -80,29 +78,6 @@ val DriftImeThemeBaseStyle = SnyggStylesheet.v2 {
         fontSize = fontSize(12.sp)
         textOverflow = textOverflow(TextOverflow.Ellipsis)
     }
-    // TODO
-    /*DriftImeUi.Key.elementName(DriftImeUi.Attr.Code to listOf(
-        KeyCode.VIEW_CHARACTERS,
-        KeyCode.VIEW_SYMBOLS,
-        KeyCode.VIEW_SYMBOLS2,
-    )) {
-        fontSize = fontSize(18.sp)
-    }
-    DriftImeUi.Key.elementName(DriftImeUi.Attr.Code to listOf(
-        KeyCode.VIEW_NUMERIC,
-        KeyCode.VIEW_NUMERIC_ADVANCED,
-    )) {
-        fontSize = fontSize(12.sp)
-    }
-    DriftImeUi.Key.elementName(DriftImeUi.Attr.Code to listOf(KeyCode.VIEW_NUMERIC_ADVANCED)) {
-        textMaxLines = textMaxLines(2)
-    }
-    DriftImeUi.Key.elementName(
-        DriftImeUi.Attr.Code to listOf(KeyCode.SHIFT),
-        DriftImeUi.Attr.ShiftState to listOf(InputShiftState.CAPS_LOCK.toString()),
-    ) {
-        foreground = rgbaColor(255, 152, 0)
-    }*/
     DriftImeUi.KeyHint.elementName {
         background = rgbaColor(0, 0, 0, 0f)
         foreground = `var`("--on-surface-variant")

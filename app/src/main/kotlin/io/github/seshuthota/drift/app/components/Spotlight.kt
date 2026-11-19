@@ -41,10 +41,7 @@ import dev.patrickgold.jetpref.datastore.model.collectAsState
 import dev.patrickgold.jetpref.datastore.ui.LocalIsPrefEnabled
 import kotlinx.coroutines.launch
 
-// TODO naming is made up, does this thing have an official name??
-//  spotlight sounds fancy though...
 
-// TODO consider moving to JetPref
 @Composable
 fun SpotlightText(
     modifier: Modifier = Modifier,
@@ -58,7 +55,6 @@ fun SpotlightText(
     )
 }
 
-// TODO consider moving to JetPref
 @Composable
 fun SpotlightSwitchPreference(
     pref: PreferenceData<Boolean>,

@@ -16,10 +16,6 @@
 
 package io.github.seshuthota.drift.ime.keyboard3.gesture
 
-/**
- * Actions a directional swipe can trigger. The enum doubles as the preference value type, so adding
- * or removing entries requires a preference migration.
- */
 enum class SwipeAction {
     NO_ACTION,
     CYCLE_TO_PREVIOUS_KEYBOARD_MODE,

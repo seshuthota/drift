@@ -74,24 +74,14 @@ object ViewUtils {
     }
 
     /**
-     * This method converts dp unit to equivalent pixels, depending on device density.
-     *
      * Source: https://stackoverflow.com/a/9563438/6801193 (by Muhammad Nabeel Arif)
-     *
-     * @param dp A value in dp (density independent pixels) unit. Which we need to convert into pixels
-     * @return A float value to represent px equivalent to dp depending on device density
      */
     fun dp2px(dp: Float): Float {
         return dp * Resources.getSystem().displayMetrics.density
     }
 
     /**
-     * This method converts device specific pixels to density independent pixels.
-     *
      * Source: https://stackoverflow.com/a/9563438/6801193 (by Muhammad Nabeel Arif)
-     *
-     * @param px A value in px (pixels) unit. Which we need to convert into db
-     * @return A float value to represent dp equivalent to px value
      */
     fun px2dp(px: Float): Float {
         return (px / Resources.getSystem().displayMetrics.density)

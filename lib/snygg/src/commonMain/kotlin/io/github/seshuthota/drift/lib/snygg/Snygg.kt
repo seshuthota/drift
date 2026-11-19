@@ -44,11 +44,6 @@ import io.github.seshuthota.drift.lib.snygg.value.SnyggUriValue
 import io.github.seshuthota.drift.lib.snygg.value.SnyggVarValue
 import io.github.seshuthota.drift.lib.snygg.value.SnyggYesValue
 
-/**
- * Main object for defining all known Snygg property names.
- *
- * snygg = Swedish for stylish
- */
 object Snygg {
     const val Background = "background"
     const val Foreground = "foreground"
@@ -57,7 +52,7 @@ object Snygg {
     const val ContentScale = "content-scale"
 
     const val BorderColor = "border-color"
-    const val BorderStyle = "border-style" // unsupported as of now
+    const val BorderStyle = "border-style"
     const val BorderWidth = "border-width"
 
     const val FontFamily = "font-family"
@@ -138,7 +133,6 @@ object SnyggSpec : SnyggSpecDecl({
             add(SnyggDynamicDarkColorValue)
         }
         Snygg.BorderStyle {
-            // unsupported
         }
         Snygg.BorderWidth {
             add(SnyggDpSizeValue)

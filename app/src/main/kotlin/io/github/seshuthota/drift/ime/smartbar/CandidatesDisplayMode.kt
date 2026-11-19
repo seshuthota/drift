@@ -16,9 +16,6 @@
 
 package io.github.seshuthota.drift.ime.smartbar
 
-/**
- * Enum class defining the display mode for the candidates.
- */
 enum class CandidatesDisplayMode {
     CLASSIC,
     DYNAMIC,

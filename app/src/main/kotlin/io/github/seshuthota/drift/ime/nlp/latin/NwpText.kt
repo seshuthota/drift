@@ -18,11 +18,6 @@ package io.github.seshuthota.drift.ime.nlp.latin
 
 import org.k3lp.runtime.K3Content
 
-/**
- * Text handling for the next-word model. Pure Kotlin, mirrors `ml/nwp/prepare.py` exactly: lowercase, curly
- * apostrophes normalized, words of `[a-z0-9]+('[a-z]+)?` (anything with a digit is `<unk>`), sentence ends and
- * newlines become `<s>`, commas are kept, everything else is dropped, repeated `<s>`/`,` are collapsed.
- */
 object NwpText {
     const val UNK = 0
     const val BOS = 1
@@ -35,11 +30,6 @@ object NwpText {
     fun normalize(text: CharSequence): String =
         text.toString().lowercase().replace('’', '\'').replace('‘', '\'')
 
-    /**
-     * Converts the text before the cursor into model ids (last [maxTokens]). When [truncated] is true the text
-     * does not start at the beginning of the field, so the first (possibly cut) token is dropped and no leading
-     * `<s>` is added.
-     */
     fun contextIds(text: CharSequence, idOf: (String) -> Int?, truncated: Boolean, maxTokens: Int): IntArray {
         val out = ArrayList<Int>(maxTokens + 4)
         if (!truncated) {
@@ -72,10 +62,6 @@ object NwpText {
         return out.subList(from, out.size).toIntArray()
     }
 
-    /**
-     * The tokens of [text] as [contextIds] sees them, as strings: words, `,`, and `<s>` for a sentence end
-     * (consecutive ends collapse). Words with digits become `<unk>`. When [truncated] the first token is dropped.
-     */
     fun tokens(text: CharSequence, truncated: Boolean): List<String> {
         val out = ArrayList<String>()
         var first = true
@@ -97,7 +83,6 @@ object NwpText {
         return out
     }
 
-    /** The word currently being typed directly before the cursor (letters and apostrophes), or "". */
     fun partialWord(textBefore: CharSequence): String =
         PARTIAL_WORD_RE.find(textBefore)?.value ?: ""
 
@@ -110,17 +95,12 @@ object NwpText {
     fun isInlineAutocomplete(textBefore: CharSequence, textSelected: CharSequence, textAfter: CharSequence): Boolean =
         textSelected.isNotEmpty() && textAfter.isEmpty() && partialWord(textBefore).isNotEmpty()
 
-    /** True if a new word here starts a sentence (empty field or after `.`, `!`, `?`, newline). */
     fun isSentenceStart(textBefore: CharSequence): Boolean {
         val trimmed = textBefore.trimEnd { it == ' ' || it == '\t' }
         val last = trimmed.lastOrNull() ?: return true
         return last == '.' || last == '!' || last == '?' || last == '\n'
     }
 
-    /**
-     * How a lowercase dictionary [word] is shown: the pronoun `i` and its contractions are capitalized; a typed
-     * [prefix] in all caps (2+ letters) uppercases the word, a capitalized prefix or [sentenceStart] capitalizes it.
-     */
     fun displayForm(word: String, prefix: String, sentenceStart: Boolean): String {
         val base = if (word == "i" || word.startsWith("i'")) "I" + word.substring(1) else word
         return when {
@@ -132,7 +112,6 @@ object NwpText {
     }
 }
 
-/** True if the selection is collapsed or only an editor's inline autocompletion (see [NwpText.isInlineAutocomplete]). */
 fun K3Content.isTypingPosition(): Boolean = selection.isCollapsed() || surroundingText.let {
     NwpText.isInlineAutocomplete(it.textBefore, it.textSelected, it.textAfter)
 }
