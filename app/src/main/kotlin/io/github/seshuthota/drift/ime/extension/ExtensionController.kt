@@ -302,13 +302,15 @@ class ExtensionController(
                 require(existingExtension.manifest::class == manifest::class) {
                     "Attempted to update extension to different type, which is not supported."
                 }
-                val extDstRef = userSource.ref.subRef(manifest.meta.id)
-                storage.deleteRecursively(extDstRef)
-                storage.copyRecursively(extSrcRef, extDstRef)
-            } else {
-                val extDstRef = userSource.ref.subRef(manifest.meta.id)
-                storage.copyRecursively(extSrcRef, extDstRef)
             }
+            val extDstRef = userSource.ref.subRef(manifest.meta.id)
+            val stagedRef = userSource.ref.subRef(".staging-${manifest.meta.id}")
+            storage.deleteRecursively(stagedRef)
+            storage.copyRecursively(extSrcRef, stagedRef)
+            if (storage.exists(extDstRef)) {
+                storage.deleteRecursively(extDstRef)
+            }
+            storage.atomicMove(stagedRef, extDstRef)
         }
 
         private fun indexExtensions(source: MutableSource) {
