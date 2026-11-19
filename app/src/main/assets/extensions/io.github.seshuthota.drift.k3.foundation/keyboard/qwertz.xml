@@ -209,6 +209,36 @@
         <key id="acute" output="´" />
 
 
+        <!-- symbol-2 page keys -->
+        <key id="sym2-bullet" output="\u{2022}"
+             longPressKeyIds="sym2-note sym2-clubs sym2-spades sym2-hearts sym2-diamonds"
+             longPressDefaultKeyId="sym2-note" />
+        <key id="sym2-note" output="\u{266A}" />
+        <key id="sym2-clubs" output="\u{2663}" />
+        <key id="sym2-spades" output="\u{2660}" />
+        <key id="sym2-hearts" output="\u{2665}" />
+        <key id="sym2-diamonds" output="\u{2666}" />
+        <key id="sym2-sqrt" output="\u{221A}" />
+        <key id="sym2-pi" output="\u{03C0}"
+             longPressKeyIds="sym2-pi-upper sym2-omega sym2-alpha sym2-beta sym2-omega-upper sym2-mu"
+             longPressDefaultKeyId="sym2-pi-upper" />
+        <key id="sym2-pi-upper" output="\u{03A0}" />
+        <key id="sym2-omega" output="\u{03C9}" />
+        <key id="sym2-alpha" output="\u{03B1}" />
+        <key id="sym2-beta" output="\u{03B2}" />
+        <key id="sym2-omega-upper" output="\u{03A9}" />
+        <key id="sym2-mu" output="\u{03BC}" />
+        <key id="sym2-divide" output="\u{00F7}" />
+        <key id="sym2-multiply" output="\u{00D7}" />
+        <key id="sym2-pilcrow" output="\u{00B6}"
+             longPressKeyIds="sym2-section" longPressDefaultKeyId="sym2-section" />
+        <key id="sym2-section" output="\u{00A7}" />
+        <key id="sym2-delta" output="\u{2206}" />
+        <key id="sym2-copyright" output="\u{00A9}" />
+        <key id="sym2-registered" output="\u{00AE}" />
+        <key id="sym2-trademark" output="\u{2122}" />
+        <key id="sym2-check" output="\u{2713}" />
+
         <!-- numeric layout keys -->
         <key id="plus-numeric" output="+" width="1.8" longPressKeyIds="hyphen asterisk slash" />
         <key id="open-paren-numeric" output="(" width="1.8" longPressKeyIds="open-square open-curly" />
@@ -293,9 +323,9 @@
         </layer>
 
         <layer id="symbol-2">
-            <row keys="tilde grave pipe gap gap gap gap gap gap gap" />
+            <row keys="tilde grave pipe sym2-bullet sym2-sqrt sym2-pi sym2-divide sym2-multiply sym2-pilcrow sym2-delta" />
             <row keys="yen pound dollar cent caret degree equal open-curly close-curly backslash" />
-            <row keys="symbol-1 underscore gap gap gap gap open-square close-square bksp" />
+            <row keys="symbol-1 underscore sym2-copyright sym2-registered sym2-trademark sym2-check open-square close-square bksp" />
             <row keys="base open-angle numeric space close-angle enter" />
         </layer>
 

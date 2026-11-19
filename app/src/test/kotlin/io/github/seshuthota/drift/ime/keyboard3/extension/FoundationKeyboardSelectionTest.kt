@@ -17,6 +17,7 @@
 package io.github.seshuthota.drift.ime.keyboard3.extension
 
 import io.github.seshuthota.drift.lib.DriftLocale
+import io.kotest.assertions.withClue
 import io.kotest.core.spec.style.FunSpec
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
@@ -77,5 +78,19 @@ class FoundationKeyboardSelectionTest : FunSpec({
 
     test("unknown language falls back to english") {
         selectFoundationKeyboard(keyboards, DriftLocale.from("fr", "FR")) shouldBe qwerty
+    }
+
+    test("touch layers leave no key slots empty") {
+        for (path in listOf("keyboard/qwerty.xml", "keyboard/qwertz.xml")) {
+            val xml = File(extensionDir, path).readText()
+            val touch = xml.substringAfter("<layers formId=\"touch\"").substringBefore("</layers>")
+            val rows = Regex("<row\\s+keys=\"([^\"]*)\"").findAll(touch).map { it.groupValues[1] }.toList()
+            rows.isNotEmpty() shouldBe true
+            for (row in rows) {
+                withClue("$path row \"$row\"") {
+                    row.split(Regex("\\s+")).contains("gap") shouldBe false
+                }
+            }
+        }
     }
 })

@@ -39,6 +39,7 @@ import androidx.compose.ui.util.fastForEach
 import io.github.seshuthota.drift.app.DriftPreferenceStore
 import io.github.seshuthota.drift.ime.keyboard3.ImeActions
 import io.github.seshuthota.drift.ime.keyboard3.ImeController
+import io.github.seshuthota.drift.ime.keyboard3.ImeLayerIds
 import io.github.seshuthota.drift.ime.keyboard3.LocalImeController
 import io.github.seshuthota.drift.ime.keyboard3.gesture.GestureConfig
 import io.github.seshuthota.drift.ime.keyboard3.gesture.GestureListener
@@ -259,7 +260,7 @@ class PointerTracker(
                     timeMillis = down.uptimeMillis,
                     config = gestureConfig,
                     keyWidthPx = downKey.bounds.width * size.width,
-                    glideEligible = downKey.isGlideEligible(),
+                    glideEligible = downLayerId.isGlideLayer() && downKey.isGlideEligible(),
                     swipeEligible = true,
                 )
             }
@@ -551,6 +552,15 @@ private fun normalizeY(y: Float, size: IntSize): Float = if (size.height == 0) 0
 
 private fun GesturePoint.normalized(size: IntSize): GesturePoint {
     return copy(x = normalizeX(x, size), y = normalizeY(y, size))
+}
+
+/**
+ * Glide decoding uses the key positions of the base letter layer, so it is only meaningful on the
+ * letter layers. On symbol and numeric layers a glide would be decoded against letters that are
+ * not on screen.
+ */
+private fun K3LayerId.isGlideLayer(): Boolean {
+    return this == ImeLayerIds.Base || this == ImeLayerIds.Shift || this == ImeLayerIds.Caps
 }
 
 /**
