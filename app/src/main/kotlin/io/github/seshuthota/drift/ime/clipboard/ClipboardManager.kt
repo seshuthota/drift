@@ -333,10 +333,7 @@ class ClipboardManager(
     fun pasteItem(item: ClipboardItem) {
         val imeController = appContext.imeController
         imeController.updateStateBlocking {
-            emitClipboardItem(item).also { result ->
-                if (!result) {
-                }
-            }
+            emitClipboardItem(item)
         }
     }
 
