@@ -114,7 +114,6 @@ class SnyggThemeTest {
     @Test
     fun `empty theme compilation`() {
         val stylesheet = SnyggStylesheet.v2 {
-            // empty
         }
         val theme = SnyggTheme.compileFrom(stylesheet)
 
@@ -181,7 +180,6 @@ class SnyggThemeTest {
     fun `theme with font with zero source sets should not crash`() {
         val stylesheet = SnyggStylesheet.v2 {
             font("Comic Sans") {
-                // empty
             }
             "key" {
                 textMaxLines = textMaxLines(3)
@@ -203,9 +201,7 @@ class SnyggThemeTest {
                     background = rgbaColor(255, 0, 0)
                     foreground = rgbaColor(0, 0, 255)
                     borderColor = rgbaColor(255, 255, 255)
-                    // borderStyle
                     borderWidth = size(2.dp)
-                    // fontFamily
                     fontSize = fontSize(12.sp)
                     fontStyle = fontStyle(FontStyle.Italic)
                     fontWeight = fontWeight(FontWeight.Bold)
@@ -216,15 +212,12 @@ class SnyggThemeTest {
                     shape = circleShape()
                 }
                 "child-inherits-implicitly" {
-                    // inherits implicitly
                 }
                 "child-inherits-explicitly" {
                     background = inherit()
                     foreground = inherit()
                     borderColor = inherit()
-                    // borderStyle
                     borderWidth = inherit()
-                    // fontFamily
                     fontSize = inherit()
                     fontStyle = inherit()
                     fontWeight = inherit()
@@ -243,9 +236,7 @@ class SnyggThemeTest {
             assertIs<SnyggUndefinedValue>(childImplicit.background)
             assertIs<SnyggStaticColorValue>(childImplicit.foreground)
             assertIs<SnyggUndefinedValue>(childImplicit.borderColor)
-            // assertIs<SnyggUndefinedValue>(childImplicit.borderStyle)
             assertIs<SnyggUndefinedValue>(childImplicit.borderWidth)
-            // assertIs<???>(childImplicit.fontFamily)
             assertIs<SnyggSpSizeValue>(childImplicit.fontSize)
             assertIs<SnyggFontStyleValue>(childImplicit.fontStyle)
             assertIs<SnyggFontWeightValue>(childImplicit.fontWeight)
@@ -259,9 +250,7 @@ class SnyggThemeTest {
             assertIs<SnyggStaticColorValue>(childExplicit.background)
             assertIs<SnyggStaticColorValue>(childExplicit.foreground)
             assertIs<SnyggStaticColorValue>(childExplicit.borderColor)
-            // assertIs<>(childExplicit.borderStyle)
             assertIs<SnyggDpSizeValue>(childExplicit.borderWidth)
-            // assertIs<>(childExplicit.fontFamily)
             assertIs<SnyggSpSizeValue>(childExplicit.fontSize)
             assertIs<SnyggFontStyleValue>(childExplicit.fontStyle)
             assertIs<SnyggFontWeightValue>(childExplicit.fontWeight)
@@ -279,9 +268,7 @@ class SnyggThemeTest {
                     background = rgbaColor(255, 0, 0)
                     foreground = rgbaColor(0, 0, 255)
                     borderColor = rgbaColor(255, 255, 255)
-                    // borderStyle
                     borderWidth = size(2.dp)
-                    // fontFamily
                     fontSize = fontSize(12.sp)
                     fontStyle = fontStyle(FontStyle.Italic)
                     fontWeight = fontWeight(FontWeight.Bold)
@@ -292,18 +279,14 @@ class SnyggThemeTest {
                     shape = circleShape()
                 }
                 "middle-inherits-implicitly" {
-                    // inherits implicitly
                 }
                 "child-inherits-implicitly" {
-                    // inherits implicitly
                 }
                 "middle-inherits-explicitly" {
                     background = inherit()
                     foreground = inherit()
                     borderColor = inherit()
-                    // borderStyle
                     borderWidth = inherit()
-                    // fontFamily
                     fontSize = inherit()
                     fontStyle = inherit()
                     fontWeight = inherit()
@@ -317,9 +300,7 @@ class SnyggThemeTest {
                     background = inherit()
                     foreground = inherit()
                     borderColor = inherit()
-                    // borderStyle
                     borderWidth = inherit()
-                    // fontFamily
                     fontSize = inherit()
                     fontStyle = inherit()
                     fontWeight = inherit()
@@ -333,9 +314,7 @@ class SnyggThemeTest {
                     background = inherit()
                     foreground = inherit()
                     borderColor = inherit()
-                    // borderStyle
                     borderWidth = inherit()
-                    // fontFamily
                     fontSize = inherit()
                     fontStyle = inherit()
                     fontWeight = inherit()
@@ -354,9 +333,7 @@ class SnyggThemeTest {
             assertIs<SnyggUndefinedValue>(childImplicit.background)
             assertIs<SnyggStaticColorValue>(childImplicit.foreground)
             assertIs<SnyggUndefinedValue>(childImplicit.borderColor)
-            // assertIs<SnyggUndefinedValue>(childImplicit.borderStyle)
             assertIs<SnyggUndefinedValue>(childImplicit.borderWidth)
-            // assertIs<???>(childImplicit.fontFamily)
             assertIs<SnyggSpSizeValue>(childImplicit.fontSize)
             assertIs<SnyggFontStyleValue>(childImplicit.fontStyle)
             assertIs<SnyggFontWeightValue>(childImplicit.fontWeight)
@@ -371,9 +348,7 @@ class SnyggThemeTest {
             assertIs<SnyggStaticColorValue>(childExplicit.background)
             assertIs<SnyggStaticColorValue>(childExplicit.foreground)
             assertIs<SnyggStaticColorValue>(childExplicit.borderColor)
-            // assertIs<>(childExplicit.borderStyle)
             assertIs<SnyggDpSizeValue>(childExplicit.borderWidth)
-            // assertIs<>(childExplicit.fontFamily)
             assertIs<SnyggSpSizeValue>(childExplicit.fontSize)
             assertIs<SnyggFontStyleValue>(childExplicit.fontStyle)
             assertIs<SnyggFontWeightValue>(childExplicit.fontWeight)
@@ -388,9 +363,7 @@ class SnyggThemeTest {
             assertIs<SnyggUndefinedValue>(childImplicitWithoutDefault.background)
             assertIs<SnyggStaticColorValue>(childImplicitWithoutDefault.foreground)
             assertIs<SnyggUndefinedValue>(childImplicitWithoutDefault.borderColor)
-            // assertIs<SnyggUndefinedValue>(childImplicitWithoutDefault.borderStyle)
             assertIs<SnyggUndefinedValue>(childImplicitWithoutDefault.borderWidth)
-            // assertIs<???>(childImplicitWithoutDefault.fontFamily)
             assertIs<SnyggSpSizeValue>(childImplicitWithoutDefault.fontSize)
             assertIs<SnyggFontStyleValue>(childImplicitWithoutDefault.fontStyle)
             assertIs<SnyggFontWeightValue>(childImplicitWithoutDefault.fontWeight)
@@ -438,7 +411,6 @@ class SnyggThemeTest {
                     fontSize = fontSize(12.sp)
                 }
                 "child-inherits-implicitly" {
-                    // inherits implicitly
                 }
                 "child-inherits-explicitly" {
                     fontSize = inherit()
@@ -465,10 +437,8 @@ class SnyggThemeTest {
                     fontSize = fontSize(12.sp)
                 }
                 "middle-inherits-implicitly" {
-                    // inherits implicitly
                 }
                 "child-inherits-implicitly" {
-                    // inherits implicitly
                 }
                 "middle-inherits-explicitly" {
                     fontSize = inherit()

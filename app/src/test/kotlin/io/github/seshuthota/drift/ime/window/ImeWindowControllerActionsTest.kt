@@ -224,8 +224,6 @@ class ImeWindowControllerActionsTest : FunSpec({
                 val specAfter = awaitItem()
                 assertSoftly {
                     specBefore.props shouldNotBe specAfter
-                    // TODO how to test offset not changed?
-                    //  but allow a change if constrains must move the window onscreen
                 }
             }
         }

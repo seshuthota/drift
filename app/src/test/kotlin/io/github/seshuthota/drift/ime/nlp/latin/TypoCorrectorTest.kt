@@ -167,17 +167,11 @@ class TypoCorrectorTest : FunSpec({
 
     context("language model") {
         test("context breaks a tie between equally close words") {
-            // "hime" is one neighbouring-key edit from both "home" and "time".
             val home = corrector.correct("hime", 2, lmLogProb = { w: String -> if (w == "home") -1f else -8f })
             home.first().word shouldBe "home"
         }
     }
 
-    /**
-     * Synthetic benchmark: words sampled by real usage frequency (rank in the next-word vocabulary, Zipf), each
-     * with one keyboard-shaped error. Errors that produce another dictionary word are excluded (they need
-     * context). Seeds are fixed, so the numbers only move when the corrector changes. Not a claim about real typing.
-     */
     context("synthetic benchmark") {
         val words = loadVocab().filter { it in dict && it.length >= 3 && it.all { c -> c in 'a'..'z' || c == '\'' } }
         fun run(seed: Int, count: Int): Pair<Double, Double> {
@@ -207,7 +201,7 @@ class TypoCorrectorTest : FunSpec({
         test("correction is fast enough for every keystroke") {
             val random = Random(11)
             val inputs = List(500) { typo(words[zipfIndex(random, words.size)], random) ?: "word" }
-            inputs.forEach { top(it) } // warm up
+            inputs.forEach { top(it) }
             val start = System.nanoTime()
             inputs.forEach { top(it) }
             val perWordMicros = (System.nanoTime() - start) / 1000 / inputs.size
@@ -225,7 +219,6 @@ private fun neighbours(c: Char): List<Char> {
     return centers.filter { (k, v) -> k != c && kotlin.math.hypot(v.first - x, v.second - y) <= 1.2f }.keys.toList()
 }
 
-/** One keyboard-shaped error: 50 % neighbour key, 15 % omission, 15 % extra key, 12 % swap, 8 % no apostrophe. */
 private fun typo(word: String, random: Random): String? {
     val roll = random.nextDouble()
     val i = random.nextInt(word.length)
@@ -247,7 +240,6 @@ private fun typo(word: String, random: Random): String? {
 }
 
 private fun zipfIndex(random: Random, n: Int): Int {
-    // Inverse CDF of 1/rank on [1, n]: rank = n^u.
     val rank = Math.pow(n.toDouble(), random.nextDouble()).toInt()
     return (rank - 1).coerceIn(0, n - 1)
 }

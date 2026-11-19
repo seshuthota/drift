@@ -25,15 +25,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import kotlin.math.ln
 
-/**
- * Measures the shipped glide decoder on the device: ONNX session creation, trie construction and
- * per-glide decode latency. Run it on the target phone with
- *
- *     ./gradlew :app:connectedDebugAndroidTest \
- *         -Pandroid.testInstrumentationRunnerArguments.class=io.github.seshuthota.drift.ime.keyboard3.gesture.GlideDecodeLatencyTest
- *
- * Debug builds are not minified, so treat the numbers as an upper bound for release.
- */
 @RunWith(AndroidJUnit4::class)
 class GlideDecodeLatencyTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -120,7 +111,6 @@ class GlideDecodeLatencyTest {
         return keys
     }
 
-    /** Straight segments through the key centers, 8 samples each, plus a deterministic bow. */
     private fun syntheticGesture(word: String, keys: List<GlideKey>): List<GesturePoint> {
         val centers = keys.associate { it.code.toChar() to (it.centerX to it.centerY) }
         val points = mutableListOf<GesturePoint>()

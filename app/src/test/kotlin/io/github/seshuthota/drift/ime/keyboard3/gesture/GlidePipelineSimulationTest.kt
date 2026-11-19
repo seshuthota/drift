@@ -27,15 +27,6 @@ import kotlinx.serialization.json.long
 import java.io.File
 import kotlin.math.ln
 
-/**
- * Lab harness, not a regression guard: replays raw FUTO swipe rows (with their real timestamps) through the app's
- * [GestureRecognizer] at phone scale, then decodes what the recognizer hands on. This measures the part of the glide
- * pipeline that [NeuralGlideAccuracyTest] skips: glide start, point spacing, the release point, and how many real
- * strokes are not recognized as glides at all.
- *
- * Runs only when `DRIFT_FUTO_RAW` points at a FUTO `*.jsonl` file (e.g. the first lines of `dev.jsonl` from
- * `huggingface.co/datasets/futo-org/swipe.futo.org`). `DRIFT_FUTO_ROWS` caps the row count (default 1000).
- */
 class GlidePipelineSimulationTest : FunSpec({
     val path = System.getenv("DRIFT_FUTO_RAW")
     if (path.isNullOrBlank() || !File(path).exists()) {
@@ -48,7 +39,6 @@ class GlidePipelineSimulationTest : FunSpec({
 private fun FunSpec.simulation(path: String) {
     val maxRows = System.getenv("DRIFT_FUTO_ROWS")?.toIntOrNull() ?: 1000
 
-    // Phone geometry of the I2401: 1440 px wide letter box, 138 px rows, density 3.375 (540 dpi).
     val width = 1440f
     val rowHeight = 138f
     val density = 3.375f
@@ -101,7 +91,6 @@ private fun FunSpec.simulation(path: String) {
         if (word in suggestions.take(3)) tally.top3++
     }
 
-    /** Feeds [samples] through the recognizer; returns (streamed glide points, outcome). */
     fun recognize(samples: List<GesturePoint>, cfg: GestureConfig): Pair<List<GesturePoint>, GestureOutcome> {
         val recognizer = GestureRecognizer()
         val first = samples.first()
@@ -137,8 +126,6 @@ private fun FunSpec.simulation(path: String) {
                 when (outcome) {
                     is GestureOutcome.Glide -> {
                         tally.glides++
-                        // The shipping manager keeps the streamed points and ignores the outcome list (and with it
-                        // the release point) whenever any point was streamed.
                         val points = if (name.startsWith("shipping") && streamed.isNotEmpty()) streamed else outcome.points
                         val suggestions = decode(points)
                         score(tally, word, suggestions)
@@ -162,7 +149,6 @@ private fun FunSpec.simulation(path: String) {
     }
 }
 
-/** Linear re-sampling in time, standing in for a touch stream that reports every display frame. */
 private fun resample(samples: List<GesturePoint>, stepMs: Float): List<GesturePoint> {
     val out = mutableListOf(samples.first())
     val start = samples.first().timeMillis

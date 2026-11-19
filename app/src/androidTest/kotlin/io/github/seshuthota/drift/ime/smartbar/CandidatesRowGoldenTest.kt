@@ -49,14 +49,6 @@ import org.junit.runner.RunWith
 import org.k3lp.lib.text.asK3String
 import java.lang.ref.WeakReference
 
-/**
- * Rendered suggestion bar: [CandidatesRow] composes inside the real theme locals and a tap on a candidate goes
- * through [ImeController] into the editor. Run on a device:
- *
- *     CLASS=io.github.seshuthota.drift.ime.smartbar.CandidatesRowGoldenTest
- *     ./gradlew :app:connectedDebugAndroidTest \
- *         -Pandroid.testInstrumentationRunnerArguments.class=$CLASS
- */
 @RunWith(AndroidJUnit4::class)
 class CandidatesRowGoldenTest {
     @get:Rule
@@ -72,7 +64,6 @@ class CandidatesRowGoldenTest {
     fun setUp() {
         val application = context.applicationContext as DriftApplication
         controller = application.imeController
-        // The clipboard provider outranks directly injected candidates when the clipboard holds text.
         clipboardSuggestionEnabled = prefs.clipboard.suggestionEnabled.get()
         runBlocking { prefs.clipboard.suggestionEnabled.set(false) }
         connection = RecordingInputConnection()

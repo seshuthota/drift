@@ -24,7 +24,6 @@ import io.kotest.matchers.shouldBe
 import java.io.File
 import java.nio.file.Files
 
-/** Learns [text] word by word, as the keyboard does when each word is committed. */
 private fun PersonalNgram.learnText(text: String) {
     for (match in Regex("""[a-z']+""").findAll(text)) {
         learn(text.substring(0, match.range.first), truncated = false, word = match.value)

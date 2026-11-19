@@ -59,15 +59,6 @@ import kotlin.math.PI
 import kotlin.math.hypot
 import kotlin.math.sin
 
-/**
- * End-to-end golden traces: pointer samples go through [PointerTracker], the real [ImeController]
- * and [io.github.seshuthota.drift.ime.keyboard3.ImeEditor] into an [android.view.inputmethod.InputConnection].
- * Run on a device:
- *
- *     CLASS=io.github.seshuthota.drift.ime.keyboard3.interaction.PointerTextGoldenTest
- *     ./gradlew :app:connectedDebugAndroidTest \
- *         -Pandroid.testInstrumentationRunnerArguments.class=$CLASS
- */
 @RunWith(AndroidJUnit4::class)
 class PointerTextGoldenTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -214,10 +205,6 @@ class PointerTextGoldenTest {
         assertEquals(alternative.text.toString() + " ", connection.text.toString())
     }
 
-    /**
-     * The Termux shape: a glide alternative must swap the committed word even though the editor reports none of
-     * its text and ignores composing regions.
-     */
     @Test
     fun rawGlideAlternativeReplacesTheCommittedWord() {
         assumeTrue(prefs.glide.enabled.get())
@@ -235,7 +222,6 @@ class PointerTextGoldenTest {
         }
     }
 
-    /** Waits for the committed glide's alternatives and returns one that is not the word already in the field. */
     private fun pickGlideAlternative(committed: String): GlideSuggestionCandidate {
         val nlp = (context.applicationContext as DriftApplication).nlpManager.value
         val deadline = System.currentTimeMillis() + 5_000
@@ -265,7 +251,6 @@ class PointerTextGoldenTest {
         }
     }
 
-    /** Runs one glide through the app's manager; prepareWords() is async, so retry while it warms up. */
     private fun runGlide(word: String) {
         val application = context.applicationContext as DriftApplication
         val subtype = application.subtypeManager.value.activeSubtype
@@ -320,7 +305,6 @@ class PointerTextGoldenTest {
         isInitiallyConsumed = false,
     )
 
-    /** Letter geometry shared by the touch keys and the glide trace; staggered like the real QWERTY. */
     private fun letterRects(): Map<Char, Rect> {
         val rows = listOf("qwertyuiop" to 0.5f, "asdfghjkl" to 1.0f, "zxcvbnm" to 2.0f)
         return buildMap {

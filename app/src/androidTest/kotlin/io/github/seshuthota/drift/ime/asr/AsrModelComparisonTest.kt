@@ -31,15 +31,6 @@ import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-/**
- * Runs every registry model over the same voice clips and writes what each one heard, how long it took and how much
- * native memory it used, so models are compared on identical audio. Models that are not installed are downloaded.
- *
- * Clips: every `*.wav` (16 kHz mono PCM16) in the debug app's internal `files/asr-compare/` folder, plus the bundled
- * espeak clip. Internal storage, because files adb puts in the app's external folder belong to the shell user and the
- * app cannot read them. `ml/quality/compare_asr.sh` copies the clips kept by the quality log there with `run-as`,
- * runs this test and prints the results (`files/asr-compare/results.json`).
- */
 @RunWith(AndroidJUnit4::class)
 class AsrModelComparisonTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -65,9 +56,6 @@ class AsrModelComparisonTest {
                 // Total process memory too: ONNX Runtime may map model files, which the native heap does not count.
                 var peakPssKb = Debug.getPss()
                 for ((name, raw) in clips) {
-                    // Kept clips are the microphone's raw level; the app boosts each chunk before the model sees it,
-                    // and the one-pass decode reads those boosted chunks. Do the same so the models hear what they
-                    // hear in use.
                     val gain = AutoGain()
                     val chunks = raw.asList().chunked(CHUNK).map { gain.process(it.toShortArray()) }
                     val pcm = ShortArray(raw.size).also { out ->
@@ -114,7 +102,6 @@ class AsrModelComparisonTest {
 
     private fun asset(path: String): ByteArray = instrumentation.context.assets.open(path).use { it.readBytes() }
 
-    /** The samples of a 16 kHz mono PCM16 WAV. */
     private fun readWav(bytes: ByteArray): ShortArray {
         val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
         var offset = 12
@@ -135,7 +122,6 @@ class AsrModelComparisonTest {
     private companion object {
         const val TAG = "AsrModelComparison"
 
-        /** 100 ms, the size of the chunks the recorder delivers. */
         const val CHUNK = 1_600
     }
 }

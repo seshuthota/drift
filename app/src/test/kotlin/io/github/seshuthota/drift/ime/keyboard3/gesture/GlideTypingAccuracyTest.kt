@@ -29,14 +29,6 @@ import kotlin.math.ln
 import kotlin.math.sin
 import kotlin.random.Random
 
-/**
- * Accuracy benchmark for the statistical glide classifier against the real word corpus
- * (`assets/ime/dict/data.json`). Glides are synthesized from the word corpus with deterministic
- * noise, so differences between runs come only from classifier changes.
- *
- * Seeds and shapes are fixed on purpose: the thresholds below are calibrated to the generated
- * traces and are regression guards, not a claim about real-device accuracy.
- */
 class GlideTypingAccuracyTest : FunSpec({
     val dict = loadDictionary()
     val keys = qwertyKeys()
@@ -45,8 +37,6 @@ class GlideTypingAccuracyTest : FunSpec({
         setWordData(dict.keys.toList(), logFrequency(dict))
         setLayout(keys)
     }
-    // Weight by log-frequency. Raw counts are Zipf and would draw almost only function words;
-    // the log keeps common words likelier without collapsing the sample onto "the" and "of".
     val commonWords = sampleWeighted(dict, count = 120, seed = 1234)
 
     fun measure(noise: Float, bowFraction: Float, seed: Int): Triple<Double, Double, Double> {
@@ -78,9 +68,6 @@ class GlideTypingAccuracyTest : FunSpec({
     test("noisy glide traces keep the intended word highly ranked") {
         val (top1, top3, top8) = measure(noise = 0.015f, bowFraction = 0.12f, seed = 43)
         println("GlideTypingAccuracy noisy: top1=$top1 top3=$top3 top8=$top8")
-        // Rebaselined for the 60,564-word raw-count list and log-frequency sampling.
-        // This seed measures 0.633 / 0.792 / 0.900. The old 0.65 / 0.85 / 0.92 guards were
-        // calibrated when every count sat in 128–255 and the sample was nearly uniform.
         top1 shouldBeGreaterThanOrEqual 0.63
         top3 shouldBeGreaterThanOrEqual 0.79
         top8 shouldBeGreaterThanOrEqual 0.90
@@ -106,7 +93,6 @@ private fun loadDictionary(): Map<String, Int> {
     return Json.parseToJsonElement(raw).jsonObject.mapValues { it.value.jsonPrimitive.int }
 }
 
-/** Same 0–1 log-frequency as [io.github.seshuthota.drift.ime.nlp.latin.LatinLanguageProvider.getFrequencyForWord]. */
 private fun logFrequency(dict: Map<String, Int>): (String) -> Double {
     val denom = ln(1.0 + (dict.values.maxOrNull() ?: 0)).coerceAtLeast(1.0)
     return { word ->

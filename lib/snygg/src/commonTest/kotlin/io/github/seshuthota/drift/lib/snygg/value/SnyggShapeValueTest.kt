@@ -46,9 +46,7 @@ class SnyggShapeValueTest {
         @Test
         fun `deserialize rectangle shape values`() {
             val pairs = listOf(
-                //valid
                 "rectangle()" to SnyggRectangleShapeValue(),
-                //invalid
                 "lelek" to null
             )
             assertAll(pairs.map { (raw, expected) ->
@@ -61,9 +59,7 @@ class SnyggShapeValueTest {
         @Test
         fun `deserialize circle shape values`() {
             val pairs = listOf(
-                //valid
                 "circle()" to SnyggCircleShapeValue(),
-                //invalid
                 "lelek" to null
             )
             assertAll(pairs.map { (raw, expected) ->
@@ -76,9 +72,7 @@ class SnyggShapeValueTest {
         @Test
         fun `serialize circle shape values`() {
             val pairs = listOf(
-                //valid
                 SnyggCircleShapeValue() to "circle()",
-                //invalid
                 SnyggDefinedVarValue("shenanigans") to null
             )
             assertAll(pairs.map { (raw, expected) ->
@@ -91,9 +85,7 @@ class SnyggShapeValueTest {
         @Test
         fun `serialize rectangle shape values`() {
             val pairs = listOf(
-                //valid
                 SnyggRectangleShapeValue() to "rectangle()",
-                //invalid
                 SnyggDefinedVarValue("shenanigans") to null
             )
             assertAll(pairs.map { (raw, expected) ->
@@ -127,9 +119,7 @@ class SnyggShapeValueTest {
         @Test
         fun `deserialize dp shape values`() {
             val pairs = listOf(
-                //valid
                 "cut-corner(4dp,5dp,2dp,5dp)" to SnyggCutCornerDpShapeValue(4.dp, 5.dp, 2.dp, 5.dp),
-                //invalid
                 "lelek" to null
             )
             assertAll(pairs.map { (raw, expected) ->
@@ -142,9 +132,7 @@ class SnyggShapeValueTest {
         @Test
         fun `deserialize percentage shape values`() {
             val pairs = listOf(
-                //valid
                 "cut-corner(4%,5%,2%,5%)" to SnyggCutCornerPercentShapeValue(4, 5, 2, 5),
-                //invalid
                 "lelek" to null
             )
             assertAll(pairs.map { (raw, expected) ->
@@ -157,9 +145,7 @@ class SnyggShapeValueTest {
         @Test
         fun `serialize percentage shape values`() {
             val pairs = listOf(
-                //valid
                 SnyggCutCornerPercentShapeValue(4, 5, 2, 5) to "cut-corner(4%,5%,2%,5%)",
-                //invalid
                 SnyggDefinedVarValue("shenanigans") to null
             )
             assertAll(pairs.map { (raw, expected) ->
@@ -172,9 +158,7 @@ class SnyggShapeValueTest {
         @Test
         fun `serialize dp shape values`() {
             val pairs = listOf(
-                //valid
                 SnyggCutCornerDpShapeValue(4.dp, 5.dp, 2.dp, 5.dp) to "cut-corner(4dp,5dp,2dp,5dp)",
-                //invalid
                 SnyggDefinedVarValue("shenanigans") to null
             )
             assertAll(pairs.map { (raw, expected) ->
@@ -208,9 +192,7 @@ class SnyggShapeValueTest {
         @Test
         fun `deserialize dp shape values`() {
             val pairs = listOf(
-                //valid
                 "rounded-corner(4dp,5dp,2dp,5dp)" to SnyggRoundedCornerDpShapeValue(4.dp, 5.dp, 2.dp, 5.dp),
-                //invalid
                 "lelek" to null
             )
             assertAll(pairs.map { (raw, expected) ->
@@ -223,9 +205,7 @@ class SnyggShapeValueTest {
         @Test
         fun `deserialize percentage shape values`() {
             val pairs = listOf(
-                //valid
                 "rounded-corner(4%,5%,2%,5%)" to SnyggRoundedCornerPercentShapeValue(4, 5, 2, 5),
-                //invalid
                 "lelek" to null
             )
             assertAll(pairs.map { (raw, expected) ->
@@ -238,9 +218,7 @@ class SnyggShapeValueTest {
         @Test
         fun `serialize percentage shape values`() {
             val pairs = listOf(
-                //valid
                 SnyggRoundedCornerPercentShapeValue(4, 5, 2, 5) to "rounded-corner(4%,5%,2%,5%)",
-                //invalid
                 SnyggDefinedVarValue("shenanigans") to null
             )
             assertAll(pairs.map { (raw, expected) ->
@@ -253,9 +231,7 @@ class SnyggShapeValueTest {
         @Test
         fun `serialize dp shape values`() {
             val pairs = listOf(
-                //valid
                 SnyggRoundedCornerDpShapeValue(4.dp, 5.dp, 2.dp, 5.dp) to "rounded-corner(4dp,5dp,2dp,5dp)",
-                //invalid
                 SnyggDefinedVarValue("shenanigans") to null
             )
             assertAll(pairs.map { (raw, expected) ->

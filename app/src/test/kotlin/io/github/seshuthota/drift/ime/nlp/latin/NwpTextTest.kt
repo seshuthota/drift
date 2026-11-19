@@ -21,14 +21,12 @@ import io.kotest.matchers.shouldBe
 import java.io.File
 
 class NwpTextTest : FunSpec({
-    // The shipped model vocabulary (unit tests run with the :app module as working directory).
     val vocab = File("src/main/assets/nwp/vocab.txt").readLines().filter { it.isNotEmpty() }
     val idOf = vocab.withIndex().filter { it.index >= NwpText.N_SPECIAL }.associate { it.value to it.index }
     fun ids(text: String, truncated: Boolean = false, max: Int = 64) =
         NwpText.contextIds(text, { idOf[it] }, truncated, max).toList()
 
     context("contextIds matches ml/nwp/prepare.py") {
-        // Expected ids generated with prepare.tokenize() (minus the trailing <s> it adds at document end).
         test("commas, sentence ends and contractions") {
             ids("Hello, how are you? I'm fine") shouldBe listOf(1, 3841, 2, 68, 19, 13, 1, 151, 969)
         }

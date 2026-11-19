@@ -27,7 +27,6 @@ class RawInputReplaceTest : FunSpec({
     }
 
     test("a word replace covers the previous characters, not the new word") {
-        // Typing "e" after "h": k3 replaces offset until the old cursor with "he".
         ImeEditor.rawInputDeleteBefore(0 until 1) shouldBe 1
         ImeEditor.rawInputDeleteBefore(0 until 2) shouldBe 2
         ImeEditor.rawInputDeleteBefore(4 until 7) shouldBe 3

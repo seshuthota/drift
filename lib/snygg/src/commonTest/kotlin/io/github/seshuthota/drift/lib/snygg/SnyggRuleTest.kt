@@ -73,7 +73,6 @@ class SnyggRuleTest {
         )
 
         val validNonOrderedAttributes = listOf(
-            // non-ordered to ordered output
             "elem[code=2,1]" to "elem[code=1,2]",
             "elem[code=`str`,1]" to "elem[code=1,`str`]",
             "elem[code=2,`str`,1]" to "elem[code=1,2,`str`]",

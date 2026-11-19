@@ -22,7 +22,6 @@ import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.shouldBe
 
 class StatisticalGlideTypingClassifierTest : FunSpec({
-    // A tiny three-key keyboard: "a" at (0.1, 0.1), "b" at (0.5, 0.5), "c" at (0.9, 0.1).
     val keys = listOf(
         GlideKey(code = 'a'.code, centerX = 0.1f, centerY = 0.1f, width = 0.2f, height = 1f),
         GlideKey(code = 'b'.code, centerX = 0.5f, centerY = 0.5f, width = 0.2f, height = 1f),
