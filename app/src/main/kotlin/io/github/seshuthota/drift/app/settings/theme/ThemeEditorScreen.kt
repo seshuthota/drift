@@ -551,7 +551,6 @@ fun ThemeEditorScreen(
                 component = stylesheetComponent,
                 checkIdAlreadyUsed = checkIdAlreadyUsed,
                 onConfirm = { newComponent ->
-                    val oldComponent = stylesheetComponent
                     stylesheetComponent = newComponent
                     showEditComponentMetaDialog = false
                 },

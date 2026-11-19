@@ -445,15 +445,21 @@ fun ExtensionEditScreen(extensionId: String?, type: ExtensionType) {
                                     state.components.themeStylesheets.any { it.id == componentId }
                                 },
                                 onUpdate = { updatedComponent ->
+                                    val originalComponent = action.component
+                                    val themeStylesheets = state.components.themeStylesheets.map { component ->
+                                        if (component.id == originalComponent.id) {
+                                            updatedComponent
+                                        } else {
+                                            component
+                                        }
+                                    }
+                                    val oldStylesheetPath = originalComponent.stylesheetPath()
+                                    if (themeStylesheets.none { it.stylesheetPath() == oldStylesheetPath }) {
+                                        storage.delete(state.workspaceRef.subRef(oldStylesheetPath))
+                                    }
                                     editorState = state.copy(
                                         components = state.components.copy(
-                                            themeStylesheets = state.components.themeStylesheets.map { component ->
-                                                if (component.id == updatedComponent.id) {
-                                                    updatedComponent
-                                                } else {
-                                                    component
-                                                }
-                                            },
+                                            themeStylesheets = themeStylesheets,
                                         ),
                                     )
                                     editorAction = EditorAction.None
