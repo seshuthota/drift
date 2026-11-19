@@ -29,22 +29,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-/**
- * Helper object which manages two separate EmojiCompat instances, something EmojiCompat by default does not want us
- * to do for unknown reasons. Additionally we implement a proper loaded callback and a state flow, so the UI can always
- * receive the EmojiCompat instance as soon as it is loaded. This helper still uses the default config and thus relies
- * either on a system font with emoji or Google GMS services with their downloadable font provider.
- *
- * TODO: investigate how AOSP-like ROMs without any GMS services installed handle backwards emoji compatibility. Same
- *  goes for newer Huawei devices, which are subjected to no Google services. (Probably these devices rely on the good
- *  old method of just querying the system painter, which we already use as a fallback in the palette logic).
- *
- * TODO: investigate if having two instances of EmojiCompat has significant memory impact. Based on the docs one
- *  instance has ~300kB, so two should have ~600kB, which should not cause issues.
- *
- * TODO: investigate if having two instances of EmojiCompat causes other logic issues or if there's a better way of
- *  achieving the same result than the current implementation does.
- */
 object DriftEmojiCompat {
     private lateinit var instanceNoReplace: InstanceHandler
     private lateinit var instanceReplaceAll: InstanceHandler
@@ -84,8 +68,6 @@ object DriftEmojiCompat {
         val instance = instanceFlow.value
         if (setAsDefaultInstance && instance != null) {
             flogInfo { "Set default EmojiCompat instance to $instance(replaceAll=$replaceAll)" }
-            // This API is not really supposed to be used by third-party apps, but it is really handy and does
-            // exactly what we need, so we suppress the restriction here
             EmojiCompat.reset(instance)
         }
         return instanceFlow

@@ -26,15 +26,6 @@ import io.github.seshuthota.drift.lib.DriftLocale
 import io.github.reactivecircus.cache4k.Cache
 import org.k3lp.runtime.K3Content
 
-/**
- * Provides emoji suggestions within a text input context.
- *
- * This class handles the following tasks:
- * - Initializes and maintains a list of supported emojis.
- * - Generates and returns emoji suggestions based on user input and preferences.
- *
- * @param context The application context.
- */
 class EmojiSuggestionProvider(private val context: Context) : SuggestionProvider {
     override val providerId = "io.github.seshuthota.drift.nlp.providers.emoji"
 
@@ -87,7 +78,6 @@ class EmojiSuggestionProvider(private val context: Context) : SuggestionProvider
     }
 
     override suspend fun notifySuggestionReverted(subtype: Subtype, candidate: SuggestionCandidate) {
-        // No-op
     }
 
     override suspend fun removeSuggestion(subtype: Subtype, candidate: SuggestionCandidate) = false
@@ -100,9 +90,6 @@ class EmojiSuggestionProvider(private val context: Context) : SuggestionProvider
         cachedEmojiMappings.invalidateAll()
     }
 
-    /**
-     * Validates the user input query for emoji suggestions.
-     */
     private fun validateInputQuery(composingText: CharSequence): String? {
         val prefix = prefs.emoji.suggestionType.get().prefix
         val queryMinLength = prefs.emoji.suggestionQueryMinLength.get() + prefix.length

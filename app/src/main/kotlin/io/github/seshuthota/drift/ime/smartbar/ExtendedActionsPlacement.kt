@@ -16,9 +16,6 @@
 
 package io.github.seshuthota.drift.ime.smartbar
 
-/**
- * Enum class defining the possible placements for the Smartbar extended actions.
- */
 enum class ExtendedActionsPlacement {
     ABOVE_CANDIDATES,
     BELOW_CANDIDATES,

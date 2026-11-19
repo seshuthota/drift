@@ -16,11 +16,6 @@
 
 package io.github.seshuthota.drift.ime.theme
 
-/**
- * Enum class which specifies all theme modes available. Used in the Settings
- * to properly manage different use cases when the day or night theme should
- * be active.
- */
 enum class PreferredThemeMode {
     ALWAYS_DAY,
     ALWAYS_NIGHT,

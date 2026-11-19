@@ -96,7 +96,6 @@ object EmojiHistoryHelper {
                 dataMut.pinned.removeAt(pinnedIndex)
                 dataMut.pinned.addWithStrategy(pinnedUS, emoji)
             } else {
-                // manual sort, keep item in place
             }
         } else {
             val recentIndex = dataMut.recent.indexOf(emoji)
@@ -105,7 +104,6 @@ object EmojiHistoryHelper {
                     dataMut.recent.removeAt(recentIndex)
                     dataMut.recent.addWithStrategy(recentUS, emoji)
                 } else {
-                    // manual sort, keep item in place
                 }
             } else {
                 dataMut.recent.addWithStrategy(recentUS, emoji)

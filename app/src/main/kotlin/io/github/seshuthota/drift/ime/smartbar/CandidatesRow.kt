@@ -121,12 +121,10 @@ fun CandidatesRow(modifier: Modifier = Modifier) {
                     displayMode = displayMode,
                     onClick = {
                         imeController.updateStateBlocking {
-                            // Can't use candidate directly
                             emitCandidate(candidates[n])
                         }
                     },
                     onLongPress = {
-                        // Can't use candidate directly
                         val candidateItem = candidates[n]
                         if (candidateItem.isEligibleForUserRemoval) {
                             nlpManager.removeSuggestion(subtypeManager.activeSubtype, candidateItem)

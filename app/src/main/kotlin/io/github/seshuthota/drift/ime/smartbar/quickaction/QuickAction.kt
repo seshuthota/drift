@@ -103,7 +103,6 @@ fun QuickAction.computeDisplayName(imeState: ImeState): String {
             ImeActions.SwitchToNextSubtype -> R.string.quick_action__language_switch
             ImeActions.ToggleActionsOverflow -> R.string.quick_action__toggle_actions_overflow
             ImeActions.ToggleAutocorrect -> R.string.quick_action__toggle_autocorrect
-            // TODO: In the future this will be merged into the resize keyboard panel, for now it is a separate action
             ImeActions.ToggleCompactLayout -> R.string.quick_action__one_handed_mode
             ImeActions.ToggleFloatingWindow -> R.string.quick_action__floating_window_mode
             ImeActions.TogglePersonalizedLearning -> R.string.quick_action__toggle_incognito_mode
@@ -144,7 +143,6 @@ fun QuickAction.computeTooltip(imeState: ImeState): String {
             ImeActions.SwitchToNextSubtype -> R.string.quick_action__language_switch__tooltip
             ImeActions.ToggleActionsOverflow -> R.string.quick_action__toggle_actions_overflow__tooltip
             ImeActions.ToggleAutocorrect -> R.string.quick_action__toggle_autocorrect__tooltip
-            // TODO: In the future this will be merged into the resize keyboard panel, for now it is a separate action
             ImeActions.ToggleCompactLayout -> R.string.quick_action__one_handed_mode__tooltip
             ImeActions.ToggleFloatingWindow -> R.string.quick_action__floating_window_mode__tooltip
             ImeActions.TogglePersonalizedLearning -> R.string.quick_action__toggle_incognito_mode__tooltip

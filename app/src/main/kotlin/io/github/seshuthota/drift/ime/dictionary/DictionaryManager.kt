@@ -24,9 +24,6 @@ import io.github.seshuthota.drift.ime.nlp.WordSuggestionCandidate
 import io.github.seshuthota.drift.lib.DriftLocale
 import java.lang.ref.WeakReference
 
-/**
- * TODO: document
- */
 class DictionaryManager private constructor(context: Context) {
     private val applicationContext: WeakReference<Context> = WeakReference(context.applicationContext ?: context)
     private val prefs by DriftPreferenceStore
@@ -90,7 +87,6 @@ class DictionaryManager private constructor(context: Context) {
 
     }
 
-    /** Saves [word] in the internal user dictionary when that dictionary is enabled and the word is new. */
     fun rememberWord(word: String) {
         loadUserDictionariesIfNecessary()
         val dao = driftUserDictionaryDao() ?: return
