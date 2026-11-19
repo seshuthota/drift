@@ -63,6 +63,8 @@ diagnostics were off (the 2026-11-14 capture was lost with the 2026-11-15 reinst
   Capture keeps running 350 ms after the stop tap. `AutoGain` decay 0.98 → 0.95 per chunk (peak half-life ~3.4 s →
   ~1.4 s). Settings > Voice input has "Use the plain microphone input" (`MIC` instead of `VOICE_RECOGNITION`).
   None of this is measured yet: the clips are what will measure it.
+  2026-11-18: Tiny removed (Small only), field text passed as key-term context, and a one-pass "refine after
+  speaking" decode that is logged next to the streamed text (details in `ml/ASR_PLAN.md`).
 - **Parked: recursive improvement loop.** Tune the models themselves from the user's logs, round after round: label
   logged glides (picks and retypes strong, kept weak), hold out the most recent days, tune decoder and mixing
   weights by replay first, then fine-tune the CTC on the user's traces mixed with FUTO, then the LSTM. Ship only
@@ -365,8 +367,12 @@ In recommended order. Each item says what it fixes.
   decoder-level golden-trace test (issue 5, focus item 9), and the first end-to-end pointer → text traces
   (focus item 13: taps, space, backspace, double-space period, raw editor, autocorrect, glide) with the
   rendered candidates row. Real-use diagnostics and the release build are focus item 14.
-- Remaining: smartbar actions and auto-expansion (candidate rendering and selection are covered since
-  2026-11-14), plus the real-Termux check of a glide-alternative pick. Real-finger confirmation of the
+- Smartbar actions and auto-expansion — done 2026-11-18. `QuickActionGoldenTest` taps rendered quick-action
+  buttons (arrow, select all, undo, disabled copy, autocorrect toggle, clipboard panel; 6/6 on the API 35
+  emulator) and `SharedActionsExpansionTest` covers the expand/collapse rule. Also 2026-11-18: the K3 `=\<`
+  symbols page had empty `gap` slots (now • √ π ÷ × ¶ ∆ and © ® ™ ✓), and glide no longer starts on symbol or
+  numeric layers (it was decoding against the hidden letter positions).
+- Remaining: the real-Termux check of a glide-alternative pick. Real-finger confirmation of the
   edge-back gesture (issue 4) is still deferred. Phase 3 still wants a conversational corpus that
   transfers to the chat benchmark (UltraChat did not). Phase 4 (multilingual glide) has not started.
   Decisions still open: language order (5), opt-in device traces (7). The sealed set stays at 4,000 rows

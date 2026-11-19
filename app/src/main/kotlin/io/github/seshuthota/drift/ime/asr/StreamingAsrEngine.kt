@@ -40,6 +40,18 @@ interface StreamingAsrEngine {
     /** Ends the stream and returns the remaining events; every open line ends with a [StreamEvent.Final]. */
     fun stop(): List<StreamEvent>
 
+    /**
+     * Biases recognition toward words in [text] (the field's text around the cursor) for the next stream and
+     * [transcribeAll]. Empty clears it. Engines without biasing ignore it.
+     */
+    fun setContext(text: String)
+
+    /**
+     * Decodes a whole recording in one pass, with every sentence's full audio available, and returns its text.
+     * Call between streams: after [stop], before the next [start].
+     */
+    fun transcribeAll(pcm: ShortArray): String
+
     /** Releases the model. Safe to call twice. */
     fun close()
 }

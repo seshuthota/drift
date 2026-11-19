@@ -20,6 +20,89 @@ and ends lines at pauses, which the IME shows as composing text and commits per 
 Integration notes: moonshine-voice bundles a minimal `libonnxruntime.so` that cannot load `.onnx` models, so an
 artifact transform in `app/build.gradle.kts` strips it and the app's full onnxruntime-android 1.23.2 serves both.
 
+**2026-11-18.** Tiny was removed: in daily use Small was clearly better, so **Moonshine Small Streaming** is the only
+model (the old Tiny files are deleted by `removeUnlisted`). Two additions:
+
+- **Field context.** Before each dictation the text around the cursor (up to 1,000 chars before, 200 after) goes to
+  `Transcriber.setContext`. In Moonshine this is key-term biasing (`ContextBiaser`): terms from the text are boosted
+  during decoding, for streaming and the one-pass decode alike. It helps names and unusual words already in the
+  field; it is not a sentence prompt.
+- **Refine after speaking** (Settings > Voice input; Off / Compare only / Replace, default Compare only). On stop,
+  recordings up to 30 s are decoded again in one pass (`transcribeWithoutStreaming`) on the audio the engine heard.
+  `decideRefinement` never uses an empty result or one that lost over 40 % of the streamed words. In Replace mode the
+  dictated text is swapped only while it is still exactly before a collapsed cursor (`ImeEditor.replaceLiveText`),
+  never in raw editors. Every run logs `refined`, `refine_ms` and `refine_result` in the voice event;
+  `ml/quality/analyze.py` prints the word differences and backspaces after each outcome.
+  `VoiceRefineDeviceTest`: on an espeak-ng clip of two sentences both passes were exact (one pass 1.4 s for 8 s of
+  audio on the x86 emulator).
+
+### Small vs. Medium
+
+Medium Streaming (~270 MB, opt-in in Settings) was added on 2026-11-18. To compare models on the user's own voice:
+turn on "Keep voice clips", dictate normally, then run `ml/quality/compare_asr.sh` (phone connected). It installs the
+debug build next to the daily one, runs `AsrModelComparisonTest` over every kept clip plus a bundled espeak clip
+with each registry model (live and one-pass), uninstalls the debug build and prints `ml/quality/compare_asr.py`'s
+table: load time, real-time factor (RTF, below 1 keeps up with speech), native memory and PSS, then each clip's
+transcripts side by side, plus WER for clips listed in `refs.json` (judge the rest by ear). Make Medium the default only if it
+wins clearly, its live RTF on the phone stays well below 1, and the extra memory does not get the keyboard killed.
+With two adb entries for the same phone (mDNS + IP), set `ANDROID_SERIAL`. The script keeps the debug app in the
+foreground and the screen awake: Vivo's freezer froze the instrumented process (kernel `cgroup.freeze=1`, while
+`dumpsys` said not frozen) and the run hung for 12 h. Clips go to the debug app's internal storage, because files adb
+writes to its external folder are owned by `shell` and the app cannot read them.
+Emulator, espeak clip, 2026-11-18: Small live "re-anchor" (no context) / one-pass "Priyanka"; Medium live
+"Priyanka". Native memory 200 vs 326 MB, live RTF 0.66 vs 0.92 (x86 emulator).
+
+**Phone run, 2026-11-19** (Vivo I2401, 14 kept clips + espeak; results in `ml/quality/data/asr-compare/`). Kept
+clips are the microphone's raw level (peaks −27 to −43 dBFS on this phone); the app's `AutoGain` lifts them up to
+16× before the model. The first run fed raw clips and scored ~22 % WER for both models, with empty one-pass output on
+quiet clips: a test artifact. The test now applies `AutoGain` chunk by chunk, as the app does, for both passes:
+
+| | load | live RTF | one-pass RTF | native MB | PSS MB | WER live | WER one-pass |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Small | 433 ms | 0.23 | 0.09 | 236 | 743 | 5.8 % | 6.7 % |
+| Medium | 365 ms | 0.53 | 0.20 | 367 | 1000 | 6.7 % | 6.2 % |
+
+WER is over the 9 clips listed in `ml/quality/data/asr-compare/refs.json` (208 words), whose reference text is the
+user's chat messages. Those messages were dictated with Small and lightly edited, so the references lean towards
+Small's output. Treat the numbers as "both are close", not as a ranking. **Decision (user, 2026-11-19): keep Small as
+the default; Medium stays opt-in.** Medium is not clearly more accurate, it uses ~260 MB more process memory, and its
+live pass is twice as slow (still well under real time). Medium did get the espeak name right ("Priyanka" vs
+"re-anchor") and Small's one-pass did not beat its live pass here, so keep "Refine after speaking" on Compare only
+until the quality log says otherwise. Errors both models share ("tiny" → "time", the last word cut short:
+"remain") are vocabulary and end-of-speech problems, not model size.
+
+To score a future run, add `"<clip>.wav": "what was said"` lines to `refs.json`; `compare_asr.py` prints WER when the
+file exists. `MODELS_DIR=<dir with one folder per model id>` makes the script push local model files instead of
+downloading them.
+
+### How to judge "Refine after speaking" (do this after a few days of Compare only)
+
+Needs Developer options > Typing quality log on (and optionally "Keep voice clips"). Then:
+
+    adb pull /sdcard/Android/data/io.github.seshuthota.drift/files/diagnostics ml/quality/data
+    python ml/quality/analyze.py ml/quality/data/diagnostics
+
+Read the `== Voice refine ==` section:
+
+1. **How often they differ.** `result:` counts. Mostly `same` means the pass changes little and is not worth the wait
+   in Replace mode. `too_short` often means the one-pass decode drops phrases (or the 40 % guard is too strict); look
+   at those lines.
+2. **Who is right when they differ.** Go through the `differences` list (`[streamed -> one-pass]`). For each, say
+   which side matches what was spoken; if voice clips were kept, play the clip whose time matches. Count wins for
+   each side. Typical one-pass wins: last word, words at a line break, names. Typical losses: dropped or merged
+   phrases on long clips.
+3. **What the user fixed.** `backspaces after each` per result. In Compare only the streamed text stayed, so many
+   backspaces after `log_only` dictations where the one-pass text looked right = Replace would have saved them.
+4. **Cost.** `one-pass time` median/p90. Over ~2 s at p90 is noticeable after every stop; then consider lowering the
+   30 s cap (`MAX_REFINE_SAMPLES` in `AsrController`).
+5. **Context.** `dictations with field context` is the share where the field already had text. Its effect is not
+   logged separately; to measure it, replay kept clips with and without `setContext` in a device test like
+   `VoiceRefineDeviceTest`.
+
+Decision: switch the default to Replace (`voice__refine_mode` in `AppPrefs`) only if the one-pass side wins clearly
+more often than it loses and p90 time is acceptable. If it loses on long clips only, lower the cap instead of
+dropping the feature.
+
 ---
 
 ## 0. Goal

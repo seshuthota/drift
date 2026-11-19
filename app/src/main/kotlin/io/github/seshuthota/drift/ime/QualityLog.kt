@@ -213,12 +213,22 @@ object QualityLog {
         ending: String,
         pcm: ShortArray?,
         sampleRate: Int,
+        contextChars: Int = 0,
+        refineMode: String = "off",
+        refined: String? = null,
+        refineMs: Long? = null,
+        refineResult: String? = null,
     ) {
         if (!isEnabled()) return
         synchronized(lock) { voiceEndedAt = System.currentTimeMillis() }
         val json = JSONObject().put("e", "voice").put("model", model).put("src", source).put("ms", durationMs)
             .put("peak_db", JSONArray(peakDb.map { round(it) })).put("gain", JSONArray(gain.map { round(it) }))
             .put("lines", JSONArray(lines)).put("end", ending)
+            .put("ctx_chars", contextChars).put("refine", refineMode)
+        // The one-pass text, how long it took, and what happened to it (same, replaced, log_only, too_short, ...).
+        if (refined != null) json.put("refined", refined)
+        if (refineMs != null) json.put("refine_ms", refineMs)
+        if (refineResult != null) json.put("refine_result", refineResult)
         val clipName = if (pcm != null && pcm.isNotEmpty() && keepVoiceClips()) "${System.currentTimeMillis()}.wav" else null
         if (clipName != null) json.put("clip", clipName)
         write(json) { directory ->

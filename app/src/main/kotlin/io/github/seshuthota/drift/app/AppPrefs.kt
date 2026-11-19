@@ -23,6 +23,7 @@ import io.github.seshuthota.drift.app.settings.theme.ColorPreferenceSerializer
 import io.github.seshuthota.drift.app.settings.theme.DisplayKbdAfterDialogs
 import io.github.seshuthota.drift.app.settings.theme.SnyggLevel
 import io.github.seshuthota.drift.ime.asr.AsrModelRegistry
+import io.github.seshuthota.drift.ime.asr.VoiceRefineMode
 import io.github.seshuthota.drift.ime.clipboard.CLIPBOARD_HISTORY_NUM_GRID_COLUMNS_AUTO
 import io.github.seshuthota.drift.ime.clipboard.ClipboardSyncBehavior
 import io.github.seshuthota.drift.ime.core.DisplayLanguageNamesIn
@@ -90,6 +91,12 @@ abstract class DriftPreferenceModel : PreferenceModel() {
         val plainMicSource = boolean(
             key = "voice__plain_mic_source",
             default = false,
+        )
+
+        /** Decode the whole recording once more when dictation ends; see [VoiceRefineMode]. */
+        val refineMode = enum(
+            key = "voice__refine_mode",
+            default = VoiceRefineMode.LOG_ONLY,
         )
     }
 

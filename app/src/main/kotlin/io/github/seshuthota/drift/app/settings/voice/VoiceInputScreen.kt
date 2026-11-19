@@ -54,6 +54,7 @@ import io.github.seshuthota.drift.app.components.DriftScreenNg
 import io.github.seshuthota.drift.app.components.ScrollableScreenColumn
 import io.github.seshuthota.drift.asrModelManager
 import io.github.seshuthota.drift.ime.asr.AsrModelSpec
+import io.github.seshuthota.drift.ime.asr.VoiceRefineMode
 import io.github.seshuthota.drift.ime.asr.hasRecordAudioPermission
 import io.github.seshuthota.drift.lib.compose.stringRes
 import kotlinx.coroutines.Dispatchers
@@ -83,6 +84,7 @@ fun VoiceInputScreen() {
     val selectedId = modelManager.spec(storedModelId)?.id ?: modelManager.models().firstOrNull()?.id
     val keepLoaded by prefs.voice.keepModelLoaded.collectAsState()
     val plainMic by prefs.voice.plainMicSource.collectAsState()
+    val refineMode by prefs.voice.refineMode.collectAsState()
     var downloadingId by remember { mutableStateOf<String?>(null) }
     val progress = remember { MutableStateFlow(0f) }
     val progressValue by progress.collectAsState()
@@ -228,6 +230,32 @@ fun VoiceInputScreen() {
                     checked = plainMic,
                     onCheckedChange = { value -> scope.launch { prefs.voice.plainMicSource.set(value) } },
                 )
+            }
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+            Text(
+                text = stringRes(R.string.settings__voice__refine),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                text = stringRes(R.string.settings__voice__refine_summary),
+                style = MaterialTheme.typography.bodySmall,
+            )
+            for ((mode, label) in listOf(
+                VoiceRefineMode.OFF to R.string.settings__voice__refine_off,
+                VoiceRefineMode.LOG_ONLY to R.string.settings__voice__refine_log_only,
+                VoiceRefineMode.REPLACE to R.string.settings__voice__refine_replace,
+            )) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(
+                        selected = refineMode == mode,
+                        onClick = { scope.launch { prefs.voice.refineMode.set(mode) } },
+                    )
+                    Text(text = stringRes(label), style = MaterialTheme.typography.bodyMedium)
+                }
             }
         }
     }

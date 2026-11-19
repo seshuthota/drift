@@ -73,6 +73,11 @@ open class ImeEditor(
         return ic.getTextBeforeCursor(charsBefore, 0)?.toString() ?: ""
     }
 
+    fun getTextAfterCursor(charsAfter: Int): String {
+        val ic = ic.get() ?: return ""
+        return ic.getTextAfterCursor(charsAfter, 0)?.toString() ?: ""
+    }
+
     // TODO this function is very heavy => we need to optimize k3lp to provide:
     //  insertAtSelection() (for simple appends)
     //  deleteAroundSelection() for bksp/fw delete
@@ -229,6 +234,27 @@ open class ImeEditor(
         val ic = ic.get() ?: return
         ic.setComposingText(text, 1)
         if (text.isEmpty()) ic.finishComposingText()
+    }
+
+    /**
+     * Replaces [oldText] with [newText] when [oldText] is exactly the text before a collapsed cursor, and reports
+     * whether it did. Used to swap dictated text for a better transcript; never in raw editors, whose text cannot be
+     * read back.
+     */
+    fun replaceLiveText(oldText: String, newText: String): Boolean {
+        val ic = ic.get() ?: return false
+        if (info.isRawInputEditor || oldText.isEmpty()) return false
+        ic.finishComposingText()
+        if (!ic.getSelectedText(0).isNullOrEmpty()) return false
+        if (ic.getTextBeforeCursor(oldText.length, 0)?.toString() != oldText) return false
+        ic.beginBatchEdit()
+        try {
+            ic.deleteSurroundingText(oldText.length, 0)
+            ic.commitText(newText, 1)
+        } finally {
+            ic.endBatchEdit()
+        }
+        return true
     }
 
     /** Commits [text] in place of the current preview (or at the cursor when there is none). */

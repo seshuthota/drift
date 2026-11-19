@@ -66,6 +66,11 @@ sealed interface AsrError {
  * shown in the field as composing (underlined) text, and it is committed when the engine ends the line at a pause
  * or dictation stops.
  *
+ * The field's text around the cursor is given to the engine as context, so words already there are recognized more
+ * often. When dictation ends, [VoiceRefineMode] decides whether the whole recording is decoded once more in one pass:
+ * the result is logged, and in [VoiceRefineMode.REPLACE] it replaces the streamed text if that text is still
+ * directly before the cursor.
+ *
  * Threading: [toggle], [start], [stopAndTranscribe], [cancel] and [release] are called on the main thread, and every
  * other change to the current session is posted there too, so a session is only ever replaced on one thread.
  * Engine calls go through [engineLock], so the model is never freed while a call is still running.
@@ -88,7 +93,13 @@ class AsrController(
     val amplitude: StateFlow<Float> = recorder.amplitude
 
     /** One dictation: its queue of audio chunks, the worker that feeds them to the engine, and its preview. */
-    private class Session(val startedAtMs: Long, val modelId: String, keepClip: Boolean) {
+    private class Session(
+        val startedAtMs: Long,
+        val modelId: String,
+        keepClip: Boolean,
+        val refineMode: VoiceRefineMode,
+        val context: String,
+    ) {
         val queue = Channel<ShortArray>(Channel.UNLIMITED)
         var worker: Job? = null
 
@@ -97,6 +108,19 @@ class AsrController(
         val peakDb: MutableList<Float> = java.util.Collections.synchronizedList(mutableListOf())
         val gain: MutableList<Float> = java.util.Collections.synchronizedList(mutableListOf())
         val clip: ShortPcmBuffer? = if (keepClip) ShortPcmBuffer(MAX_CLIP_SAMPLES) else null
+
+        /** The audio the engine heard (after gain), for the one-pass decode at the end. */
+        val audio: ShortPcmBuffer? =
+            if (refineMode != VoiceRefineMode.OFF) ShortPcmBuffer(MAX_REFINE_SAMPLES) else null
+
+        /** Everything this dictation typed, spaces included, and the field it went to. Main thread only. */
+        val typed = StringBuilder()
+        var typedEditor: ImeEditor? = null
+
+        /** One-pass result for the quality log. */
+        var refined: String? = null
+        var refineMs: Long? = null
+        var refineResult: String? = null
         var logged = false
         var source = "voice_recognition"
 
@@ -148,7 +172,13 @@ class AsrController(
             _state.value = AsrState.Error(AsrError.MissingModel)
             return
         }
-        val current = Session(SystemClock.elapsedRealtime(), installed.spec.id, QualityLog.keepVoiceClips())
+        val current = Session(
+            startedAtMs = SystemClock.elapsedRealtime(),
+            modelId = installed.spec.id,
+            keepClip = QualityLog.keepVoiceClips(),
+            refineMode = prefs.voice.refineMode.get(),
+            context = editor()?.let { dictationContext(it.getTextBeforeCursor(MAX_CONTEXT_BEFORE), it.getTextAfterCursor(MAX_CONTEXT_AFTER)) }.orEmpty(),
+        )
         session = current
         val plainMic = prefs.voice.plainMicSource.get()
         current.source = if (plainMic) "mic" else "voice_recognition"
@@ -169,6 +199,7 @@ class AsrController(
         try {
             engineLock.withLock {
                 engine.load(installed)
+                engine.setContext(current.context)
                 engine.start()
             }
             val gain = AutoGain()
@@ -178,6 +209,7 @@ class AsrController(
             for (pcm in current.queue) {
                 current.clip?.append(pcm)
                 val processed = gain.process(pcm)
+                current.audio?.append(processed)
                 for (sample in pcm) secondPeak = maxOf(secondPeak, abs(sample.toInt()))
                 secondGain += gain.gain
                 if (++secondChunks == CHUNKS_PER_SECOND) {
@@ -239,6 +271,9 @@ class AsrController(
         }
         val prefix = current.linePrefix ?: spacePrefix(editor)
         editor.commitLiveText(prefix + text)
+        if (current.typedEditor !== editor) current.typed.clear()
+        current.typed.append(prefix).append(text)
+        current.typedEditor = editor
         current.linePrefix = null
         current.previewEditor = null
     }
@@ -287,12 +322,52 @@ class AsrController(
             current.queue.close()
             current.worker?.join()
             if (session !== current) return@launch
+            refine(current)
+            if (session !== current) return@launch
             logSession(current, "stop:$reason")
             session = null
             imeControllerProvider()?.endExternalEdit()
             if (_state.value == AsrState.Transcribing) _state.value = AsrState.Idle
             if (!prefs.voice.keepModelLoaded.get()) closeEngineWhenIdle()
         }
+    }
+
+    /**
+     * Decodes the whole recording of [current] in one pass and, if [decideRefinement] allows it, puts that text in
+     * place of what was streamed. Main thread; the decode itself runs in the background.
+     */
+    private suspend fun refine(current: Session) {
+        val audio = current.audio ?: return
+        val streamed = current.typed.toString()
+        if (streamed.isBlank()) return
+        if (audio.isTruncated) {
+            current.refineResult = "too_long"
+            return
+        }
+        val pcm = audio.toArray()
+        val startedAt = SystemClock.elapsedRealtime()
+        val refined = try {
+            withContext(Dispatchers.Default) { engineLock.withLock { engine.transcribeAll(pcm) } }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            flogInfo { "voice: one-pass decode failed: ${e.message}" }
+            current.refineResult = "error"
+            return
+        }
+        current.refined = refined
+        current.refineMs = SystemClock.elapsedRealtime() - startedAt
+        if (session !== current) return
+        val decision = decideRefinement(streamed, refined, current.refineMode)
+        val editor = current.typedEditor
+        current.refineResult = when {
+            !decision.replace -> decision.reason
+            editor == null || !editor.supportsLivePreview -> "raw_editor"
+            editor.replaceLiveText(streamed, streamed.takeWhile { it.isWhitespace() } + normalizeTranscript(refined)) ->
+                decision.reason
+            else -> "field_changed"
+        }
+        flogInfo { "voice: one-pass ${current.refineMs}ms ${current.refineResult}: \"$streamed\" -> \"$refined\"" }
     }
 
     /** Drops what is still unprocessed without typing it. Called on field or window changes and by the close button. */
@@ -338,6 +413,11 @@ class AsrController(
             lines = current.finals.toList(),
             ending = ending,
             pcm = current.clip?.toArray(),
+            contextChars = current.context.length,
+            refineMode = current.refineMode.name.lowercase(),
+            refined = current.refined,
+            refineMs = current.refineMs,
+            refineResult = current.refineResult,
             sampleRate = AudioRecorder.SAMPLE_RATE,
         )
     }
@@ -383,6 +463,12 @@ class AsrController(
 
         /** Kept clips are capped at two minutes (3.8 MB). */
         private const val MAX_CLIP_SAMPLES = AudioRecorder.SAMPLE_RATE * 120
+
+        /**
+         * Recordings longer than this are not decoded again at the end: a one-pass decode of long audio takes
+         * seconds and is more likely to drop a phrase than the streamed lines.
+         */
+        private const val MAX_REFINE_SAMPLES = AudioRecorder.SAMPLE_RATE * 30
     }
 }
 
@@ -391,9 +477,15 @@ private class ShortPcmBuffer(private val maxSamples: Int) {
     private var data = ShortArray(16_000)
     private var size = 0
 
+    /** Whether samples were dropped because the cap was reached. */
+    @Volatile
+    var isTruncated = false
+        private set
+
     @Synchronized
     fun append(pcm: ShortArray) {
         val count = minOf(pcm.size, maxSamples - size)
+        if (count < pcm.size) isTruncated = true
         if (count <= 0) return
         if (size + count > data.size) data = data.copyOf(minOf(maxSamples, maxOf(data.size * 2, size + count)))
         System.arraycopy(pcm, 0, data, size, count)

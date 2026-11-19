@@ -23,76 +23,28 @@ package io.github.seshuthota.drift.ime.asr
  * `decoder_kv_with_attention.ort` (32 MB) is left out: Moonshine only loads it when present, logs a warning
  * otherwise, and its own non-English models ship without it; it serves word-level timing, which Drift does not use.
  *
- * Moonshine sizes and SHA-256 were measured from the downloaded files (Tiny 2026-11-14, Small 2026-11-17); the
- * folder in the URL is Moonshine's own release tag. Weights: MIT, Moonshine AI. Small is ~142 MB against Tiny's
- * ~45 MB and needs more memory while dictating, so Tiny stays the default and Small is opt-in in Settings.
+ * Moonshine sizes and SHA-256 were measured from the downloaded files (Small 2026-11-17, Medium 2026-11-18); the
+ * folder in the URL is Moonshine's own release tag. Weights: MIT, Moonshine AI. Tiny (~45 MB) was removed on
+ * 2026-11-18: in daily use it was clearly less accurate than Small (~142 MB). [AsrModelManager.removeUnlisted]
+ * deletes its files, and a stored Tiny selection falls back to the first listed model. Medium (~270 MB, about twice
+ * Small's compute and memory) is opt-in until `AsrModelComparisonTest` on the user's own clips shows it is worth it.
  */
 object AsrModelRegistry {
     const val MOONSHINE = "moonshine"
 
-    const val MOONSHINE_TINY_EN_ID = "moonshine-tiny-streaming-en"
     const val MOONSHINE_SMALL_EN_ID = "moonshine-small-streaming-en"
-    const val DEFAULT_MODEL_ID = MOONSHINE_TINY_EN_ID
+    const val MOONSHINE_MEDIUM_EN_ID = "moonshine-medium-streaming-en"
+    const val DEFAULT_MODEL_ID = MOONSHINE_SMALL_EN_ID
 
-    private const val MOONSHINE_TINY_EN_HOST =
-        "https://download.moonshine.ai/model/tiny-streaming-en/quantized_26_08_21/"
     private const val MOONSHINE_SMALL_EN_HOST =
         "https://download.moonshine.ai/model/small-streaming-en/quantized_26_08_21/"
+    private const val MOONSHINE_MEDIUM_EN_HOST =
+        "https://download.moonshine.ai/model/medium-streaming-en/quantized_26_08_21/"
 
     val models: List<AsrModelSpec> = listOf(
         AsrModelSpec(
-            id = MOONSHINE_TINY_EN_ID,
-            displayName = "Moonshine Tiny Streaming (English, live)",
-            engineId = MOONSHINE,
-            languageTag = "en",
-            license = "MIT",
-            attribution = "Moonshine Streaming by Moonshine AI (MIT)",
-            files = listOf(
-                moonshineTinyEn(
-                    "adapter.ort",
-                    "22ecc949e146c49667fda28d102d4e30749a107dc88a396292aa8f277ef1347c",
-                    1_319_664,
-                ),
-                moonshineTinyEn(
-                    "cross_kv.ort",
-                    "143a36667b8d05fd9d04e8c337b7ee121f37ef299aea6b3d82bdb3d3401950b4",
-                    1_287_544,
-                ),
-                moonshineTinyEn(
-                    "decoder_kv.ort",
-                    "8852553f312adb6c9aa4d17418015049b30f412209ee569d336548c0044627de",
-                    32_583_720,
-                ),
-                moonshineTinyEn(
-                    "encoder.ort",
-                    "a8414e1a5dedf9f2093d7680601dd8a9b0433e7020260eafe0e370ead91134ca",
-                    7_675_440,
-                ),
-                moonshineTinyEn(
-                    "frontend.model.ort",
-                    "5121b561417b638afce0c6c31b760e37c93cf97f80d9b0031aad1fe7b6f25d61",
-                    23_344,
-                ),
-                moonshineTinyEn(
-                    "frontend.weights.ort",
-                    "217da24ac6f522ebf02da8ef288e77d1ac68d50d4a6821433182e4fbf4204bbd",
-                    2_093_464,
-                ),
-                moonshineTinyEn(
-                    "streaming_config.json",
-                    "74fe5ddebd63b17caf59e8a3b18c17547ff7bce1642050edbb1c3962674f8950",
-                    509,
-                ),
-                moonshineTinyEn(
-                    "tokenizer.bin",
-                    "6884b35fd6377d4c4d32336a0bc152f36b64d1e45b6503683cdc238250a8472d",
-                    249_974,
-                ),
-            ),
-        ),
-        AsrModelSpec(
             id = MOONSHINE_SMALL_EN_ID,
-            displayName = "Moonshine Small Streaming (English, live, more accurate)",
+            displayName = "Moonshine Small Streaming (English, live, ~142 MB)",
             engineId = MOONSHINE,
             languageTag = "en",
             license = "MIT",
@@ -140,13 +92,63 @@ object AsrModelRegistry {
                 ),
             ),
         ),
+        AsrModelSpec(
+            id = MOONSHINE_MEDIUM_EN_ID,
+            displayName = "Moonshine Medium Streaming (English, live, most accurate, ~270 MB)",
+            engineId = MOONSHINE,
+            languageTag = "en",
+            license = "MIT",
+            attribution = "Moonshine Streaming by Moonshine AI (MIT)",
+            files = listOf(
+                moonshineMediumEn(
+                    "adapter.ort",
+                    "3f2a287def57cc094367a0eec3c4f5fc36a32ec420e86764b696920991b20281",
+                    3_651_296,
+                ),
+                moonshineMediumEn(
+                    "cross_kv.ort",
+                    "642f6e21cd305be79342207c6f9e6b681d469d55bc48c72b27b84846fb71fd1e",
+                    11_643_776,
+                ),
+                moonshineMediumEn(
+                    "decoder_kv.ort",
+                    "193bb366492b74fc4ad338c6778e8d8eb916aaa11b5aa264f9057f4db7759486",
+                    146_972_408,
+                ),
+                moonshineMediumEn(
+                    "encoder.ort",
+                    "12915e76ebac7dd287c5ea63965d06103a53ba1ce242a4a34f318f3958c60c37",
+                    94_705_376,
+                ),
+                moonshineMediumEn(
+                    "frontend.model.ort",
+                    "95768855c70c8251eeecc05fedf69999da1b8ab16f605c9f457fd3354b0ad6b5",
+                    28_720,
+                ),
+                moonshineMediumEn(
+                    "frontend.weights.ort",
+                    "5ac941f490cbe035b335b99a414cc393d62d4c6f9f2423495b286870d271d709",
+                    11_889_560,
+                ),
+                moonshineMediumEn(
+                    "streaming_config.json",
+                    "28e83b7a28e91472692a035e0dae3116422ae43aeb2bef5ed822c44ce89b88af",
+                    513,
+                ),
+                moonshineMediumEn(
+                    "tokenizer.bin",
+                    "6884b35fd6377d4c4d32336a0bc152f36b64d1e45b6503683cdc238250a8472d",
+                    249_974,
+                ),
+            ),
+        ),
     )
-
-    private fun moonshineTinyEn(name: String, sha256: String, bytes: Long) =
-        AsrModelFile(name, MOONSHINE_TINY_EN_HOST + name, sha256, bytes)
 
     private fun moonshineSmallEn(name: String, sha256: String, bytes: Long) =
         AsrModelFile(name, MOONSHINE_SMALL_EN_HOST + name, sha256, bytes)
+
+    private fun moonshineMediumEn(name: String, sha256: String, bytes: Long) =
+        AsrModelFile(name, MOONSHINE_MEDIUM_EN_HOST + name, sha256, bytes)
 
     fun spec(id: String): AsrModelSpec? = models.firstOrNull { it.id == id }
 

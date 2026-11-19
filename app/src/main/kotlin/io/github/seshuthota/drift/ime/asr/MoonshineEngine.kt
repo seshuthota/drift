@@ -19,6 +19,7 @@ package io.github.seshuthota.drift.ime.asr
 import ai.moonshine.voice.JNI
 import ai.moonshine.voice.Transcriber
 import ai.moonshine.voice.TranscriptEvent
+import io.github.seshuthota.drift.lib.devtools.flogInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.function.Consumer
@@ -90,6 +91,22 @@ class MoonshineEngine : StreamingAsrEngine {
         if (running) transcriber?.stop()
         running = false
         return drain()
+    }
+
+    override fun setContext(text: String) {
+        val instance = checkNotNull(transcriber) { "no moonshine model is loaded" }
+        // Key-term biasing is a hint: a model or text it cannot use must not stop the dictation.
+        runCatching { instance.setContext(text) }.onFailure { flogInfo { "voice: context not applied: ${it.message}" } }
+    }
+
+    override fun transcribeAll(pcm: ShortArray): String {
+        val instance = checkNotNull(transcriber) { "no moonshine model is loaded" }
+        check(!running) { "a stream is still running" }
+        val samples = FloatArray(pcm.size) { pcm[it] / 32_768f }
+        val transcript = instance.transcribeWithoutStreaming(samples, AudioRecorder.SAMPLE_RATE)
+        // The listener may have been called for the one-pass lines too; they are not part of any stream.
+        drain()
+        return transcript.lines.orEmpty().joinToString(" ") { it.text.orEmpty().trim() }.trim()
     }
 
     override fun close() {

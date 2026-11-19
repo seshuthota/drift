@@ -503,6 +503,11 @@
     <string name="settings__voice__keep_loaded_summary" comment="Preference summary">Skips the model reload before each recording</string>
     <string name="settings__voice__plain_mic" comment="Preference title: record from the plain microphone input">Use the plain microphone input</string>
     <string name="settings__voice__plain_mic_summary" comment="Preference summary">Try this if voice input misses words. Some phones record speech very quietly on the voice recognition input.</string>
+    <string name="settings__voice__refine" comment="Preference title: decode the whole recording again after dictation ends">Refine after speaking</string>
+    <string name="settings__voice__refine_summary" comment="Preference summary">When you stop, the whole recording is transcribed once more with every sentence complete.</string>
+    <string name="settings__voice__refine_off" comment="Refine after speaking option">Off</string>
+    <string name="settings__voice__refine_log_only" comment="Refine after speaking option: run it but keep the live text">Compare only (written to the typing quality log)</string>
+    <string name="settings__voice__refine_replace" comment="Refine after speaking option">Replace the live text when they differ</string>
 
     <!-- Typing strings -->
     <string name="settings__typing__title" comment="Title of Typing screen">Typing</string>

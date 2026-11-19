@@ -13,6 +13,7 @@ The data folder is git-ignored: it holds the words you typed. Event format: `Qua
 
 import argparse
 import collections
+import difflib
 import glob
 import json
 import os
@@ -177,6 +178,55 @@ def voice_report(events, folder):
     for s in sessions[-10:]:
         text = " / ".join(s.get("lines", []))
         print(f"  {s.get('ms', 0) / 1000:5.1f}s {s.get('end', '?'):18s} {text[:90]}")
+    refine_report(sessions, edits)
+
+
+def word_diff(old, new):
+    """The words that changed between two transcripts, as `old -> new` pieces."""
+    a, b = old.split(), new.split()
+    pieces = []
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(a=a, b=b, autojunk=False).get_opcodes():
+        if tag != "equal":
+            pieces.append(f"[{' '.join(a[i1:i2]) or '-'} -> {' '.join(b[j1:j2]) or '-'}]")
+    return " ".join(pieces)
+
+
+def refine_report(sessions, edits):
+    """Streaming vs. the one-pass decode at the end (Settings > Voice input > Refine after speaking)."""
+    runs = [s for s in sessions if "refine_result" in s]
+    print(f"\n== Voice refine ({len(runs)} of {len(sessions)} dictations) ==")
+    if not runs:
+        return
+    print("result:", dict(collections.Counter(s["refine_result"] for s in runs)))
+    times = sorted(s["refine_ms"] for s in runs if "refine_ms" in s)
+    if times:
+        print(f"one-pass time: median {statistics.median(times):.0f} ms, p90 {times[9 * len(times) // 10]:.0f} ms, "
+              f"max {times[-1]} ms")
+    with_context = [s for s in sessions if s.get("ctx_chars", 0) > 0]
+    print(f"dictations with field context: {pct(len(with_context), len(sessions))}")
+    # Backspaces after a dictation belong to the latest dictation logged before them.
+    times_logged = sorted((s["t"], i) for i, s in enumerate(sessions))
+    fixes = collections.Counter()
+    for e in edits:
+        owner = None
+        for t, i in times_logged:
+            if t <= e["t"]:
+                owner = i
+            else:
+                break
+        if owner is not None:
+            fixes[owner] += 1
+    by_result = collections.defaultdict(list)
+    for i, s in enumerate(sessions):
+        if "refine_result" in s:
+            by_result[s["refine_result"]].append(fixes[i])
+    for result, counts in sorted(by_result.items()):
+        print(f"  {result:13s} {len(counts):4d} dictations, {statistics.mean(counts):.1f} backspaces after each")
+    differing = [s for s in runs if s["refine_result"] not in ("same", "empty", "error", "too_long")]
+    print(f"differences ({len(differing)}), latest first:")
+    for s in differing[::-1][:20]:
+        streamed = " ".join(s.get("lines", []))
+        print(f"  {s['refine_result']:13s} {word_diff(streamed, s.get('refined', ''))[:110]}")
 
 
 def main():
