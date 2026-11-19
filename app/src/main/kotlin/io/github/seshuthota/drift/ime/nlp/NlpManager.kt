@@ -192,6 +192,8 @@ class NlpManager(context: Context) {
             || prefs.glide.enabled.get()
             || providerForcesSuggestionOn(subtypeManager.activeSubtype)
 
+    private fun isPrivateSession(): Boolean = imeController.snapshotState().flags.isIncognitoMode
+
     fun suggest(subtype: Subtype, content: K3Content) {
         val reqTime = SystemClock.uptimeMillis()
         scope.launch {
@@ -202,7 +204,7 @@ class NlpManager(context: Context) {
                         content = content,
                         maxCandidateCount = prefs.emoji.suggestionCandidateMaxCount.get(),
                         allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
-                        isPrivateSession = false
+                        isPrivateSession = isPrivateSession()
                     )
                 }
                 else -> emptyList()
@@ -220,7 +222,7 @@ class NlpManager(context: Context) {
                         content = content,
                         maxCandidateCount = 8,
                         allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
-                        isPrivateSession = false
+                        isPrivateSession = isPrivateSession()
                     )
                 }
             }
@@ -264,7 +266,7 @@ class NlpManager(context: Context) {
                 content = content,
                 maxCandidateCount = 3,
                 allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
-                isPrivateSession = false,
+                isPrivateSession = isPrivateSession(),
             )
         }.firstOrNull { it.isEligibleForAutoCommit }
     }
@@ -368,7 +370,7 @@ class NlpManager(context: Context) {
                         content = imeController.snapshotState().content,
                         maxCandidateCount = 8,
                         allowPossiblyOffensive = !prefs.suggestion.blockPossiblyOffensive.get(),
-                        isPrivateSession = false
+                        isPrivateSession = isPrivateSession()
                     ).ifEmpty {
                         buildList {
                             internalSuggestionsGuard.withLock {
