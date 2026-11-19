@@ -24,11 +24,6 @@ import okio.Sink
 import okio.Source
 import okio.buffer
 
-/**
- * An interface providing basic operations on an underlying storage medium.
- *
- * This API is designed to closely follow [okio.FileSystem].
- */
 abstract class Storage {
     abstract fun canAccessStorage(ref: DriftRef): Boolean
 

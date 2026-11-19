@@ -29,13 +29,6 @@ class ExtensionIndex(
 ) {
     val isValid: Boolean = reports.none { it.level == ReportLevel.ERROR }
 
-    /**
-     * Generates an update url for [Extension] lists.
-     *
-     * @param version the version of the api path
-     * @param host the host for the addons store
-     * @return the Url
-     */
     internal fun generateUpdateUrl(
         version: String = BuildConfig.FLADDONS_API_VERSION,
         host: String = BuildConfig.FLADDONS_STORE_URL,
@@ -44,8 +37,6 @@ class ExtensionIndex(
             scheme("https")
             authority(host)
             appendPath("check-updates")
-            // TODO: Uncomment when version is supported by the addons store api
-            //appendPath(version)
             encodedFragment(
                 buildString {
                     append("data={")

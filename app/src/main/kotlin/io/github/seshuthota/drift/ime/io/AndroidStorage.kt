@@ -48,18 +48,14 @@ class AndroidStorage(
             ref.isCache -> {
                 val base = context.cacheDir.toOkioPath()
                 val path = (base / ref.okioRelPath).normalized()
-                // TODO startsWith check
                 systemFs to path
             }
             ref.isInternal -> {
                 val base = context.filesDir.toOkioPath()
                 val path = (base / ref.okioRelPath).normalized()
-                // TODO startsWith check
                 systemFs to path
             }
             ref.scheme == "content" -> {
-                // is this a hack? yes
-                // does it work? also yes :)
                 val path = ref.encodeBase64Path()
                 contentResolverFs to path
             }

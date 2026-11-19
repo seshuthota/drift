@@ -24,15 +24,6 @@ import kotlinx.serialization.json.JsonNames
  * Class for an `extension.json` file, which serves as a configuration of an extension
  * package for Drift (`.flex` archive files).
  *
- * Files which are always read (case sensitive):
- *  - extension.json (this file)
- *
- * Files which are always read (case-insensitive, can have any extension)
- *  - README
- *  - CHANGES / CHANGELOG / HISTORY
- *  - LICENSE / LICENSES
- * TODO the above is a lie
- *
  * Should multiple files exist which match the regex, always the first match will be used.
  */
 @OptIn(ExperimentalSerializationApi::class)
@@ -45,41 +36,16 @@ data class ExtensionMeta(
      */
     val id: String,
 
-    /**
-     * The version of this extension.
-     */
     val version: String,
 
-    /**
-     * The title label of the extension. This title will be shown to the user in the Settings UI.
-     *
-     * Recommended limit: 50 characters
-     */
     val title: String,
 
-    /**
-     * The short description of this extension, will be shown as a summary text in the package list, as
-     * well as the first paragraph of the expanded description.
-     *
-     * Recommended limit: 80 characters
-     */
     val description: String? = null,
 
-    /**
-     * The keywords for this extension. Useful for searching an extension in the extension store.
-     *
-     * Recommended limit: 30 characters / keyword
-     */
     val keywords: List<String>? = null,
 
-    /**
-     * A link to the homepage of this extension or author.
-     */
     val homepage: String? = null,
 
-    /**
-     * A link to this extension's issue tracker.
-     */
     val issueTracker: String? = null,
 
     /**

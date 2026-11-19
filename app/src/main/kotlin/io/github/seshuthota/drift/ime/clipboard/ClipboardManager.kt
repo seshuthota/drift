@@ -44,29 +44,13 @@ import io.github.seshuthota.drift.lib.android.setOrClearPrimaryClip
 import io.github.seshuthota.drift.lib.android.systemService
 import io.github.seshuthota.drift.lib.kotlin.tryOrNull
 
-/**
- * [ClipboardManager] manages the clipboard and clipboard history.
- *
- * Also just going to document how all the classes here work.
- *
- * [ClipboardManager] handles storage and retrieval of clipboard items. All manipulation of the
- * clipboard goes through here.
- */
 class ClipboardManager(
     context: Context,
 ) : AndroidClipboardManager_OnPrimaryClipChangedListener, Closeable {
     companion object {
-        // 1 minute
         private const val INTERVAL = 60 * 1000L
 
-        /**
-         * Taken from ClipboardDescription.java from the AOSP
-         *
-         * Helper to compare two MIME types, where one may be a pattern.
-         * @param concreteType A fully-specified MIME type.
-         * @param desiredType A desired MIME type that may be a pattern such as * / *.
-         * @return Returns true if the two MIME types match.
-         */
+        // Taken from ClipboardDescription.java from the AOSP
         fun compareMimeTypes(concreteType: String, desiredType: String): Boolean {
             val typeLength = desiredType.length
             if (typeLength == 3 && desiredType == "*/*") {
@@ -140,9 +124,6 @@ class ClipboardManager(
         historyFlow.value = clipHistory
     }
 
-    /**
-     * Sets the current primary clip without updating the internal clipboard history.
-     */
     fun updatePrimaryClip(item: ClipboardItem?) {
         primaryClip = item
         if (prefs.clipboard.useInternalClipboard.get()) {
@@ -158,9 +139,6 @@ class ClipboardManager(
         }
     }
 
-    /**
-     * Called by system clipboard when the system primary clip has changed.
-     */
     override fun onPrimaryClipChanged() {
         val syncBehavior = prefs.clipboard.syncToDrift.get()
         if (!prefs.clipboard.useInternalClipboard.get() || syncBehavior != ClipboardSyncBehavior.NO_EVENTS) {
@@ -209,25 +187,16 @@ class ClipboardManager(
         }
     }
 
-    /**
-     * Change the current text on clipboard, update history (if enabled).
-     */
     private fun addNewClip(item: ClipboardItem) {
         insertOrMoveBeginning(item)
         updatePrimaryClip(item)
     }
 
-    /**
-     * Wraps some plaintext in a ClipData and calls [addNewClip]
-     */
     fun addNewPlaintext(newText: String) {
         val newData = ClipboardItem.text(newText)
         addNewClip(newData)
     }
 
-    /**
-     * Adds a new item to the clipboard history (if enabled).
-     */
     private fun insertOrMoveBeginning(newItem: ClipboardItem) {
         if (prefs.clipboard.historyEnabled.get()) {
             val historyElement = currentHistory.all.firstOrNull { item ->
@@ -303,9 +272,6 @@ class ClipboardManager(
         }
     }
 
-    /**
-     * Clears all unpinned items from the clipboard history
-     */
     fun clearHistory() {
         ioScope.launch {
             for (item in currentHistory.all) {
@@ -315,9 +281,6 @@ class ClipboardManager(
         }
     }
 
-    /**
-     * Clears the full clipboard history
-     */
     fun clearFullHistory() {
         ioScope.launch {
             for (item in currentHistory.all) {
@@ -328,11 +291,6 @@ class ClipboardManager(
     }
 
 
-    /**
-     * Restore the clipboard history from a [List]
-     *
-     * @param items the [ClipboardItem] list with the new items
-     */
     fun restoreHistory(items: List<ClipboardItem>) {
         ioScope.launch {
             val currentHistory = currentHistory.all
@@ -374,20 +332,14 @@ class ClipboardManager(
 
     fun pasteItem(item: ClipboardItem) {
         val imeController = appContext.imeController
-        // TODO this asks for a deadlock from ImeController update scope
         imeController.updateStateBlocking {
             emitClipboardItem(item).also { result ->
                 if (!result) {
-                    // TODO we have no access to interactionController here
-                    //appContext.showShortToastSync("Failed to paste item.")
                 }
             }
         }
     }
 
-    /**
-     * Returns true if the editor can accept the clip item, else false.
-     */
     fun canBePasted(clipItem: ClipboardItem?): Boolean {
         val imeController = appContext.imeController
         val info = imeController.snapshotState().editor.info
@@ -398,11 +350,6 @@ class ClipboardManager(
         })
     }
 
-    /**
-     * Cleans up.
-     *
-     * Unregisters the system clipboard listener, cancels clipboard clean ups.
-     */
     override fun close() {
         systemClipboardManager.removePrimaryClipChangedListener(this)
         cleanUpJob.cancel()

@@ -255,7 +255,6 @@ class ExtensionController(
                 isLegacyMode -> backupFilesDirRef.subRef(BackupDefaults.OLD_EXT_IME_THEME_PATH)
                 else -> backupFilesDirRef.subRef(EXTENSIONS_PATH)
             }
-            // TODO better error reporting
             for (entryRef in storage.listOrNull(extensionsDirRef) ?: emptyList()) {
                 val extSrcRef = when {
                     isLegacyMode -> {
@@ -305,7 +304,6 @@ class ExtensionController(
                 }
                 val extDstRef = userSource.ref.subRef(manifest.meta.id)
                 storage.deleteRecursively(extDstRef)
-                // TODO this destroys the currently indexed extension in error cases!!!
                 storage.copyRecursively(extSrcRef, extDstRef)
             } else {
                 val extDstRef = userSource.ref.subRef(manifest.meta.id)
@@ -316,9 +314,6 @@ class ExtensionController(
         private fun indexExtensions(source: MutableSource) {
             source.clear()
             if (!storage.canAccessStorage(source.ref)) {
-                // If we do not have access to the underlying medium all operations below would fail.
-                // This can happen if we are initialized before first device-unlock (in direct boot mode
-                // on Android).
                 return
             }
             if (source.ref.isInternal) {
@@ -353,7 +348,6 @@ class ExtensionController(
                     try {
                         storage.readJson<ExtensionManifest>(manifestRef, ExtensionJson)
                     } catch (e: Throwable) {
-                        // TODO fine-grained violations
                         source.reports.add(
                             ExtensionIndexViolation.UnexpectedError(
                                 cause = e,

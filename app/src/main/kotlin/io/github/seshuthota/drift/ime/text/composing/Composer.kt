@@ -20,10 +20,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
-/**
- * Base interface for a text composer. A composer allows to dynamically transform text, which is especially useful for
- * languages with complicated scripts, where providing one key for each letter is not really possible.
- */
 interface Composer {
     val id: String
     val label: String
@@ -43,9 +39,6 @@ interface Composer {
     fun getActions(precedingText: String, toInsert: String): Pair<Int, String>
 }
 
-/**
- * Default composer which simply appends any text to insert to the preceding text. Is also used as a fallback.
- */
 @Serializable
 @SerialName("appender")
 object Appender : Composer {

@@ -24,11 +24,6 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
-/**
- * Enum for declaring the type of the key.
- * List of possible key types:
- *  [Wikipedia](https://en.wikipedia.org/wiki/Keyboard_layout#Key_types)
- */
 @Serializable(with = KeyTypeSerializer::class)
 enum class KeyType {
     CHARACTER,
