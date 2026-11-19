@@ -74,19 +74,8 @@ import io.github.seshuthota.drift.lib.kotlin.collectLatestIn
 import org.k3lp.runtime.K3TextRange
 import java.lang.ref.WeakReference
 
-/**
- * Global weak reference for the [DriftImeService] class. This is needed as certain actions (request hide, switch to
- * another input method, getting the editor instance / input connection, etc.) can only be performed by an IME
- * service class and no context-bound managers. This reference is exclusively used by the companion helper methods
- * of [DriftImeService], which provide a safe and memory-leak-free way of performing certain actions on the Drift
- * input method service instance.
- */
 private var DriftImeServiceReference = WeakReference<DriftImeService?>(null)
 
-/**
- * Core class responsible for linking together all managers and UI composables to provide an IME service. Sets
- * up the window and context to be lifecycle-aware, so LiveData and Jetpack Compose can be used without issues.
- */
 class DriftImeService : LifecycleInputMethodService() {
     companion object {
         private val InlineSuggestionUiSmallestSize = Size(0, 0)
@@ -154,12 +143,6 @@ class DriftImeService : LifecycleInputMethodService() {
         requestHideSelf(0)
     }
 
-    /**
-     * Show the Ime UI
-     *
-     * Note: This function can be replaced with a `requestShowSelf(0)`
-     * call once we've set the minApiLevel to 28 (Android 9)
-     */
     fun showUi() {
         if (AndroidVersion.ATLEAST_API28_P) {
             requestShowSelf(0)
@@ -171,14 +154,6 @@ class DriftImeService : LifecycleInputMethodService() {
     }
 
 
-    /**
-     * Switch to previous input method
-     *
-     * Note: This function can be replaced with a `switchToPreviousInputMethod()`
-     * call once we've set the minApiLevel to 28 (Android 9)
-     *
-     * @return true if the switch was successful
-     */
     fun switchToPrevInputMethod(): Boolean {
         val imm = systemServiceOrNull(InputMethodManager::class)
         try {
@@ -197,14 +172,6 @@ class DriftImeService : LifecycleInputMethodService() {
         return false
     }
 
-    /**
-     * Switch to next input method
-     *
-     * Note: This function can be replaced with a `switchToNextInputMethod(false)`
-     * call once we've set the minApiLevel to 28 (Android 9)
-     *
-     * @return true if the switch was successful
-     */
     fun switchToNextInputMethod(): Boolean {
         val imm = systemServiceOrNull(InputMethodManager::class)
         try {
@@ -223,21 +190,11 @@ class DriftImeService : LifecycleInputMethodService() {
         return false
     }
 
-    /**
-     * Switch to next input method
-     *
-     * Note: The inner part of this function can be replaced with a
-     *
-     * `switchInputMethod(el.id, el.getSubtypeAt(i))` call once we've set the minApiLevel to 28 (Android 9)
-     *
-     * @return true if the switch was successful
-     */
     fun switchToVoiceInputMethod(): Boolean {
         val imm = systemServiceOrNull(InputMethodManager::class) ?: return false
         val list: List<InputMethodInfo> = imm.enabledInputMethodList
         for (el in list) {
             for (i in 0 until el.subtypeCount) {
-                // Check if the subtype is a voice input method.
                 // We need to hardcode 'voice' here because the SUBTYPE_MODE_VOICE constant is private.
                 // https://cs.android.com/android/platform/superproject/+/android-latest-release:frameworks/base/core/java/android/view/inputmethod/InputMethodManager.java;drc=2b278ab3ac73bb5596327aac1298df85cd94e454;l=309
                 if (el.getSubtypeAt(i).mode != "voice") continue
@@ -253,8 +210,6 @@ class DriftImeService : LifecycleInputMethodService() {
                 }
             }
         }
-        // TODO we have no access to interactionController here
-        // showShortToastSync("Failed to find voice IME, do you have one installed?")
         return false
     }
 
@@ -287,7 +242,6 @@ class DriftImeService : LifecycleInputMethodService() {
         WindowCompat.setDecorFitsSystemWindows(window.window!!, false)
         windowController.onConfigurationChanged(resources.configuration)
         windowController.activeWindowConfig.collectLatestIn(lifecycleScope) {
-            // TODO update inputMethod state
         }
 
         combine(
@@ -320,20 +274,15 @@ class DriftImeService : LifecycleInputMethodService() {
         super.installViewTreeOwners()
         val content = window.window!!.findViewById<ViewGroup>(android.R.id.content)
         content.addView(ImeRootView(this))
-        // Disable the default input view placement
         return null
     }
 
     override fun onCreateCandidatesView(): View? {
-        // Disable the default candidates view
         return null
     }
 
     override fun onCreateExtractTextView(): View {
         super.installViewTreeOwners()
-        // Consider adding a fallback to the default extract edit layout if user reports come
-        // that this causes a crash, especially if the device manufacturer of the user device
-        // is a known one to break AOSP standards...
         val defaultExtractView = super.onCreateExtractTextView()
         if (defaultExtractView == null || defaultExtractView !is ViewGroup) {
             return ExtractedInputRootView(this, null)
@@ -369,7 +318,6 @@ class DriftImeService : LifecycleInputMethodService() {
         flogInfo { "info=${info?.debugSummarize()} restarting=$restarting" }
         super.onStartInputView(info, restarting)
         if (info == null) return
-        // A recording belongs to the field it started in; never commit it into the next one.
         DriftApplication.getHack().asrController.value.cancel()
         val ic = WeakReference(currentInputConnection)
         val editorInfo = DriftEditorInfo.wrap(info)
@@ -389,9 +337,6 @@ class DriftImeService : LifecycleInputMethodService() {
         oldSelStart: Int, oldSelEnd: Int, newSelStart: Int, newSelEnd: Int, candStart: Int, candEnd: Int,
     ) {
         super.onUpdateSelection(oldSelStart, oldSelEnd, newSelStart, newSelEnd, candStart, candEnd)
-        // The selection comes from here, not from CursorAnchorInfo: Compose text fields with an output
-        // transformation (ChatGPT's link chips) report the anchor selection in on-screen positions, which can run
-        // past the end of the stored text and reversed (start > end). Every edit built on those crashed the app.
         val newSelection = K3TextRange(start = newSelStart, end = newSelEnd)
         flogInfo { "new=$newSelection" }
         imeController.updateStateBlocking {

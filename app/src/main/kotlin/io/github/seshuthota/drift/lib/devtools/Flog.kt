@@ -26,35 +26,12 @@ import java.lang.ref.WeakReference
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
-/** Type alias for a flog topic Integer. */
 typealias FlogTopic = UInt
 
-/** Type alias for a flog level Integer. */
 typealias FlogLevel = UInt
 
-/** Type alias for a flog output Integer. */
 typealias FlogOutput = UInt
 
-/**
- * Logs an error message returned by [block] together with the automatically retrieved
- * calling class and method name either to the console or to a log file. The class name
- * is used for the tag, the method name prepended to the message.
- *
- * This method automatically evaluates if logging is enabled and calls [block] only
- * if a log message should be generated.
- *
- * Optionally a [topic] can also be specified to allow to only partially enable
- * debug messages across the codebase. The passed [topic] is compared with the
- * currently active [Flog.flogTopics] variable and only if at least 1 topic match
- * is found, [block] will be called and a log message written.
- *
- * @param topic The topic of this message. To specify multiple topics, use the binary
- *  OR operator. Defaults to [Flog.TOPIC_OTHER].
- * @param block The lambda expression to evaluate the message which is appended to the
- *  method name. Is called only if logging is enabled and the topics match. Must return
- *  a [String]. If this argument is omitted, only the calling method name will be used
- *  as the log message.
- */
 inline fun flogError(topic: FlogTopic = Flog.TOPIC_OTHER, block: () -> String = { "" }) {
     contract {
         callsInPlace(block, InvocationKind.AT_MOST_ONCE)
@@ -64,26 +41,6 @@ inline fun flogError(topic: FlogTopic = Flog.TOPIC_OTHER, block: () -> String = 
     }
 }
 
-/**
- * Logs a warning message returned by [block] together with the automatically retrieved
- * calling class and method name either to the console or to a log file. The class name
- * is used for the tag, the method name prepended to the message.
- *
- * This method automatically evaluates if logging is enabled and calls [block] only
- * if a log message should be generated.
- *
- * Optionally a [topic] can also be specified to allow to only partially enable
- * debug messages across the codebase. The passed [topic] is compared with the
- * currently active [Flog.flogTopics] variable and only if at least 1 topic match
- * is found, [block] will be called and a log message written.
- *
- * @param topic The topic of this message. To specify multiple topics, use the binary
- *  OR operator. Defaults to [Flog.TOPIC_OTHER].
- * @param block The lambda expression to evaluate the message which is appended to the
- *  method name. Is called only if logging is enabled and the topics match. Must return
- *  a [String]. If this argument is omitted, only the calling method name will be used
- *  as the log message.
- */
 inline fun flogWarning(topic: FlogTopic = Flog.TOPIC_OTHER, block: () -> String = { "" }) {
     contract {
         callsInPlace(block, InvocationKind.AT_MOST_ONCE)
@@ -93,26 +50,6 @@ inline fun flogWarning(topic: FlogTopic = Flog.TOPIC_OTHER, block: () -> String 
     }
 }
 
-/**
- * Logs a info message returned by [block] together with the automatically retrieved
- * calling class and method name either to the console or to a log file. The class name
- * is used for the tag, the method name prepended to the message.
- *
- * This method automatically evaluates if logging is enabled and calls [block] only
- * if a log message should be generated.
- *
- * Optionally a [topic] can also be specified to allow to only partially enable
- * debug messages across the codebase. The passed [topic] is compared with the
- * currently active [Flog.flogTopics] variable and only if at least 1 topic match
- * is found, [block] will be called and a log message written.
- *
- * @param topic The topic of this message. To specify multiple topics, use the binary
- *  OR operator. Defaults to [Flog.TOPIC_OTHER].
- * @param block The lambda expression to evaluate the message which is appended to the
- *  method name. Is called only if logging is enabled and the topics match. Must return
- *  a [String]. If this argument is omitted, only the calling method name will be used
- *  as the log message.
- */
 inline fun flogInfo(topic: FlogTopic = Flog.TOPIC_OTHER, block: () -> String = { "" }) {
     contract {
         callsInPlace(block, InvocationKind.AT_MOST_ONCE)
@@ -122,26 +59,6 @@ inline fun flogInfo(topic: FlogTopic = Flog.TOPIC_OTHER, block: () -> String = {
     }
 }
 
-/**
- * Logs a debug message returned by [block] together with the automatically retrieved
- * calling class and method name either to the console or to a log file. The class name
- * is used for the tag, the method name prepended to the message.
- *
- * This method automatically evaluates if logging is enabled and calls [block] only
- * if a log message should be generated.
- *
- * Optionally a [topic] can also be specified to allow to only partially enable
- * debug messages across the codebase. The passed [topic] is compared with the
- * currently active [Flog.flogTopics] variable and only if at least 1 topic match
- * is found, [block] will be called and a log message written.
- *
- * @param topic The topic of this message. To specify multiple topics, use the binary
- *  OR operator. Defaults to [Flog.TOPIC_OTHER].
- * @param block The lambda expression to evaluate the message which is appended to the
- *  method name. Is called only if logging is enabled and the topics match. Must return
- *  a [String]. If this argument is omitted, only the calling method name will be used
- *  as the log message.
- */
 inline fun flogDebug(topic: FlogTopic = Flog.TOPIC_OTHER, block: () -> String = { "" }) {
     contract {
         callsInPlace(block, InvocationKind.AT_MOST_ONCE)
@@ -151,22 +68,11 @@ inline fun flogDebug(topic: FlogTopic = Flog.TOPIC_OTHER, block: () -> String = 
     }
 }
 
-/**
- * Helper function to evaluate if a bit flag is set in an integer value.
- *
- * @param flag The flag to check if it is set.
- *
- * @return True if the flag is set, false otherwise.
- */
 private infix fun UInt.isSet(flag: UInt): Boolean {
     return (this and flag) == flag
 }
 
 /**
- * Main helper object for Drift logging (=Flog). Manages the enabled
- * state and the active topics. Provides relevant helper functions for the
- * flog methods to properly work.
- *
  * This helper object uses some parts of the Timber library to assist in
  * logging. In particular:
  *  - [createTag] (converted to Kotlin, renamed from "createStackElementTag",
@@ -193,10 +99,8 @@ object Flog {
     const val OUTPUT_CONSOLE: FlogOutput =          0x01u
     const val OUTPUT_FILE: FlogOutput =             0x02u
 
-    /** The relevant call stack element is always on the 4th position, thus 4-1=3. */
     private const val CALL_STACK_INDEX: Int =       3
 
-    /** The maximum log length limit. */
     private const val MAX_LOG_LENGTH: Int =         4000
 
     private var applicationContext: WeakReference<Context> = WeakReference(null)
@@ -235,22 +139,10 @@ object Flog {
         this.flogOutputs = flogOutputs
     }
 
-    /**
-     * Checks if a log message should be evaluated by checking [isFloggingEnabled] and
-     * by matching the given [topic] and [level] values with the configured settings.
-     *
-     * @param topic The topic(s) to check for.
-     * @param level The level(s) to check for.
-     *
-     * @return True if a log message should be evaluated, false otherwise.
-     */
     fun checkShouldFlog(topic: FlogTopic, level: FlogLevel): Boolean {
         return isFloggingEnabled && (flogTopics isSet topic) && (flogLevels isSet level)
     }
 
-    /**
-     * Extract the tag which should be used for the message from the `element`.
-     */
     private fun createTag(element: StackTraceElement): String {
         var tag = element.className
         tag = tag.substring(tag.lastIndexOf('.') + 1)
@@ -286,7 +178,6 @@ object Flog {
                 if (msg.length < MAX_LOG_LENGTH) {
                     androidLog(level, msg)
                 } else {
-                    // Split by line, then ensure each line can fit into Log's maximum length.
                     var i = 0
                     val length: Int = msg.length
                     while (i < length) {
@@ -322,6 +213,5 @@ object Flog {
 
     private fun fileLog(level: FlogLevel, msg: String) {
         val context = applicationContext.get() ?: return
-        // TODO: introduce file logging here for runtime debug logging
     }
 }

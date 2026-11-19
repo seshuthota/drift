@@ -18,14 +18,8 @@ package io.github.seshuthota.drift.lib
 
 import java.nio.ByteBuffer
 
-/**
- * Type alias for a native pointer.
- */
 typealias NativePtr = Long
 
-/**
- * Constant value for a native null pointer.
- */
 const val NATIVE_NULLPTR: NativePtr = 0L
 
 /**
@@ -33,9 +27,6 @@ const val NATIVE_NULLPTR: NativePtr = 0L
  */
 typealias NativeStr = ByteBuffer
 
-/**
- * Converts a native string to a Java string.
- */
 fun NativeStr.toJavaString(): String {
     val bytes: ByteArray
     if (this.hasArray()) {
@@ -47,9 +38,6 @@ fun NativeStr.toJavaString(): String {
     return String(bytes, Charsets.UTF_8)
 }
 
-/**
- * Converts a Java string to a native string.
- */
 fun String.toNativeStr(): NativeStr {
     val bytes = this.toByteArray(Charsets.UTF_8)
     val buffer = ByteBuffer.allocateDirect(bytes.size)
@@ -58,17 +46,10 @@ fun String.toNativeStr(): NativeStr {
     return buffer
 }
 
-/**
- * Generic interface for a native instance object. Defines the basic
- * methods which each native instance wrapper should define and be able
- * to handle to.
- */
 interface NativeInstanceWrapper {
     /**
      * Returns the native pointer of this instance. The returned pointer
      * is only valid if [dispose] has not been previously called.
-     *
-     * @return The native null pointer for this instance.
      */
     fun nativePtr(): NativePtr
 

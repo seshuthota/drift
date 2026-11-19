@@ -138,7 +138,6 @@ class DriftSpellCheckerService : SpellCheckerService() {
         ): Array<SentenceSuggestionsInfo> {
             flogInfo(LogTopic.SPELL_EVENTS)
 
-            // TODO: implement custom solution here instead of calling the default implementation
             return super.onGetSentenceSuggestionsMultiple(textInfos, suggestionsLimit)
         }
 

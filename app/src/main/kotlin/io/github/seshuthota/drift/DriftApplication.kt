@@ -62,14 +62,8 @@ import io.github.seshuthota.drift.libnative.dummyAdd
 import java.io.File
 import java.lang.ref.WeakReference
 
-/**
- * Global weak reference for the [DriftApplication] class. This is needed as in certain scenarios an application
- * reference is needed, but the Android framework hasn't finished setting up
- */
 private var DriftApplicationReference = WeakReference<DriftApplication?>(null)
 
-// TODO this class is a mess
-@Suppress("unused")
 class DriftApplication : Application() {
     companion object {
         init {

@@ -127,9 +127,6 @@ object Devtools {
         return buildString {
             if (withTitle) appendLine("======= EXTENSION CONFIG =======")
             appendLine("Theme extensions    : ")
-//            context.extensionManager().value.themes.value.forEach { append("    ").appendLine(it.meta.id) }
-//            appendLine("Language Packs      : ")
-//            context.extensionManager().value.languagePacks.value.forEach { append("    ").appendLine(it.meta.id) }
         }
     }
 
@@ -207,7 +204,6 @@ object Devtools {
     fun getSystemMemoryUsage(context: Context): String {
         return buildString {
             try {
-                //  Source: https://stackoverflow.com/a/19267315/6801193
                 val memoryInfo = ActivityManager.MemoryInfo()
                 context.systemService(ActivityManager::class).getMemoryInfo(memoryInfo)
                 val nativeHeapSize = memoryInfo.totalMem
@@ -230,7 +226,6 @@ object Devtools {
     fun getAppJavaHeapMemoryUsage(): String {
         return buildString {
             try {
-                //  Source: https://stackoverflow.com/a/19267315/6801193
                 val runtime = Runtime.getRuntime()
                 val javaHeapSize = runtime.maxMemory()
                 val usedMemInBytes = runtime.totalMemory() - runtime.freeMemory()
@@ -251,7 +246,6 @@ object Devtools {
     fun getAppNativeHeapMemoryUsage(): String {
         return buildString {
             try {
-                //  Source: https://stackoverflow.com/a/19267315/6801193
                 val nativeHeapSize = Debug.getNativeHeapSize()
                 val nativeHeapFreeSize = Debug.getNativeHeapFreeSize()
                 val usedMemInBytes = nativeHeapSize - nativeHeapFreeSize

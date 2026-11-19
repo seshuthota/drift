@@ -60,7 +60,6 @@ private fun Bundle.debugSummarize(): String {
             }
             append(key)
             append("=")
-            // TODO: classcastexception append(bundle.getString(key))
         }
         append("]")
     }
