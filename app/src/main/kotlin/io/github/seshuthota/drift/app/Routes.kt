@@ -63,7 +63,6 @@ import io.github.seshuthota.drift.app.settings.keyboard.FnKeyScreen
 import io.github.seshuthota.drift.app.settings.keyboard.InputFeedbackScreen
 import io.github.seshuthota.drift.app.settings.keyboard.KeyboardScreen
 import io.github.seshuthota.drift.app.settings.localization.LocalizationScreen
-import io.github.seshuthota.drift.app.settings.localization.SelectLocaleScreen
 import io.github.seshuthota.drift.app.settings.media.MediaScreen
 import io.github.seshuthota.drift.app.settings.smartbar.SmartbarScreen
 import io.github.seshuthota.drift.app.settings.theme.ThemeScreen
@@ -109,10 +108,6 @@ object Routes {
         @Serializable
         @Deeplink("settings/localization")
         object Localization
-
-        @Serializable
-        @Deeplink("settings/localization/select-locale")
-        object SelectLocale
 
         @Serializable
         @Deeplink("settings/theme")
@@ -274,7 +269,6 @@ object Routes {
             composableWithDeepLink(Settings.Home::class) { HomeScreen() }
 
             composableWithDeepLink(Settings.Localization::class) { LocalizationScreen() }
-            composableWithDeepLink(Settings.SelectLocale::class) { SelectLocaleScreen() }
 
             composableWithDeepLink(Settings.Theme::class) { ThemeScreen() }
             composableWithDeepLink(Settings.ThemeSelection::class) { navBackStack ->

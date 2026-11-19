@@ -53,9 +53,9 @@ fun LocalizationScreen() = DriftScreen {
             prefs.localization.displayKeyboardLabelsInSubtypeLanguage,
             title = stringRes(R.string.settings__localization__display_keyboard_labels_in_subtype_language),
         )
-        PreferenceGroup(title = stringRes(R.string.settings__localization__group_subtypes__label)) {
-            val subtypes by subtypeManager.subtypesFlow.collectAsState()
-            if (subtypes.isEmpty()) {
+        val subtypes by subtypeManager.subtypesFlow.collectAsState()
+        if (subtypes.isEmpty()) {
+            PreferenceGroup(title = stringRes(R.string.settings__localization__group_subtypes__label)) {
                 DriftWarningCard(
                     modifier = Modifier.padding(all = 8.dp),
                     text = stringRes(R.string.settings__localization__subtype_no_subtypes_configured_warning),
