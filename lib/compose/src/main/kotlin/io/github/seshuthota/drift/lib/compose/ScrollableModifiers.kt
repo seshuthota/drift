@@ -232,13 +232,13 @@ fun Modifier.driftScrollbar(
                 scrollbarWidth = size.toPx()
                 scrollbarOffsetX = this.size.width - scrollbarWidth
                 scrollbarOffsetY = (firstVisibleElementIndex - stacks*percentOffset(first, orientation)) * elementHeight
-                scrollbarHeight = (visibleItems * elementHeight).coerceAtMost(this.size.height - scrollbarOffsetY)
+                scrollbarHeight = thumbLength(visibleItems * elementHeight, this.size.height, scrollbarOffsetY)
             } else {
                 val elementWidth = this.size.width / state.layoutInfo.totalItemsCount
                 scrollbarHeight = size.toPx()
                 scrollbarOffsetX = (firstVisibleElementIndex - stacks*percentOffset(first, orientation)) * elementWidth
                 scrollbarOffsetY = this.size.height - scrollbarHeight
-                scrollbarWidth = (visibleItems * elementWidth).coerceAtMost(this.size.height - scrollbarOffsetX)
+                scrollbarWidth = thumbLength(visibleItems * elementWidth, this.size.width, scrollbarOffsetX)
             }
 
             drawRect(
@@ -273,3 +273,6 @@ internal fun percentOffset (
     }
     return offset.toFloat() / size
 }
+
+internal fun thumbLength(wantedPx: Float, viewportPx: Float, offsetPx: Float): Float =
+    wantedPx.coerceAtMost(viewportPx - offsetPx)
