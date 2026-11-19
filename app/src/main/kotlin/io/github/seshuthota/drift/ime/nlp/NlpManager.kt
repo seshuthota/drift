@@ -442,7 +442,7 @@ class NlpManager(context: Context) {
         }*/
         // An editor's inline autocompletion (browser address bars) is not a user selection.
         val isSelection = !imeController.snapshotState().content.isTypingPosition()
-        val isExpanded = list1.isNullOrEmpty() && list2.isNullOrEmpty() || isSelection
+        val isExpanded = shouldExpandSharedActions(list1, list2, isSelection)
         scope.launch {
             prefs.smartbar.sharedActionsExpandWithAnimation.set(false)
             prefs.smartbar.sharedActionsExpanded.set(isExpanded)
@@ -591,3 +591,11 @@ class NlpManager(context: Context) {
 
 /** The editor context window is ~50 chars; at or above this the text is assumed to be cut. */
 private const val TRUNCATION_HINT_CHARS = 48
+
+/**
+ * The shared smartbar row shows actions instead of suggestions when there is nothing to suggest (no candidates and
+ * no inline autofill suggestions) or when the user has selected text, where actions such as copy are what they need.
+ */
+internal fun shouldExpandSharedActions(candidates: List<*>?, inlineSuggestions: List<*>?, isSelection: Boolean): Boolean {
+    return isSelection || (candidates.isNullOrEmpty() && inlineSuggestions.isNullOrEmpty())
+}

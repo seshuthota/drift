@@ -36,6 +36,8 @@ import android.view.inputmethod.InputContentInfo
 internal class RecordingInputConnection(private val raw: Boolean = false) : InputConnection {
     val text = SpannableStringBuilder()
     val commits = mutableListOf<String>()
+    val keyEvents = mutableListOf<KeyEvent>()
+    val contextMenuActions = mutableListOf<Int>()
     private var selStart = 0
     private var selEnd = 0
     private var composingStart = -1
@@ -119,10 +121,19 @@ internal class RecordingInputConnection(private val raw: Boolean = false) : Inpu
     }
 
     override fun performEditorAction(editorAction: Int): Boolean = false
-    override fun performContextMenuAction(id: Int): Boolean = false
+    override fun performContextMenuAction(id: Int): Boolean {
+        contextMenuActions += id
+        return true
+    }
+
     override fun beginBatchEdit(): Boolean = true
     override fun endBatchEdit(): Boolean = true
-    override fun sendKeyEvent(event: KeyEvent?): Boolean = false
+    override fun sendKeyEvent(event: KeyEvent?): Boolean {
+        if (event == null) return false
+        keyEvents += event
+        return true
+    }
+
     override fun clearMetaKeyStates(states: Int): Boolean = false
     override fun reportFullscreenMode(enabled: Boolean): Boolean = false
     override fun performPrivateCommand(action: String?, data: Bundle?): Boolean = false
