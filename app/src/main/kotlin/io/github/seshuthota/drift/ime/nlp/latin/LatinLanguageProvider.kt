@@ -154,6 +154,11 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             return emptyList()
         }
         val textBefore = content.surroundingText.textBefore
+        // With nothing before the cursor the model has no context and always offers the same start-of-text words
+        // (The, I, What, ...), which look like a stuck row. Leave the bar to the actions until something is typed.
+        if (!hasPredictionContext(textBefore)) {
+            return emptyList()
+        }
         val prefix = NwpText.partialWord(textBefore)
         val contextText = textBefore.subSequence(0, textBefore.length - prefix.length)
         val truncated = textBefore.length >= TRUNCATION_HINT_CHARS
@@ -321,3 +326,6 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         // the app process is killed (which will most likely always be the case).
     }
 }
+
+/** Predictions need at least one character before the cursor; whitespace alone gives the model nothing to go on. */
+internal fun hasPredictionContext(textBefore: CharSequence): Boolean = textBefore.any { !it.isWhitespace() }
