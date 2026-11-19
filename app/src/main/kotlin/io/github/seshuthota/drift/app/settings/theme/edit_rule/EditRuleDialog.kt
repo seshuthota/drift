@@ -172,7 +172,6 @@ fun EditRuleDialog(
                 }
             }
 
-            // TODO: Move to toplevel @Composable function
             (currentRule as? SnyggElementRule)?.apply {
                 if (elementName == SnyggEmptyRuleForAdding.elementName) {
                     return@apply
@@ -189,7 +188,6 @@ fun EditRuleDialog(
                         modifier = Modifier.driftHorizontalScroll(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        // TODO: avoid code duplication
                         DriftChip(
                             onClick = { updateCurrentRule(SnyggSelector.PRESSED) },
                             text = when (level) {

@@ -47,9 +47,6 @@ fun ProjectLicenseScreen() {
         title = stringRes(R.string.about__project_license__title),
         previewFieldVisible = false,
     ) { contentPadding ->
-        // Forcing LTR because the Apache 2.0 License shipped and displayed
-        // is hard to read if rendered in RTL. Also, it is in English so forcing
-        // LTR here makes most sense.
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             SelectionContainer(
                 modifier = Modifier

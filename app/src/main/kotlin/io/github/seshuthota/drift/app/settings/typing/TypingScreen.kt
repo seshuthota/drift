@@ -84,7 +84,6 @@ fun TypingScreen() {
                 )
             }
 
-            // This card is temporary and is therefore not using a string resource (not so temporary as we thought...)
             DriftErrorCard(
                 modifier = Modifier.padding(top = 32.dp),
                 text = """
@@ -186,36 +185,8 @@ fun TypingScreen() {
                     entries = enumDisplayEntriesOf(SpellingLanguageMode::class),
                     enabledIf = { driftSpellCheckerEnabled.value },
                 )
-                /*
-                SwitchPreference(
-                    prefs.spelling.useContacts,
-                    icon = Icons.Default.Contacts,
-                    title = stringRes(R.string.pref__spelling__use_contacts__label),
-                    summary = stringRes(R.string.pref__spelling__use_contacts__summary),
-                    enabledIf = { driftSpellCheckerEnabled.value },
-                )
-                SwitchPreference(
-                    prefs.spelling.useUdmEntries,
-                    icon = Icons.AutoMirrored.Filled.LibraryBooks,
-                    title = stringRes(R.string.pref__spelling__use_udm_entries__label),
-                    summary = stringRes(R.string.pref__spelling__use_udm_entries__summary),
-                    enabledIf = { driftSpellCheckerEnabled.value },
-                )
-                */
             }
 
-            /*
-            SegmentedListColumn(title = stringRes(R.string.settings__dictionary__title)) {
-                val count = 1
-                Preference(
-                    shapes = ListItemDefaults.segmentedShapes(0, count),
-                    icon = Icons.AutoMirrored.Filled.LibraryBooks,
-                    title = stringRes(R.string.settings__dictionary__title),
-                    onClick = { navController.navigate(Routes.Settings.Dictionary) },
-                    enabledIf = { false },
-                )
-            }
-            */
         }
     }
 }

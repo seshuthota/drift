@@ -67,7 +67,6 @@ const val IMAGES = "images"
 
 val MIME_TYPES = mapOf(
     FONTS to mimeTypeFilterOf(
-        // Source: https://www.alienfactory.co.uk/articles/mime-types-for-web-fonts-in-bedsheet#mimeTypes
         "font/*",
         "application/font-*",
         "application/x-font-*",

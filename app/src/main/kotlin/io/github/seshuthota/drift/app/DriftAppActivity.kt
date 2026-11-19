@@ -96,7 +96,6 @@ class DriftAppActivity : ComponentActivity() {
     private var intentToBeHandled by mutableStateOf<Intent?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Splash screen should be installed before calling super.onCreate()
         installSplashScreen().apply {
             setKeepOnScreenCondition { !appContext.preferenceStoreLoaded.value }
         }
@@ -118,13 +117,10 @@ class DriftAppActivity : ComponentActivity() {
             }
         }
 
-        // We defer the setContent call until the datastore model is loaded, until then the splash screen stays drawn
         val isModelLoaded = AtomicBoolean(false)
         appContext.preferenceStoreLoaded.collectIn(lifecycleScope) { loaded ->
             if (!loaded || isModelLoaded.getAndSet(true)) return@collectIn
-            // Check if android 13+ is running and the NotificationPermission is not set
             if (AndroidVersion.ATLEAST_API33_T && !noBackupPrefs.notificationPermissionScreenSeen.get()) {
-                // update pref value to show the setup screen again
                 noBackupPrefs.isImeSetUp.set(false)
             }
             AppVersionUtils.updateVersionOnInstallAndLastUse(this, noBackupPrefs)
@@ -201,7 +197,6 @@ class DriftAppActivity : ComponentActivity() {
             ) {
                 Column(
                     modifier = Modifier
-                        //.statusBarsPadding()
                         .navigationBarsPadding()
                         .conditional(LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE) {
                             displayCutoutPadding()

@@ -646,7 +646,6 @@ private fun PropertyValueEditor(
                             for ((index, ref) in refs.withIndex()) {
                                 SegmentedListItem(
                                     onClick = {
-                                        // TODO relativeTo
                                         val relPath = ref.relativeTo(workspaceRef)
                                         inputStr = "flex:/" + Uri.encode(relPath, "/")
                                         onValueChange(SnyggUriValue(inputStr))
@@ -701,7 +700,6 @@ private fun PropertyValueEditor(
         }
 
         else -> {
-            // Render nothing
         }
     }
 }

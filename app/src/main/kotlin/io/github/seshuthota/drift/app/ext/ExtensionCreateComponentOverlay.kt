@@ -159,7 +159,6 @@ fun ExtensionCreateComponentOverlay(
                     }
                 }
                 val dstRef = workspaceRef.subRef(newComponent.stylesheetPath())
-                // it may be that the src component is declared but has no stylesheet file
                 if (storage.exists(srcRef)) {
                     try {
                         val parentRef = dstRef.parentRef

@@ -52,7 +52,6 @@ import io.github.seshuthota.drift.lib.compose.driftHorizontalScroll
 import io.github.seshuthota.drift.lib.compose.driftScrollbar
 import io.github.seshuthota.drift.lib.compose.stringRes
 
-// TODO: This screen is just a quick thrown-together thing and needs further enhancing in the UI
 @Composable
 fun ExportDebugLogScreen() {
     val prefs by DriftPreferenceStore
@@ -104,7 +103,6 @@ fun ExportDebugLogScreen() {
             }
         },
     ) { contentPadding ->
-        // Forcing LTR because text displayed is a debug log
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
             val lazyListState = rememberLazyListState()
             LazyColumn(

@@ -87,13 +87,11 @@ abstract class DriftPreferenceModel : PreferenceModel() {
             default = false,
         )
 
-        /** Record from the plain microphone source instead of the voice-recognition one (some phones mute it). */
         val plainMicSource = boolean(
             key = "voice__plain_mic_source",
             default = false,
         )
 
-        /** Decode the whole recording once more when dictation ends; see [VoiceRefineMode]. */
         val refineMode = enum(
             key = "voice__refine_mode",
             default = VoiceRefineMode.LOG_ONLY,
@@ -320,7 +318,6 @@ abstract class DriftPreferenceModel : PreferenceModel() {
             key = "emoji__suggestion_candidate_max_count",
             default = 5,
         )
-        // TODO remove with emoji search PR!
         val experimentalEmojiSearchEnabled = boolean(
             key = "emoji__experimental_emoji_search_enabled",
             default = false,
@@ -691,7 +688,6 @@ abstract class DriftPreferenceModel : PreferenceModel() {
             key = "suggestion__incognito_mode",
             default = IncognitoMode.DYNAMIC_ON_OFF,
         )
-        // Internal pref
         val forceIncognitoModeFromDynamic = boolean(
             key = "suggestion__force_incognito_mode_from_dynamic",
             default = false,
@@ -760,8 +756,6 @@ abstract class DriftPreferenceModel : PreferenceModel() {
     override fun migrate(entry: PreferenceMigrationEntry): PreferenceMigrationEntry {
         return when (entry.key) {
 
-            // Migrate media prefs to emoji prefs
-            // Keep migration rule until: 0.6 dev cycle
             "media__emoji_recently_used" -> {
                 val emojiValues = entry.rawValue.split(";")
                 val recent = emojiValues.map {
@@ -774,8 +768,6 @@ abstract class DriftPreferenceModel : PreferenceModel() {
                 entry.transform(key = "emoji__history_recent_max_size")
             }
 
-            // Migrate advanced prefs to other prefs
-            // Keep migration rules until: 0.7 dev cycle
             "advanced__settings_theme" -> {
                 entry.transform(key = "other__settings_theme")
             }
@@ -794,8 +786,6 @@ abstract class DriftPreferenceModel : PreferenceModel() {
             "advanced__force_incognito_mode_from_dynamic" -> {
                 entry.transform(key = "suggestion__force_incognito_mode_from_dynamic")
             }
-            // Migrate clipboard suggestion prefs to clipboard
-            // Keep migration rules until: 0.7 dev cycle
             "suggestion__clipboard_content_enabled" -> {
                 entry.transform(key = "clipboard__suggestion_enabled")
             }
@@ -803,7 +793,6 @@ abstract class DriftPreferenceModel : PreferenceModel() {
                 entry.transform(key = "clipboard__suggestion_timeout")
             }
 
-            //Migrate one hand mode prefs keep until: 0.7 dev cycle
             "keyboard__one_handed_mode" -> {
                 if (entry.rawValue == "OFF") {
                     entry.reset()
@@ -812,8 +801,6 @@ abstract class DriftPreferenceModel : PreferenceModel() {
                 }
             }
 
-            // Migrate quick actions to K3Descriptors and insert missing actions
-            // Keep migration rule until: forever
             "smartbar__action_arrangement" -> {
                 val arrangement = QuickActionJsonConfig.decodeFromString<QuickActionArrangement>(entry.rawValue)
                 var newArrangement = arrangement.migrateToK3Descriptors()
@@ -828,8 +815,6 @@ abstract class DriftPreferenceModel : PreferenceModel() {
                 entry.transform(rawValue = json)
             }
 
-            // Migrate theme editor fine-tuning
-            // Keep migration rule until: 0.6 dev cycle
             "theme__editor_display_colors_as" -> {
                 val colorRepresentation = when (entry.rawValue) {
                     "RGBA" -> ColorRepresentation.RGB
@@ -841,8 +826,6 @@ abstract class DriftPreferenceModel : PreferenceModel() {
                 )
             }
 
-            // Migrate clipboard history pref names
-            // Keep migration rules until: 0.7 dev cycle
             "clipboard__sync_to_drift", "clipboard__sync_to_system" -> {
                 entry.transform(
                     type = PreferenceType.string(),
@@ -881,8 +864,6 @@ abstract class DriftPreferenceModel : PreferenceModel() {
                 entry.transform(key = "clipboard__clear_primary_clip_affects_history_if_unpinned")
             }
 
-            // Migrate key spacing rules
-            // Keep migration rules until: 0.8 dev cycle
             "keyboard__key_spacing_horizontal" -> {
                 if (entry.type.isFloat()) {
                     entry.reset()
@@ -898,8 +879,6 @@ abstract class DriftPreferenceModel : PreferenceModel() {
                 }
             }
 
-            // Migrate utility key -> fn key
-            // Keep migration rules until: 0.8 dev cycle
             "keyboard__utility_key_enabled" -> {
                 entry.transform(key = "keyboard__fn_key_enabled")
             }
@@ -920,14 +899,10 @@ abstract class DriftPreferenceModel : PreferenceModel() {
                 )
             }
 
-            // Migrate long press delay name
-            // Keep migration rules until: 0.8 dev cycle
             "keyboard__long_press_delay" -> {
                 entry.transform(key = "keyboard__long_press_timeout")
             }
 
-            // Migrate shift/caps-related prefs to typing
-            // Keep migration rules until: 0.8 dev cycle
             "correction__auto_capitalization" -> {
                 entry.transform(key = "typing__auto_capitalization")
             }
@@ -938,7 +913,6 @@ abstract class DriftPreferenceModel : PreferenceModel() {
                 entry.transform(key = "typing__shift_key_behavior")
             }
 
-            // Default: keep entry
             else -> entry.keepAsIs()
         }
     }

@@ -22,10 +22,7 @@ package io.github.seshuthota.drift.app.settings.theme
  * theme engine internally this level will be ignored completely.
  */
 enum class SnyggLevel : Comparable<SnyggLevel> {
-    /** A property is intended to be edited by all users **/
     BASIC,
-    /** A property is intended to be edited by advanced users **/
     ADVANCED,
-    /** A property is intended to be edited by developers **/
     DEVELOPER;
 }

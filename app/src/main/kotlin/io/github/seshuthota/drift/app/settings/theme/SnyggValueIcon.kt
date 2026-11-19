@@ -287,7 +287,6 @@ internal fun SnyggValueIcon(
         }
 
         else -> {
-            // Render nothing
         }
     }
 }

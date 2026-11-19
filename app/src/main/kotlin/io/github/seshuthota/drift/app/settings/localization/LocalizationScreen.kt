@@ -114,39 +114,6 @@ fun LocalizationScreen() = DriftScreen {
                     text = stringRes(R.string.settings__localization__subtype_no_subtypes_configured_warning),
                 )
             } else {
-                /*
-                val currencySets by keyboardManager.resources.currencySets.collectAsState()
-                val layouts by keyboardManager.resources.layouts.collectAsState()
-                val displayLanguageNamesIn by prefs.localization.displayLanguageNamesIn.collectAsState()
-                for (subtype in subtypes) {
-                    val cMeta = layouts[LayoutType.CHARACTERS]?.get(subtype.layoutMap.characters)
-                    val sMeta = layouts[LayoutType.SYMBOLS]?.get(subtype.layoutMap.symbols)
-                    val currMeta = currencySets[subtype.currencySet]
-                    val summary = stringRes(
-                        id = R.string.settings__localization__subtype_summary,
-                        "characters_name" to (cMeta?.label ?: "null"),
-                        "symbols_name" to (sMeta?.label ?: "null"),
-                        "currency_set_name" to (currMeta?.label ?: "null"),
-                    )
-                    Preference(
-                        title = when (displayLanguageNamesIn) {
-                            DisplayLanguageNamesIn.SYSTEM_LOCALE -> subtype.primaryLocale.displayName()
-                            DisplayLanguageNamesIn.NATIVE_LOCALE -> subtype.primaryLocale.displayName(subtype.primaryLocale)
-                        },
-                        summary = summary,
-                        modifier = Modifier.combinedClickable(
-                            onClick = {
-                                navController.navigate(
-                                    Routes.Settings.SubtypeEdit(subtype.id)
-                                )
-                            },
-                            onLongClick = {
-                                chosenSubtypeToDelete = subtype
-                            },
-                        )
-                    )
-                }
-                 */
             }
         }
     }
