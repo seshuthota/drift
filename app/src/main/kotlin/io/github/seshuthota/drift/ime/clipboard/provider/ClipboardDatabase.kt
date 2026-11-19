@@ -275,7 +275,7 @@ interface ClipboardHistoryDao {
     fun delete(id: Long)
 
     @Query("DELETE FROM $CLIPBOARD_HISTORY_TABLE WHERE ${BaseColumns._ID} = :id AND not isPinned ")
-    fun deleteIfUnpinned(id: Long)
+    fun deleteIfUnpinned(id: Long): Int
 
     @Delete
     fun delete(items: List<ClipboardItem>)

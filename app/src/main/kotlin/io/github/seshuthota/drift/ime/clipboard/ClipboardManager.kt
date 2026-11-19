@@ -225,6 +225,9 @@ class ClipboardManager(
                 val itemsToRemove = nonPinnedItems.asReversed().filterIndexed { n, _ -> n < nToRemove }
                 ioScope.launch {
                     clipHistoryDao?.delete(itemsToRemove)
+                    for (item in itemsToRemove) {
+                        item.close(appContext)
+                    }
                 }
             }
         }
@@ -245,6 +248,9 @@ class ClipboardManager(
         if (itemsToRemove.isNotEmpty()) {
             ioScope.launch {
                 clipHistoryDao?.delete(itemsToRemove.toList())
+                for (item in itemsToRemove) {
+                    item.close(appContext)
+                }
             }
         }
     }
@@ -275,7 +281,9 @@ class ClipboardManager(
     fun clearHistory() {
         ioScope.launch {
             for (item in currentHistory.all) {
-                item.close(appContext)
+                if (!item.isPinned) {
+                    item.close(appContext)
+                }
             }
             clipHistoryDao?.deleteAllUnpinned()
         }
@@ -305,7 +313,10 @@ class ClipboardManager(
     fun deleteClip(item: ClipboardItem, onlyIfUnpinned: Boolean) {
         ioScope.launch {
             if (onlyIfUnpinned) {
-                clipHistoryDao?.deleteIfUnpinned(item.id)
+                val deleted = clipHistoryDao?.deleteIfUnpinned(item.id)
+                if (deleted == 0) {
+                    return@launch
+                }
             } else {
                 clipHistoryDao?.delete(item.id)
             }
