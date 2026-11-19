@@ -42,24 +42,15 @@ import kotlin.math.ln
 
 class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProvider {
     companion object {
-        // Default user ID used for all subtypes, unless otherwise specified.
-        // See `ime/core/Subtype.kt` Line 210 and 211 for the default usage
         const val ProviderId = "io.github.seshuthota.drift.nlp.providers.latin"
 
-        /** The editor context window ([org.k3lp.runtime.K3SurroundingText.textBefore]) is ~50 chars at most. */
         private const val TRUNCATION_HINT_CHARS = 48
 
-        /** Model and personal candidates considered before the mixed ranking is cut to the row size. */
         private const val PERSONAL_POOL = 20
 
-        /** Shorter typed text is too ambiguous to correct. */
         private const val MIN_CORRECTION_LENGTH = 2
         private const val MAX_CORRECTIONS = 3
 
-        /**
-         * Raw count given to a word learned on device. Small next to corpus counts, so it is known
-         * (and therefore not autocorrected) without outranking common words.
-         */
         const val LEARNED_COUNT = 100
     }
 
@@ -68,50 +59,25 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     private val personalNgram by context.personalNgram()
     private val prefs by DriftPreferenceStore
 
-    /**
-     * Serialises lexicon changes (load, learning). Reads go straight to [corrector], an immutable snapshot.
-     * The corrector is the only copy of the word list: a sorted array, counts and a trie, no per-word map.
-     */
     private val lexiconLock = guardedByLock { Unit }
     private val wordDataSerializer = MapSerializer(String.serializer(), Int.serializer())
 
-    /** `ln(1 + maxCount)`, so [getFrequencyForWord] returns a 0–1 log-frequency. */
     @Volatile
     private var logFreqDenom = 1.0
 
-    /** The lexicon; null until the asset dictionary is loaded. */
     @Volatile
     private var corrector: TypoCorrector? = null
 
     override val providerId = ProviderId
 
     override suspend fun create() {
-        // Here we initialize our provider, set up all things which are not language dependent.
     }
 
     override suspend fun preload(subtype: Subtype) = withContext(Dispatchers.IO) {
-        // Here we have the chance to preload dictionaries and prepare a neural network for a specific language.
-        // Is kept in sync with the active keyboard subtype of the user, however a new preload does not necessary mean
-        // the previous language is not needed anymore (e.g. if the user constantly switches between two subtypes)
-
-        // To read a file from the APK assets the following methods can be used:
-        // appContext.assets.open()
-        // appContext.assets.reader()
-        // appContext.assets.bufferedReader()
-        // appContext.assets.readText()
-        // To copy an APK file/dir to the file system cache (appContext.cacheDir), the following methods are available:
-        // appContext.assets.copy()
-        // appContext.assets.copyRecursively()
-
-        // The subtype we get here contains a lot of data, however we are only interested in subtype.primaryLocale and
-        // subtype.secondaryLocales.
-
         lexiconLock.withLock {
-            // The decoded map only lives until the corrector is built from it.
             val loaded = corrector ?: TypoCorrector(
                 Json.decodeFromString(wordDataSerializer, appContext.assets.readText("ime/dict/data.json")),
             ).also { logFreqDenom = ln(1.0 + it.maxFrequency).coerceAtLeast(1.0) }
-            // withWords returns the same instance when nothing is new, so the trie is only rebuilt on change.
             corrector = loaded.withWords(userDictionaryWords())
         }
         predictor.ensureLoaded()
@@ -129,7 +95,6 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     ): SpellingResult {
         val corrector = corrector ?: return SpellingResult.unspecified()
         val normalized = NwpText.normalize(word).trim('\'')
-        // Only plain words are checked: numbers, names with symbols, URLs and the like are left alone.
         if (normalized.isEmpty() || !normalized.all { it in 'a'..'z' || it == '\'' }) {
             return SpellingResult.validWord()
         }
@@ -154,8 +119,6 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
             return emptyList()
         }
         val textBefore = content.surroundingText.textBefore
-        // With nothing before the cursor the model has no context and always offers the same start-of-text words
-        // (The, I, What, ...), which look like a stuck row. Leave the bar to the actions until something is typed.
         if (!hasPredictionContext(textBefore)) {
             return emptyList()
         }
@@ -164,11 +127,9 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val truncated = textBefore.length >= TRUNCATION_HINT_CHARS
         val sentenceStart = NwpText.isSentenceStart(contextText)
         val logProbs = predictor.nextWordLogProbs(contextText, truncated)
-        // The user's own word sequences, mixed into the model's probabilities (`PersonalNgram`).
         val personal = if (prefs.correction.personalLearning.get()) personalNgram else null
         val history = personal?.historyOf(contextText, truncated)
         val alpha = if (personal != null && history != null) personal.alpha(history) else 0.0
-        // The model vocabulary still contains spellings removed from the word list (`dont`, `recieve`).
         val predictions = if (logProbs == null) {
             emptyList()
         } else {
@@ -181,7 +142,6 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 for (p in predictor.predict(logProbs, prefix, PERSONAL_POOL, allowed)) {
                     pool[p.word] = exp(p.logProb.toDouble())
                 }
-                // A word the user committed at least twice may be predicted even outside the dictionary (names).
                 for (word in personal.candidates(history, prefix, PERSONAL_POOL)) {
                     if (word in pool || !(allowed(word) || personal.countOf(word) >= 2)) continue
                     pool[word] = predictor.idOf(word)?.let { exp(logProbs[it].toDouble()) } ?: 0.0
@@ -220,13 +180,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
                 }
             }
         }
-        // Results are best first and include the typed word when it is in the dictionary. A dictionary word still
-        // gets the corrections that score above it (`dont` is absent, so `don't` can lead).
         val ranked = if (p.length < MIN_CORRECTION_LENGTH) emptyList() else corrector.correct(p, MAX_CORRECTIONS + 2, lm)
         val corrections = ranked.takeWhile { it.word != p }.take(MAX_CORRECTIONS)
         val lead = corrector.shouldLeadWithCorrection(p, corrections.firstOrNull(), completions, lm, isCommonWord)
         val correctionWords = corrections.map { it.word }.let { words ->
-            // A typed dictionary word stays right after the correction that displaced it.
             if (lead && corrector.contains(p)) listOf(words[0], p) + words.drop(1) else words
         }
         val words = TypingSuggestions.merge(
@@ -247,17 +204,12 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         }
     }
 
-    /**
-     * All-caps text (acronyms) and words capitalized mid-sentence (likely names) are never autocorrected, except
-     * into a contraction of "I" (`Im` → `I'm`).
-     */
     private fun isAutoCorrectCasing(prefix: String, sentenceStart: Boolean, correction: String): Boolean = when {
         prefix.length >= 2 && prefix.all { !it.isLetter() || it.isUpperCase() } -> false
         prefix[0].isUpperCase() && !sentenceStart -> correction.startsWith("i'")
         else -> true
     }
 
-    /** Words in the next-word model's vocabulary (the ~20k most frequent); false if the model is unavailable. */
     private val isCommonWord: (String) -> Boolean = { predictor.idOf(it) != null }
 
     private fun candidate(word: String, prefix: String, sentenceStart: Boolean, confidence: Double) =
@@ -270,7 +222,6 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         )
 
     override suspend fun notifySuggestionAccepted(subtype: Subtype, candidate: SuggestionCandidate) {
-        // We can use flogDebug, flogInfo, flogWarning and flogError for debug logging, which is a wrapper for Logcat
         flogDebug { candidate.toString() }
     }
 
@@ -283,15 +234,10 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         return false
     }
 
-    /** True once the asset dictionary has been read. Learning before that would hide the asset list. */
     fun isLexiconReady(): Boolean = corrector != null
 
     fun knowsWord(word: String): Boolean = corrector?.contains(word) == true
 
-    /**
-     * Adds [word] to the in-memory lexicon and rebuilds the corrector. False when it is already
-     * present or the lexicon is not loaded yet.
-     */
     suspend fun addLearnedWord(word: String): Boolean = lexiconLock.withLock {
         val current = corrector ?: return@withLock false
         val updated = current.withWords(mapOf(word to LEARNED_COUNT))
@@ -300,7 +246,6 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         true
     }
 
-    /** The lexicon's own sorted word array as a read-only list; empty until loaded. Not a copy. */
     override suspend fun getListOfWords(subtype: Subtype): List<String> = corrector?.words ?: emptyList()
 
     override suspend fun getFrequencyForWord(subtype: Subtype, word: String): Double {
@@ -309,7 +254,6 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         return ln(1.0 + count) / logFreqDenom
     }
 
-    /** Words of the internal user dictionary, each with [LEARNED_COUNT]. Known words are skipped by withWords. */
     private fun userDictionaryWords(): Map<String, Int> {
         val manager = try {
             DictionaryManager.default()
@@ -322,10 +266,7 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
     }
 
     override suspend fun destroy() {
-        // Here we have the chance to de-allocate memory and finish our work. However this might never be called if
-        // the app process is killed (which will most likely always be the case).
     }
 }
 
-/** Predictions need at least one character before the cursor; whitespace alone gives the model nothing to go on. */
 internal fun hasPredictionContext(textBefore: CharSequence): Boolean = textBefore.any { !it.isWhitespace() }

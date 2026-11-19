@@ -16,9 +16,6 @@
 
 package io.github.seshuthota.drift.ime.nlp
 
-/**
- * Enum for the spelling language modes.
- */
 enum class SpellingLanguageMode {
     USE_SYSTEM_LANGUAGES,
     USE_KEYBOARD_SUBTYPES;

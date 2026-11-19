@@ -44,10 +44,7 @@ import kotlinx.serialization.Serializable
  * @property id The ID of this punctuation rule. Can be any ID as long as it follows the ID syntax rule, conventionally
  *  though this is either "default" or the language tag of the locale this punctuation rule is meant for.
  * @property label The label of this punctuation rule, for showing this rule in the UI. Defaults to [id] if not set.
- * @property authors List of authors, not relevant for punctuation rules though. Can and should be omitted.
  * @property symbolsPrecedingAutoSpace List of characters considered to be valid symbols before an auto-space insertion.
- *  Each character is considered a separate symbol.
- * @property symbolsPrecedingAutoSpace List of characters considered to be valid symbols after an auto-space insertion.
  *  Each character is considered a separate symbol.
  * @property symbolsPrecedingPhantomSpace List of characters considered to be valid symbols before a phantom space.
  *  Each character is considered a separate symbol.
@@ -67,7 +64,6 @@ data class PunctuationRule(
 ) {
 
     companion object {
-        /** Fallback rule which does bare bone matching for spaces in case a proper punctuation rule is not found. */
         val Fallback = PunctuationRule(
             id = "fallback",
             name = "Fallback",

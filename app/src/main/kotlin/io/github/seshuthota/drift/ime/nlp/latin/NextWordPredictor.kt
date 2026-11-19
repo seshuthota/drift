@@ -25,10 +25,6 @@ import java.nio.LongBuffer
 import kotlin.math.exp
 import kotlin.math.ln
 
-/**
- * On-device next-word language model (tiny word-level LSTM, see `ml/nwp/README.md`). Given the text before the
- * cursor it returns log-probabilities over its 20k-word vocabulary. Thread-safe; the ONNX session is created lazily.
- */
 class NextWordPredictor(private val context: Context) {
     companion object {
         private const val TAG = "DriftNwp"
@@ -48,7 +44,6 @@ class NextWordPredictor(private val context: Context) {
     val vocabulary: Array<String>
         get() = vocab
 
-    /** Loads the model and vocabulary; returns false if they are unavailable. Call off the main thread. */
     fun ensureLoaded(): Boolean = synchronized(lock) {
         if (session != null) return true
         if (failed) return false
@@ -72,10 +67,6 @@ class NextWordPredictor(private val context: Context) {
 
     fun idOf(word: String): Int? = idOf[word]
 
-    /**
-     * Log-probabilities (natural log, softmax over the vocabulary) of the word following [textBefore], or null if
-     * the model is unavailable. [truncated] = [textBefore] does not start at the beginning of the field.
-     */
     fun nextWordLogProbs(textBefore: CharSequence, truncated: Boolean): FloatArray? {
         if (!ensureLoaded()) return null
         val ids = NwpText.contextIds(textBefore, { idOf[it] }, truncated, CONTEXT_TOKENS)
@@ -95,7 +86,6 @@ class NextWordPredictor(private val context: Context) {
                 return null
             }
         }
-        // In-place log-softmax.
         var max = Float.NEGATIVE_INFINITY
         for (v in logits) if (v > max) max = v
         var sum = 0.0
@@ -105,10 +95,6 @@ class NextWordPredictor(private val context: Context) {
         return logits
     }
 
-    /**
-     * Top [maxCount] vocabulary words after [textBefore]; if [prefix] is non-empty only words starting with it
-     * (case-insensitive) are considered. Special tokens are never returned.
-     */
     fun predict(
         textBefore: CharSequence,
         truncated: Boolean,
@@ -120,7 +106,6 @@ class NextWordPredictor(private val context: Context) {
         return predict(logProbs, prefix, maxCount, allowed)
     }
 
-    /** As [predict], over log-probabilities already computed by [nextWordLogProbs]. */
     fun predict(
         logProbs: FloatArray,
         prefix: String,
