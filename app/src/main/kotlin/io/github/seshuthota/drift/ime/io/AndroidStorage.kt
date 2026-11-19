@@ -46,14 +46,10 @@ class AndroidStorage(
                 assetFs to ref.okioRelPath
             }
             ref.isCache -> {
-                val base = context.cacheDir.toOkioPath()
-                val path = (base / ref.okioRelPath).normalized()
-                systemFs to path
+                systemFs to resolveWithin(context.cacheDir.toOkioPath(), ref.okioRelPath)
             }
             ref.isInternal -> {
-                val base = context.filesDir.toOkioPath()
-                val path = (base / ref.okioRelPath).normalized()
-                systemFs to path
+                systemFs to resolveWithin(context.filesDir.toOkioPath(), ref.okioRelPath)
             }
             ref.scheme == "content" -> {
                 val path = ref.encodeBase64Path()
@@ -62,4 +58,15 @@ class AndroidStorage(
             else -> throw IOException("unknown ref scheme ${ref.scheme}")
         }
     }
+}
+
+internal fun resolveWithin(base: Path, rel: Path): Path {
+    val root = base.normalized()
+    val path = (root / rel).normalized()
+    val rootString = root.toString().trimEnd('/')
+    val pathString = path.toString()
+    if (pathString != rootString && !pathString.startsWith("$rootString/")) {
+        throw IOException("ref escapes storage: $rel")
+    }
+    return path
 }
