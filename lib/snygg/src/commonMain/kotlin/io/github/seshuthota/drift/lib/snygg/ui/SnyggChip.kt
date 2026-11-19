@@ -28,27 +28,6 @@ import io.github.seshuthota.drift.lib.snygg.SnyggQueryAttributes
 import io.github.seshuthota.drift.lib.snygg.SnyggSelector
 import io.github.seshuthota.drift.lib.snygg.SnyggStylesheet
 
-/**
- * Simple layout composable that places its children in a horizontal sequence.
- *
- * This composable infers its style from the current [SnyggTheme][io.github.seshuthota.drift.lib.snygg.SnyggTheme], which is
- * required to be provided by [ProvideSnyggTheme].
- *
- * @param elementName The name of this element. If `null` the style will be inherited from the parent element.
- * @param attributes The attributes of the element used to refine the query.
- * @param selector A specific SnyggSelector to query the style for.
- * @param modifier The modifier to be applied to the Row.
- * @param onClick The action that is executed on click
- * @param enabled Weather the chip is enabled
- * @param imageVector Icon
- * @param text Text
- *
- * @since 0.5.0-alpha01
- *
- * @see [SnyggRow]
- * @see [SnyggText]
- * @see [SnyggIcon]
- */
 @Composable
 fun SnyggChip(
     elementName: String? = null,

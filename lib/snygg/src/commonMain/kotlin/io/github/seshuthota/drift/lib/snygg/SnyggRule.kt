@@ -59,13 +59,6 @@ sealed interface SnyggRule : Comparable<SnyggRule> {
     override fun toString(): String
 
     companion object {
-        /**
-         * Attempts to parse the given string into a `SnyggRule` instance or `null` if no match is found.
-         *
-         * @param str The string to parse into a `SnyggRule`.
-         * @return A `SnyggRule` instance if the string matches any supported rule type, or `null` if no match is found.
-         * @since 0.5.0-alpha01
-         */
         fun fromOrNull(str: String): SnyggRule? {
             return SnyggAnnotationRule.Defines.fromOrNull(str)
                 ?: SnyggAnnotationRule.Font.fromOrNull(str)
@@ -92,9 +85,9 @@ sealed interface SnyggAnnotationRule : SnyggRule {
 
         override fun compareTo(other: SnyggRule): Int {
             return when (other) {
-                is Defines -> 0 // same
+                is Defines -> 0
                 is SnyggAnnotationRule -> decl().name.compareTo(other.decl().name)
-                is SnyggElementRule -> -1 // annotations always come first
+                is SnyggElementRule -> -1
             }
         }
 
@@ -102,15 +95,6 @@ sealed interface SnyggAnnotationRule : SnyggRule {
             return "@defines"
         }
 
-        /**
-         * Attempts to parse the given string into a `defines` annotation rule instance, or `null` if the given string
-         * does not represent a `defines` annotation rule.
-         *
-         * @param str The string to parse into a `defines` annotation rule instance.
-         * @return A `defines` annotation rule instance or `null`.
-         *
-         * @since 0.5.0-alpha01
-         */
         fun fromOrNull(str: String): Defines? {
             pattern.matchEntire(str) ?: return null
             return Defines
@@ -124,7 +108,7 @@ sealed interface SnyggAnnotationRule : SnyggRule {
             return when (other) {
                 is Font -> fontName.compareTo(other.fontName)
                 is SnyggAnnotationRule -> decl().name.compareTo(other.decl().name)
-                is SnyggElementRule -> -1 // annotations always come first
+                is SnyggElementRule -> -1
             }
         }
 
@@ -136,15 +120,6 @@ sealed interface SnyggAnnotationRule : SnyggRule {
             override val name = "font"
             override val pattern = """^@$name `(?<fontName>[a-zA-Z0-9\s-]+)`$""".toRegex()
 
-            /**
-             * Attempts to parse the given string into a `font` annotation rule instance, or `null` if the given string
-             * does not represent a `font` annotation rule.
-             *
-             * @param str The string to parse into a `font` annotation rule instance.
-             * @return A `font` annotation rule instance or `null`.
-             *
-             * @since 0.5.0-alpha01
-             */
             fun fromOrNull(str: String): Font? {
                 val match = pattern.matchEntire(str) ?: return null
                 return Font(match.groups["fontName"]!!.value)
@@ -176,7 +151,7 @@ data class SnyggElementRule(
 
     override fun compareTo(other: SnyggRule): Int {
         if (other !is SnyggElementRule) {
-            return 1 // annotations always come first
+            return 1
         }
         val elemDiff = elementName.compareTo(other.elementName)
         if (elemDiff != 0) {
@@ -212,18 +187,9 @@ data class SnyggElementRule(
         private val SELECTOR_REGEX = """(?<selectorRaw>:pressed|:focus|:hover|:disabled)?""".toRegex()
         override val pattern = """^$ELEMENT_NAME_REGEX$ATTRIBUTES_REGEX$SELECTOR_REGEX$""".toRegex()
 
-        /**
-         * Attempts to parse the given string into an element rule instance, or `null` if the given string
-         * does not represent an element rule instance.
-         *
-         * @param str the string to parse into an element rule instance
-         * @return an element rule instance or `null`
-         *
-         * @since 0.5.0-alpha01
-         */
         fun fromOrNull(str: String): SnyggElementRule? {
             val result = pattern.matchEntire(str) ?: return null
-            val elementName = result.groups["elementName"]!!.value // cannot be null logically
+            val elementName = result.groups["elementName"]!!.value
             val attributesRaw = result.groups["attributesRaw"]?.value
             val selectorRaw = result.groups["selectorRaw"]?.value
 
@@ -247,7 +213,6 @@ data class SnyggAttributes internal constructor(
         if (sizeDiff != 0) {
             return sizeDiff
         }
-        // both have attributes at this point and size matches
         val attrs = attributes.entries.toList().sortedBy { it.key }
         val otherAttrs = other.attributes.entries.toList().sortedBy { it.key }
         for (attrIndex in 0..<min(attrs.size, otherAttrs.size)) {
@@ -273,13 +238,6 @@ data class SnyggAttributes internal constructor(
         return 0
     }
 
-    /**
-     * Serializes the attributes to a string.
-     *
-     * @return The serialized representation of the attributes.
-     *
-     * @since 0.5.0-alpha01
-     */
     override fun toString() = buildString {
         for ((key, values) in attributes.entries.sortedBy { it.key }) {
             if (values.isEmpty()) {

@@ -16,49 +16,25 @@
 
 package io.github.seshuthota.drift.lib.snygg.value
 
-/**
- * SnyggValue is the base interface for all possible property values a Snygg stylesheet can hold. In general, a Snygg
- * value can be one specific type of value (e.g. a color, a keyword describing a behavior, shape, etc.).
- *
- * At no point should a Snygg value be able to have to ways of representing the same value (except whitespace which can
- * be trimmed), to guarantee that a serialized value will always correspond to the same deserialized object. Should
- * there be the need to have two different representations, two different values must be defined and declared in the
- * `supportedValues` field of a property spec.
- */
 interface SnyggValue {
-    /**
-     * Returns the associated encoder for this Snygg value, typically the Companion of the implementing value class.
-     */
     fun encoder(): SnyggValueEncoder
 }
 
-/**
- * Checks if any given Snygg value indicates that it should be inherited from the parent rule.
- */
 @Suppress("NOTHING_TO_INLINE")
 inline fun SnyggValue.isInherit(): Boolean {
     return this is SnyggInheritValue
 }
 
-/**
- * Convenience function which returns the opposite of SnyggValue.isInherit(). See [isInherit] for more info.
- */
 @Suppress("NOTHING_TO_INLINE")
 inline fun SnyggValue.isNotInherit(): Boolean {
     return !isInherit()
 }
 
-/**
- * Checks if any given Snygg value indicates that it is undefined.
- */
 @Suppress("NOTHING_TO_INLINE")
 inline fun SnyggValue.isUndefined(): Boolean {
     return this is SnyggUndefinedValue
 }
 
-/**
- * Convenience function which returns the opposite of SnyggValue.isUndefined(). See [isUndefined] for more info.
- */
 @Suppress("NOTHING_TO_INLINE")
 inline fun SnyggValue.isNotUndefined(): Boolean {
     return !isUndefined()
@@ -120,9 +96,6 @@ object SnyggUndefinedValue : SnyggValue, SnyggValueEncoder {
     override fun encoder() = this
 }
 
-/**
- * A simple yes value (useful for boolean style value).
- */
 object SnyggYesValue : SnyggValue, SnyggValueEncoder {
     const val Yes = "yes"
 
@@ -144,9 +117,6 @@ object SnyggYesValue : SnyggValue, SnyggValueEncoder {
     override fun encoder() = this
 }
 
-/**
- * A simple no value (useful for boolean style value).
- */
 object SnyggNoValue : SnyggValue, SnyggValueEncoder {
     const val No = "no"
 

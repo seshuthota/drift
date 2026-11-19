@@ -133,8 +133,6 @@ data class SnyggStaticColorValue(val color: Color) : SnyggAppearanceValue {
     override fun encoder() = Companion
 }
 
-/// Dynamic Color Value
-
 private const val ColorNameId = "name"
 private val ColorName = ColorPalette.colorNames.joinToString("|").toRegex()
 
@@ -203,12 +201,3 @@ data class SnyggDynamicDarkColorValue(override val colorName: String) : SnyggDyn
 
     override fun encoder() = Companion
 }
-
-//data class LinearGradient(
-//    val dummy: Int,
-//) : SnyggAppearanceValue()
-//
-//data class RadialGradient(
-//    val dummy: Int,
-//) : SnyggAppearanceValue()
-//

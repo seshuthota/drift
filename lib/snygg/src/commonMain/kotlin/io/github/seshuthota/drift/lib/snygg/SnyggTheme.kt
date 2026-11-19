@@ -34,28 +34,12 @@ import io.github.seshuthota.drift.lib.snygg.value.SnyggUndefinedValue
 import io.github.seshuthota.drift.lib.snygg.value.SnyggUriValue
 import java.io.File
 
-/**
- * Pre-compiled style data for a SnyggTheme.
- *
- * The map must fulfill the following contract:
- * 1. The map key represents the element name.
- * 2. All rules mapped to a key are guaranteed to have the same element
- *    name. This is not checked again during style querying.
- * 3. All rules per key are sorted in ascending order based on the comparison
- *    logic defined by SnyggRule.
- * 4. All SnyggPropertySet values are pre-computed and must not contain
- *    variable references.
- * 5. All annotation elements have been pre-processed and stripped from the data.
- */
 internal typealias CompiledStyleData = Map<String, List<Pair<SnyggElementRule, SnyggSinglePropertySet>>>
 
 typealias SnyggQueryAttributes = Map<String, Any>
 
 internal typealias CompiledFontFamilyData = Map<String, FontFamily>
 
-/**
- * Represents the runtime style data, which is used for styling UI elements.
- */
 data class SnyggTheme internal constructor(
     internal val style: CompiledStyleData,
     internal val fontFamilies: CompiledFontFamilyData,

@@ -29,9 +29,6 @@ package io.github.seshuthota.drift.lib.kotlin
  * Inspired by the Android [MimeTypeFilter](https://cs.android.com/android/platform/superproject/main/+/main:frameworks/base/core/java/android/content/MimeTypeFilter.java)
  */
 class MimeTypeFilter {
-    /**
-     * The original list of filter types.
-     */
     val types: List<String>
 
     private val filters: List<Pair<Regex, Regex>>
@@ -77,7 +74,6 @@ class MimeTypeFilter {
         return matchMimeTypeAgainstFilters(mimeType)
     }
 
-    // TODO: document and test
     fun matchesAll(mimeTypes: List<String?>?): Boolean {
         if (mimeTypes.isNullOrEmpty()) {
             return false
@@ -90,7 +86,6 @@ class MimeTypeFilter {
         return true
     }
 
-    // TODO: document and test
     fun matchesAny(mimeTypes: List<String?>?): Boolean {
         if (mimeTypes.isNullOrEmpty()) {
             return false
@@ -103,7 +98,6 @@ class MimeTypeFilter {
         return false
     }
 
-    // TODO: document and test
     fun matchesOne(mimeTypes: List<String?>?): Boolean {
         if (mimeTypes.isNullOrEmpty()) {
             return false

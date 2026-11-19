@@ -20,10 +20,8 @@ import kotlin.reflect.KClass
 
 fun KClass<*>.simpleNameOrEnclosing(): String? {
     return if (this.simpleName == "Companion") {
-        // Companion object => get the enclosing class
         this.java.enclosingClass.simpleName
     } else {
-        // Normal object => directly get class
         this.simpleName
     }
 }

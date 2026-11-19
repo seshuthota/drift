@@ -35,7 +35,6 @@ enum class ColorPalette(val id: String) {
     OnTertiaryContainer("onTertiaryContainer"),
     Background("background"),
     OnBackground("onBackground"),
-    // Surface("surface"), // removed and replaced by the specific Surface* variants
     OnSurface("onSurface"),
     SurfaceVariant("surfaceVariant"),
     OnSurfaceVariant("onSurfaceVariant"),
@@ -79,7 +78,6 @@ fun ColorScheme.getColor(id: String): Color {
         ColorPalette.OnTertiaryContainer.id -> this.onTertiaryContainer
         ColorPalette.Background.id -> this.background
         ColorPalette.OnBackground.id -> this.onBackground
-        // ColorPalette.Surface.id -> colorScheme.surface
         ColorPalette.OnSurface.id -> this.onSurface
         ColorPalette.SurfaceVariant.id -> this.surfaceVariant
         ColorPalette.OnSurfaceVariant.id -> this.onSurfaceVariant

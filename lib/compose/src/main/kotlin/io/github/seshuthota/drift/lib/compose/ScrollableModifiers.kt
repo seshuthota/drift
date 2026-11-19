@@ -47,7 +47,6 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
 private val DefaultScrollbarSize = 4.dp
-// IgnoreInVeryFastOut (basically)
 private val ScrollbarAnimationEasing = CubicBezierEasing(1f, 0f, 0.82f, -0.13f)
 
 fun Modifier.driftVerticalScroll(
@@ -252,9 +251,6 @@ fun Modifier.driftScrollbar(
     }
 }
 
-/**
- * Item's offset on main axis as a percentage of size
- */
 internal fun percentOffset (
     item: LazyListItemInfo,
 ): Float {

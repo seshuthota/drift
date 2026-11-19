@@ -65,7 +65,6 @@ data class SnyggStylesheet internal constructor(
             var schema: String? = jsonObject["\$schema"]?.let { config.json.decodeFromJsonElement(it) }
             if (schema == null) {
                 if (config.ignoreMissingSchema) {
-                    // assume schema
                     schema = SCHEMA_V2
                 } else {
                     throw SnyggMissingSchemaException()
@@ -74,7 +73,6 @@ data class SnyggStylesheet internal constructor(
                 val schemaMatch = SCHEMA_PATTERN.matchEntire(schema)
                 if (schemaMatch == null) {
                     if (config.ignoreInvalidSchema) {
-                        // assume schema
                         schema = SCHEMA_V2
                     } else {
                         throw SnyggInvalidSchemaException(schema)
