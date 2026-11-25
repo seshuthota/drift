@@ -106,6 +106,11 @@ class ImeController(
 
     private var lastAutocorrection: Autocorrection? = null
     private var rejectedAutocorrection: String? = null
+    /**
+     * Words autocorrect changed in this field, lowercased. Typing one of them again after deleting the correction
+     * means it was meant: it is left alone and learned, as if the correction had been undone.
+     */
+    private val recentlyAutocorrected = ArrayDeque<String>()
     @Volatile
     private var lastEditorSelection: K3TextRange? = null
 
@@ -342,6 +347,7 @@ class ImeController(
             expectedContentQueue.clear()
             lastAutocorrection = null
             rejectedAutocorrection = null
+            recentlyAutocorrected.clear()
             requestSuggestions(force = true)
         }
 
@@ -439,6 +445,12 @@ class ImeController(
             val subtype = subtypeManager?.activeSubtype ?: return null
             val typed = NwpText.partialWord(state.content.surroundingText.textBefore)
             if (typed.length < 2 || typed == rejectedAutocorrection) return null
+            if (typed.lowercase() in recentlyAutocorrected) {
+                rejectedAutocorrection = typed
+                nlp.noteTypedWord(typed, immediate = true)
+                flogDebug { "autocorrect: '$typed' retyped after a correction, keeping it" }
+                return null
+            }
             val start = System.nanoTime()
             val candidate = nlp.autoCommitCandidateFor(subtype, state.content) as? WordSuggestionCandidate ?: return null
             flogDebug { "autocorrect lookup took ${(System.nanoTime() - start) / 1000} µs" }
@@ -447,6 +459,9 @@ class ImeController(
             val corrected = candidate.text.toString()
             if (corrected == typed || !replaceBeforeCursor(typed.length, corrected)) return null
             flogDebug { "autocorrect: '$typed' -> '$corrected'" }
+            recentlyAutocorrected.remove(typed.lowercase())
+            recentlyAutocorrected.addLast(typed.lowercase())
+            if (recentlyAutocorrected.size > RECENT_AUTOCORRECTIONS) recentlyAutocorrected.removeFirst()
             return Autocorrection(original = typed, corrected = corrected, separator = "")
         }
 

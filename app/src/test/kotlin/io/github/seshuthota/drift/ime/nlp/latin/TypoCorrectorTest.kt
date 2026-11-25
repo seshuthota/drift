@@ -155,6 +155,19 @@ class TypoCorrectorTest : FunSpec({
                 withClue(word) { auto(word) shouldBe false }
             }
         }
+        test("words two or more edits from the correction are left alone") {
+            // Each of these was autocorrected and undone on the phone (quality log, 2026-11-25).
+            for (word in listOf("ofcourse", "opencode", "homelab", "vasthu", "saraswait", "elsebwe")) {
+                withClue(word) { auto(word) shouldBe false }
+            }
+        }
+        test("edit distance counts an adjacent swap as one edit") {
+            TypoCorrector.editDistance("teh", "the") shouldBe 1
+            TypoCorrector.editDistance("adress", "address") shouldBe 1
+            TypoCorrector.editDistance("ofcourse", "course") shouldBe 2
+            TypoCorrector.editDistance("homelab", "homeland") shouldBe 2
+            TypoCorrector.editDistance("same", "same") shouldBe 0
+        }
     }
 
     context("removed misspellings") {

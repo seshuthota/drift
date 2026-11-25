@@ -254,7 +254,12 @@ class TypoCorrector private constructor(
             val typedScore = completionScore(typed, lmLogProb) + COMPLETION_PENALTY
             return best.score - typedScore >= APOSTROPHE_AUTOCORRECT_MARGIN
         }
-        if (!contains(typed)) return typed.length >= 2 && margin >= AUTOCORRECT_MARGIN
+        // Two or more edits away is a different word, not a typo: in the quality log (2026-11-25) every such
+        // correction was wrong (ofcourse -> course, opencode -> encode, homelab -> homeland). It stays a suggestion.
+        if (!contains(typed)) {
+            return typed.length >= 2 && margin >= AUTOCORRECT_MARGIN &&
+                editDistance(typed, best.word.replace("'", "")) <= MAX_AUTOCORRECT_EDITS
+        }
         return false
     }
 
@@ -325,6 +330,25 @@ class TypoCorrector private constructor(
         const val COMPLETION_PENALTY = 1.0f
         const val MISSPELLING_MARGIN = 2.5f
         const val AUTOCORRECT_MARGIN = 2.5f
+        const val MAX_AUTOCORRECT_EDITS = 1
+
+        /** Optimal string alignment distance: insert, delete, substitute, or swap two adjacent letters, each 1. */
+        internal fun editDistance(a: String, b: String): Int {
+            val rows = Array(a.length + 1) { IntArray(b.length + 1) }
+            for (i in 0..a.length) rows[i][0] = i
+            for (j in 0..b.length) rows[0][j] = j
+            for (i in 1..a.length) {
+                for (j in 1..b.length) {
+                    val sub = if (a[i - 1] == b[j - 1]) 0 else 1
+                    var best = minOf(rows[i - 1][j] + 1, rows[i][j - 1] + 1, rows[i - 1][j - 1] + sub)
+                    if (i > 1 && j > 1 && a[i - 1] == b[j - 2] && a[i - 2] == b[j - 1]) {
+                        best = minOf(best, rows[i - 2][j - 2] + 1)
+                    }
+                    rows[i][j] = best
+                }
+            }
+            return rows[a.length][b.length]
+        }
         const val APOSTROPHE_AUTOCORRECT_MARGIN = 0.8f
     }
 }

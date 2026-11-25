@@ -31,7 +31,14 @@ class PersonalNgram(
         private const val TAG = "DriftPersonalNgram"
         const val SENTENCE = "<s>"
         private const val SEP = '\t'
+        /** Personal share for glide decoding, tuned on other writers' chat (ml/nwp/personal_eval.py). */
         const val BETA = 0.3
+
+        /**
+         * Personal share for typing suggestions. Replaying the user's own logged words (ml/quality/nwp_replay.py,
+         * 2026-11-25, last 30 % held out) favoured 0.7 over 0.3: top-1 9.8 → 10.7 %, top-3 17.4 → 18.6 %.
+         */
+        const val PREDICTION_BETA = 0.7
         const val K = 2.0
         private const val NO_CONTEXT_SHARE = 0.1
         private const val MAX_ENTRIES = 60_000
@@ -93,11 +100,11 @@ class PersonalNgram(
         if (next > 0) map[word] = next else map.remove(word)
     }
 
-    fun alpha(history: History): Double {
+    fun alpha(history: History, beta: Double = BETA): Double {
         return synchronized(lock) {
             if (!ensureLoaded() || total <= 0) return 0.0
             val evidence = bi[history.p1]?.values?.sum() ?: 0
-            if (evidence == 0) BETA * NO_CONTEXT_SHARE else BETA * evidence / (evidence + K)
+            if (evidence == 0) beta * NO_CONTEXT_SHARE else beta * evidence / (evidence + K)
         }
     }
 
