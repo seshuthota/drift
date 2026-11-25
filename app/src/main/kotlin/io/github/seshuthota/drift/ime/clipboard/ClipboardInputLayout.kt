@@ -17,6 +17,7 @@
 package io.github.seshuthota.drift.ime.clipboard
 
 import android.content.ContentUris
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.media.ThumbnailUtils
@@ -84,6 +85,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -110,6 +112,7 @@ import io.github.seshuthota.drift.lib.util.NetworkUtils
 import dev.patrickgold.jetpref.datastore.model.collectAsState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import io.github.seshuthota.drift.lib.android.isOrientationPortrait
 import io.github.seshuthota.drift.lib.android.AndroidKeyguardManager
 import io.github.seshuthota.drift.lib.android.AndroidVersion
 import io.github.seshuthota.drift.lib.android.systemService
@@ -288,12 +291,12 @@ fun ClipboardInputLayout(
             ),
         ) {
             if (item.type == ItemType.IMAGE) {
-                val id = ContentUris.parseId(item.uri!!)
-                val file = ClipboardFileStorage.getFileForId(context, id)
-                val bitmap = remember(id) {
+                val bitmap = remember(item.uri) {
                     runCatching {
+                        val id = ContentUris.parseId(checkNotNull(item.uri) { "Image clip has no uri" })
+                        val file = ClipboardFileStorage.getFileForId(context, id)
                         check(file.exists()) { "Unable to resolve image at ${file.absolutePath}" }
-                        val rawBitmap = BitmapFactory.decodeFile(file.absolutePath)
+                        val rawBitmap = decodeThumbnail(file.absolutePath, THUMBNAIL_MAX_WIDTH_PX)
                         checkNotNull(rawBitmap) { "Unable to decode image at ${file.absolutePath}" }
                         rawBitmap.asImageBitmap()
                     }
@@ -312,17 +315,25 @@ fun ClipboardInputLayout(
                     )
                 }
             } else if (item.type == ItemType.VIDEO) {
-                val id = ContentUris.parseId(item.uri!!)
-                val file = ClipboardFileStorage.getFileForId(context, id)
-                val bitmap = remember(id) {
+                val bitmap = remember(item.uri) {
                     runCatching {
+                        val id = ContentUris.parseId(checkNotNull(item.uri) { "Video clip has no uri" })
+                        val file = ClipboardFileStorage.getFileForId(context, id)
                         check(file.exists()) { "Unable to resolve video at ${file.absolutePath}" }
                         val rawBitmap = if (AndroidVersion.ATLEAST_API29_Q) {
                             val dataRetriever = MediaMetadataRetriever()
                             dataRetriever.setDataSource(file.absolutePath)
                             val width = dataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
                             val height = dataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
-                            ThumbnailUtils.createVideoThumbnail(file, Size(width!!.toInt(), height!!.toInt()), null)
+                            dataRetriever.release()
+                            val videoWidth = checkNotNull(width?.toIntOrNull()) { "Video has no width" }
+                            val videoHeight = checkNotNull(height?.toIntOrNull()) { "Video has no height" }
+                            val scale = minOf(1f, THUMBNAIL_MAX_WIDTH_PX.toFloat() / videoWidth)
+                            val size = Size(
+                                (videoWidth * scale).toInt().coerceAtLeast(1),
+                                (videoHeight * scale).toInt().coerceAtLeast(1),
+                            )
+                            ThumbnailUtils.createVideoThumbnail(file, size, null)
                         } else {
                             @Suppress("DEPRECATION")
                             ThumbnailUtils.createVideoThumbnail(file.absolutePath, MediaStore.Video.Thumbnails.MINI_KIND)
@@ -378,7 +389,15 @@ fun ClipboardInputLayout(
             modifier = Modifier.fillMaxSize(),
         ) {
             val historyAlpha by animateFloatAsState(targetValue = if (isPopupSurfaceActive()) 0.12f else 1f)
-            val staggeredGridCells by prefs.clipboard.historyNumGridColumns()
+            // Chosen here rather than by a @Composable on the preference model: callers of a composable member read
+            // its class's Compose stability field, and an incremental release build once dropped that field from
+            // DriftPreferenceModel.Clipboard, crashing the keyboard whenever the clipboard panel opened.
+            val gridColumnsPref = if (LocalConfiguration.current.isOrientationPortrait()) {
+                prefs.clipboard.historyNumGridColumnsPortrait
+            } else {
+                prefs.clipboard.historyNumGridColumnsLandscape
+            }
+            val staggeredGridCells by gridColumnsPref
                 .observeAsTransformingState { numGridColumns ->
                     if (numGridColumns == CLIPBOARD_HISTORY_NUM_GRID_COLUMNS_AUTO) {
                         StaggeredGridCells.Adaptive(160.dp)
@@ -782,4 +801,30 @@ private fun PopupAction(
             text = text,
         )
     }
+}
+
+/** Clip previews are at most this wide; the history grid never shows them larger than the keyboard. */
+private const val THUMBNAIL_MAX_WIDTH_PX = 540
+
+/**
+ * Decodes the image at [path] scaled down by a power of two until it is at most [maxWidth] pixels wide and at most
+ * 4 million pixels in total. A full-size decode of a screenshot costs ~10 MB, and a scrolling screenshot can exceed
+ * the 100 MB a canvas will draw, which throws during drawing and takes the keyboard down.
+ */
+internal fun decodeThumbnail(path: String, maxWidth: Int): Bitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeFile(path, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    val options = BitmapFactory.Options().apply {
+        inSampleSize = thumbnailSampleSize(bounds.outWidth, bounds.outHeight, maxWidth)
+    }
+    return BitmapFactory.decodeFile(path, options)
+}
+
+internal fun thumbnailSampleSize(width: Int, height: Int, maxWidth: Int, maxPixels: Long = 4_000_000L): Int {
+    var sample = 1
+    while (width / sample > maxWidth || (width / sample).toLong() * (height / sample) > maxPixels) {
+        sample *= 2
+    }
+    return sample
 }

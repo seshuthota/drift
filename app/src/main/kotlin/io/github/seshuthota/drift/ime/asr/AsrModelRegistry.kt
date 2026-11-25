@@ -24,6 +24,9 @@ package io.github.seshuthota.drift.ime.asr
  */
 object AsrModelRegistry {
     const val MOONSHINE = "moonshine"
+    const val PARAKEET = "parakeet"
+
+    const val FLUID_SPEECH_PRO_ID = "fluid-speech-pro-int8"
 
     const val MOONSHINE_SMALL_EN_ID = "moonshine-small-streaming-en"
     const val MOONSHINE_MEDIUM_EN_ID = "moonshine-medium-streaming-en"
@@ -33,6 +36,10 @@ object AsrModelRegistry {
         "https://download.moonshine.ai/model/small-streaming-en/quantized_26_08_21/"
     private const val MOONSHINE_MEDIUM_EN_HOST =
         "https://download.moonshine.ai/model/medium-streaming-en/quantized_26_08_21/"
+
+    /** Pinned to a commit so the hashes below stay valid if the repository is updated. */
+    private const val FLUID_SPEECH_PRO_HOST =
+        "https://huggingface.co/FluidVoice-Labs/fluid-speech-pro-onnx/resolve/fa588e9f87f1b9ad0ca2e2d8f7eaf84dc3803581/"
 
     val models: List<AsrModelSpec> = listOf(
         AsrModelSpec(
@@ -135,7 +142,46 @@ object AsrModelRegistry {
                 ),
             ),
         ),
+        AsrModelSpec(
+            id = FLUID_SPEECH_PRO_ID,
+            displayName = "Fluid Speech Pro (25 languages, most accurate, ~800 MB, needs ~1 GB RAM)",
+            engineId = PARAKEET,
+            languageTag = null,
+            license = "CC-BY-4.0",
+            attribution = "Fluid Speech Pro by FluidVoice Labs, built on NVIDIA Parakeet TDT 0.6B v3 (CC BY 4.0)",
+            streamsLive = false,
+            files = listOf(
+                fluidSpeechPro(
+                    "encoder-model.int8.onnx",
+                    "07ad77459bd3bb165c2c53e978ed1dfd64c6e129b18af2ec5ee38343be1d4451",
+                    955_592,
+                ),
+                fluidSpeechPro(
+                    "encoder-model.int8.onnx.data",
+                    "d2f8bfbb1fa399f207cde85aa3fabee0d67f6730cb31cbf31832c10de69f9c3c",
+                    745_971_712,
+                ),
+                fluidSpeechPro(
+                    "decoder_joint-model.int8.onnx",
+                    "59e3ff4b22b6629bc5a23e627daff7697ec232d2d4e6de50597c907f4038bd29",
+                    8_586,
+                ),
+                fluidSpeechPro(
+                    "decoder_joint-model.int8.onnx.data",
+                    "3c7a1e90be06acc16d858b989700cdb51f761c6129a45b0bdc0378f2b40a28a4",
+                    53_817_344,
+                ),
+                fluidSpeechPro(
+                    "vocab.txt",
+                    "d58544679ea4bc6ac563d1f545eb7d474bd6cfa467f0a6e2c1dc1c7d37e3c35d",
+                    93_939,
+                ),
+            ),
+        ),
     )
+
+    private fun fluidSpeechPro(name: String, sha256: String, bytes: Long) =
+        AsrModelFile(name, FLUID_SPEECH_PRO_HOST + name, sha256, bytes)
 
     private fun moonshineSmallEn(name: String, sha256: String, bytes: Long) =
         AsrModelFile(name, MOONSHINE_SMALL_EN_HOST + name, sha256, bytes)

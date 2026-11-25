@@ -106,6 +106,11 @@ class ImeController(
 
     private var lastAutocorrection: Autocorrection? = null
     private var rejectedAutocorrection: String? = null
+    /**
+     * Words autocorrect changed in this field, lowercased. Typing one of them again after deleting the correction
+     * means it was meant: it is left alone and learned, as if the correction had been undone.
+     */
+    private val recentlyAutocorrected = ArrayDeque<String>()
     @Volatile
     private var lastEditorSelection: K3TextRange? = null
 
@@ -342,6 +347,7 @@ class ImeController(
             expectedContentQueue.clear()
             lastAutocorrection = null
             rejectedAutocorrection = null
+            recentlyAutocorrected.clear()
             requestSuggestions(force = true)
         }
 
@@ -439,6 +445,12 @@ class ImeController(
             val subtype = subtypeManager?.activeSubtype ?: return null
             val typed = NwpText.partialWord(state.content.surroundingText.textBefore)
             if (typed.length < 2 || typed == rejectedAutocorrection) return null
+            if (typed.lowercase() in recentlyAutocorrected) {
+                rejectedAutocorrection = typed
+                nlp.noteTypedWord(typed, immediate = true)
+                flogDebug { "autocorrect: '$typed' retyped after a correction, keeping it" }
+                return null
+            }
             val start = System.nanoTime()
             val candidate = nlp.autoCommitCandidateFor(subtype, state.content) as? WordSuggestionCandidate ?: return null
             flogDebug { "autocorrect lookup took ${(System.nanoTime() - start) / 1000} µs" }
@@ -447,6 +459,9 @@ class ImeController(
             val corrected = candidate.text.toString()
             if (corrected == typed || !replaceBeforeCursor(typed.length, corrected)) return null
             flogDebug { "autocorrect: '$typed' -> '$corrected'" }
+            recentlyAutocorrected.remove(typed.lowercase())
+            recentlyAutocorrected.addLast(typed.lowercase())
+            if (recentlyAutocorrected.size > RECENT_AUTOCORRECTIONS) recentlyAutocorrected.removeFirst()
             return Autocorrection(original = typed, corrected = corrected, separator = "")
         }
 
@@ -624,10 +639,28 @@ class ImeController(
                 requestSuggestions()
                 return
             } else {
+                refillTrackedTextBeforeCursor()
                 super.emitBackspace()
             }
             expectedContentQueue.push(state.content)
             requestSuggestions()
+        }
+
+        /**
+         * k3 tracks only a window of the text before the cursor ([TRACKED_CHARS_BEFORE]). Each backspace shrinks
+         * it, and the matching selection update is deduplicated against [expectedContentQueue] so it is never
+         * re-read. In a long field the window runs dry while text remains and backspace silently stops. Re-read it
+         * from the editor once it is shorter than the text that really precedes the cursor.
+         */
+        private fun refillTrackedTextBeforeCursor() {
+            val content = state.content
+            val selection = content.selection
+            if (selection.isNotCollapsed()) return
+            val tracked = content.surroundingText.textBefore.length
+            if (tracked >= minOf(selection.start, TRACKED_REFILL_THRESHOLD)) return
+            val fresh = state.editor.getSurroundingText(TRACKED_CHARS_BEFORE, 10)
+            if (!isSurroundingTextTrustworthy(selection, fresh) || fresh.textBefore.length <= tracked) return
+            resetContent(selection, fresh)
         }
 
         override fun emitEnter() {
@@ -724,8 +757,8 @@ class ImeController(
                         ?.replaceLearnedWord(textBeforeWord, oldText.trim(), newText.trim())
                 }
                 if (!state.flags.isIncognitoMode) {
-                    val rank = nlpManager?.takeIf { it.isInitialized() }?.value?.activeCandidates.orEmpty()
-                        .indexOfFirst { it is GlideSuggestionCandidate && it.text == candidate.text }
+                    val rank = nlpManager?.takeIf { it.isInitialized() }?.value?.glideAlternativeRank(candidate.text)
+                        ?: -1
                     QualityLog.glidePicked(candidate.text.toString(), rank)
                 }
             }
@@ -773,6 +806,9 @@ class ImeController(
             reevaluateInputShiftState()
             return true
         }
+
+        /** Recomputes the candidate row now, also while glide alternatives are showing. */
+        fun refreshSuggestions() = requestSuggestions(force = true)
 
         private fun requestSuggestions(force: Boolean = false) {
             val nlp = nlpManager?.value ?: return
@@ -989,6 +1025,9 @@ class ImeController(
 
     companion object {
         private val NEWLINE_SEQ = "\n".asK3String()
+        private const val RECENT_AUTOCORRECTIONS = 8
+        private const val TRACKED_CHARS_BEFORE = 50
+        private const val TRACKED_REFILL_THRESHOLD = 20
 
         /** U+FFFC OBJECT REPLACEMENT CHARACTER, which editors put in their on-screen text for inline objects. */
         private const val OBJECT_REPLACEMENT = '\uFFFC'

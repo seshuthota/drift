@@ -129,7 +129,11 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         val logProbs = predictor.nextWordLogProbs(contextText, truncated)
         val personal = if (prefs.correction.personalLearning.get()) personalNgram else null
         val history = personal?.historyOf(contextText, truncated)
-        val alpha = if (personal != null && history != null) personal.alpha(history) else 0.0
+        val alpha = if (personal != null && history != null) {
+            personal.alpha(history, PersonalNgram.PREDICTION_BETA)
+        } else {
+            0.0
+        }
         val predictions = if (logProbs == null) {
             emptyList()
         } else {

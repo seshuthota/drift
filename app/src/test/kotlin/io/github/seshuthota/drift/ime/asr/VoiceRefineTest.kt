@@ -74,4 +74,21 @@ class VoiceRefineTest : FunSpec({
             dictationContext("", "") shouldBe ""
         }
     }
+
+    context("removeFillers") {
+        test("drops hesitations inside a sentence") {
+            // Fluid Speech Pro on the user's Reddit dictation (2026-11-25).
+            removeFillers("Thanks a lot for offering uh giveaway and uh I have multiple projects") shouldBe
+                "Thanks a lot for offering giveaway and I have multiple projects"
+        }
+        test("a sentence that opened with a filler starts with the next word") {
+            removeFillers("Uh, what do you think? Um is it possible?") shouldBe "What do you think? Is it possible?"
+        }
+        test("a filler that ended a sentence leaves its full stop") {
+            removeFillers("for on device and uh.") shouldBe "for on device and."
+        }
+        test("words that only contain a filler are kept") {
+            removeFillers("the umbrella and the error") shouldBe "the umbrella and the error"
+        }
+    }
 })

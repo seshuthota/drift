@@ -211,6 +211,7 @@ object QualityLog {
         contextChars: Int = 0,
         refineMode: String = "off",
         refined: String? = null,
+        refineModel: String? = null,
         refineMs: Long? = null,
         refineResult: String? = null,
     ) {
@@ -222,6 +223,7 @@ object QualityLog {
             .put("ctx_chars", contextChars).put("refine", refineMode)
         // The one-pass text, how long it took, and what happened to it (same, replaced, log_only, too_short, ...).
         if (refined != null) json.put("refined", refined)
+        if (refineModel != null) json.put("refine_model", refineModel)
         if (refineMs != null) json.put("refine_ms", refineMs)
         if (refineResult != null) json.put("refine_result", refineResult)
         val clipName = if (pcm != null && pcm.isNotEmpty() && keepVoiceClips()) "${System.currentTimeMillis()}.wav" else null

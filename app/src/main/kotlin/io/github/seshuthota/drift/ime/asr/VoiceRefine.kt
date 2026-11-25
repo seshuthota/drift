@@ -64,6 +64,32 @@ fun dictationContext(textBefore: String, textAfter: String): String {
     return listOf(before, after).filter { it.isNotEmpty() }.joinToString(" ")
 }
 
+/**
+ * Drops hesitation words ("uh", "um", ...) that one-pass models such as Fluid Speech Pro transcribe literally, with a
+ * comma attached to them. A sentence that started with one starts with the next word, capitalized.
+ */
+fun removeFillers(text: String): String {
+    val out = ArrayList<String>()
+    var capitalizeNext = false
+    for (token in normalizeTranscript(text).split(' ')) {
+        if (token.isEmpty()) continue
+        val bare = token.trimEnd(',', '.', '!', '?').lowercase()
+        if (bare in FILLERS) {
+            val sentenceStart = out.isEmpty() || out.last().last() in ".!?"
+            if (sentenceStart && token.first().isUpperCase()) capitalizeNext = true
+            val end = token.last()
+            // A filler that ended a sentence hands its full stop to the word before it.
+            if (end in ".!?" && out.isNotEmpty() && out.last().last() !in ".!?,") out[out.size - 1] = out.last() + end
+            continue
+        }
+        out += if (capitalizeNext) token.replaceFirstChar { it.uppercaseChar() } else token
+        capitalizeNext = false
+    }
+    return out.joinToString(" ")
+}
+
+private val FILLERS = setOf("uh", "uhh", "um", "umm", "uhm", "er", "erm", "hmm")
+
 private fun wordCount(text: String): Int = if (text.isEmpty()) 0 else text.count { it == ' ' } + 1
 
 private val WHITESPACE = Regex("\\s+")

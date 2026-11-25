@@ -37,6 +37,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,6 +54,7 @@ import io.github.seshuthota.drift.app.DriftPreferenceStore
 import io.github.seshuthota.drift.app.components.DriftScreenNg
 import io.github.seshuthota.drift.app.components.ScrollableScreenColumn
 import io.github.seshuthota.drift.asrModelManager
+import io.github.seshuthota.drift.ime.asr.AsrModelRegistry
 import io.github.seshuthota.drift.ime.asr.AsrModelSpec
 import io.github.seshuthota.drift.ime.asr.VoiceRefineMode
 import io.github.seshuthota.drift.ime.asr.hasRecordAudioPermission
@@ -76,7 +78,11 @@ fun VoiceInputScreen() {
 
     var installedIds by remember { mutableStateOf(modelManager.installedModels().map { it.spec.id }.toSet()) }
     val storedModelId by prefs.voice.modelId.collectAsState()
-    val selectedId = modelManager.spec(storedModelId)?.id ?: modelManager.models().firstOrNull()?.id
+    val finisherId by prefs.voice.finisherModelId.collectAsState()
+    val liveModels = modelManager.models().filter { it.streamsLive }
+    val selectedId = liveModels.firstOrNull { it.id == storedModelId }?.id
+        ?: liveModels.firstOrNull { it.id in installedIds }?.id
+        ?: liveModels.firstOrNull()?.id
     val keepLoaded by prefs.voice.keepModelLoaded.collectAsState()
     val plainMic by prefs.voice.plainMicSource.collectAsState()
     val refineMode by prefs.voice.refineMode.collectAsState()
@@ -87,6 +93,15 @@ fun VoiceInputScreen() {
 
     fun refreshInstalled() {
         installedIds = modelManager.installedModels().map { it.spec.id }.toSet()
+    }
+
+    // A one-pass model selected before finishers existed becomes the finisher, not the live model.
+    LaunchedEffect(storedModelId, installedIds) {
+        val stored = modelManager.spec(storedModelId) ?: return@LaunchedEffect
+        if (stored.streamsLive) return@LaunchedEffect
+        if (prefs.voice.finisherModelId.get().isEmpty()) prefs.voice.finisherModelId.set(stored.id)
+        val live = modelManager.models().firstOrNull { it.streamsLive && it.id in installedIds }
+        prefs.voice.modelId.set(live?.id ?: AsrModelRegistry.DEFAULT_MODEL_ID)
     }
 
     fun download(spec: AsrModelSpec) {
@@ -100,7 +115,11 @@ fun VoiceInputScreen() {
             }
             downloadingId = null
             result.onSuccess {
-                prefs.voice.modelId.set(spec.id)
+                if (spec.streamsLive) {
+                    prefs.voice.modelId.set(spec.id)
+                } else {
+                    prefs.voice.finisherModelId.set(spec.id)
+                }
                 refreshInstalled()
             }.onFailure { failure ->
                 error = failure.message ?: failure.javaClass.simpleName
@@ -111,11 +130,17 @@ fun VoiceInputScreen() {
     fun delete(spec: AsrModelSpec) {
         scope.launch {
             withContext(Dispatchers.IO) { modelManager.delete(spec) }
+            if (prefs.voice.finisherModelId.get() == spec.id) prefs.voice.finisherModelId.set("")
+            if (prefs.voice.modelId.get() == spec.id) {
+                val live = modelManager.models().firstOrNull { it.streamsLive && modelManager.installed(it) != null }
+                prefs.voice.modelId.set(live?.id ?: AsrModelRegistry.DEFAULT_MODEL_ID)
+            }
             refreshInstalled()
         }
     }
 
     fun select(spec: AsrModelSpec) {
+        if (!spec.streamsLive) return
         scope.launch { prefs.voice.modelId.set(spec.id) }
     }
 
@@ -158,15 +183,41 @@ fun VoiceInputScreen() {
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
 
+            val liveName = liveModels.firstOrNull { it.id == selectedId }?.shortName().orEmpty()
+            val finisher = modelManager.models().firstOrNull { !it.streamsLive && it.id == finisherId && it.id in installedIds }
             Text(
-                text = stringRes(R.string.settings__voice__models),
+                text = when (refineMode) {
+                    VoiceRefineMode.OFF -> stringRes(R.string.settings__voice__status_off, "live" to liveName)
+                    VoiceRefineMode.LOG_ONLY -> stringRes(
+                        R.string.settings__voice__status_log_only,
+                        "live" to liveName,
+                        "finisher" to (finisher?.shortName() ?: liveName),
+                    )
+                    VoiceRefineMode.REPLACE -> stringRes(
+                        R.string.settings__voice__status_replace,
+                        "live" to liveName,
+                        "finisher" to (finisher?.shortName() ?: liveName),
+                    )
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+
+            Text(
+                text = stringRes(R.string.settings__voice__while_speaking),
                 style = MaterialTheme.typography.titleSmall,
+            )
+            Text(
+                text = stringRes(R.string.settings__voice__while_speaking_summary),
+                style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(bottom = 4.dp),
             )
-            for (spec in modelManager.models()) {
+            for (spec in liveModels) {
                 ModelRow(
                     spec = spec,
                     installed = spec.id in installedIds,
+                    selectable = spec.id in installedIds,
                     selected = spec.id == selectedId,
                     downloading = downloadingId == spec.id,
                     progress = progressValue,
@@ -229,8 +280,8 @@ fun VoiceInputScreen() {
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
             Text(
-                text = stringRes(R.string.settings__voice__refine),
-                style = MaterialTheme.typography.bodyLarge,
+                text = stringRes(R.string.settings__voice__after_stop),
+                style = MaterialTheme.typography.titleSmall,
             )
             Text(
                 text = stringRes(R.string.settings__voice__refine_summary),
@@ -252,6 +303,46 @@ fun VoiceInputScreen() {
                     Text(text = stringRes(label), style = MaterialTheme.typography.bodyMedium)
                 }
             }
+
+            val refining = refineMode != VoiceRefineMode.OFF
+            Text(
+                text = stringRes(R.string.settings__voice__finish_with),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(top = 12.dp),
+            )
+            Text(
+                text = stringRes(R.string.settings__voice__finish_with_summary),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                RadioButton(
+                    selected = finisher == null,
+                    onClick = { scope.launch { prefs.voice.finisherModelId.set("") } },
+                    enabled = refining,
+                )
+                Text(
+                    text = stringRes(R.string.settings__voice__finish_with_live, "live" to liveName),
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
+            for (spec in modelManager.models().filter { !it.streamsLive }) {
+                ModelRow(
+                    spec = spec,
+                    installed = spec.id in installedIds,
+                    selectable = refining && spec.id in installedIds,
+                    selected = spec.id == finisher?.id,
+                    downloading = downloadingId == spec.id,
+                    progress = progressValue,
+                    onSelect = { scope.launch { prefs.voice.finisherModelId.set(spec.id) } },
+                    onDownload = { download(spec) },
+                    onDelete = { delete(spec) },
+                )
+            }
         }
     }
 }
@@ -260,6 +351,7 @@ fun VoiceInputScreen() {
 private fun ModelRow(
     spec: AsrModelSpec,
     installed: Boolean,
+    selectable: Boolean,
     selected: Boolean,
     downloading: Boolean,
     progress: Float,
@@ -273,7 +365,7 @@ private fun ModelRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            RadioButton(selected = selected, onClick = onSelect, enabled = installed)
+            RadioButton(selected = selected, onClick = onSelect, enabled = selectable)
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = spec.displayName, style = MaterialTheme.typography.bodyLarge)
                 val summary = buildString {
@@ -308,6 +400,9 @@ private fun ModelRow(
         }
     }
 }
+
+/** The display name without its parenthesised details, for sentences such as the status line. */
+private fun AsrModelSpec.shortName(): String = displayName.substringBefore(" (")
 
 private fun formatBytes(bytes: Long): String {
     return if (bytes >= 1_000_000L) {

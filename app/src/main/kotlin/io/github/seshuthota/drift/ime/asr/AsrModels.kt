@@ -35,6 +35,11 @@ data class AsrModelSpec(
     val license: String,
     val attribution: String,
     val files: List<AsrModelFile>,
+    /**
+     * True when the engine produces text while audio arrives, so it can be the live model. A model that only decodes
+     * a finished recording is used for the finishing pass instead.
+     */
+    val streamsLive: Boolean = true,
 ) {
     val totalBytes: Long get() = files.sumOf { it.bytes }
 

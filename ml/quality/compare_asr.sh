@@ -6,6 +6,7 @@
 #
 #   ml/quality/compare_asr.sh            # all kept clips
 #   LIMIT=10 ml/quality/compare_asr.sh   # the 10 newest clips
+#   MODELS=moonshine-small-streaming-en,fluid-speech-pro-int8 ml/quality/compare_asr.sh   # only these models
 #
 # Clips go to the debug app's internal storage via /data/local/tmp and run-as: files adb writes into the app's
 # external folder belong to the shell user and the app cannot read them. The app is kept in the foreground and the
@@ -45,7 +46,7 @@ fi
 waker=$!
 trap 'kill $waker 2>/dev/null || true' EXIT
 ( sleep 3; adb shell monkey -p $PKG -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 ) &
-adb shell am instrument -w -e class io.github.seshuthota.drift.ime.asr.AsrModelComparisonTest \
+adb shell am instrument -w ${MODELS:+-e models "$MODELS"} -e class io.github.seshuthota.drift.ime.asr.AsrModelComparisonTest \
   $PKG.test/androidx.test.runner.AndroidJUnitRunner | tail -3
 adb exec-out run-as $PKG cat files/asr-compare/results.json > "$OUT/results.json"
 adb shell rm -rf $STAGE

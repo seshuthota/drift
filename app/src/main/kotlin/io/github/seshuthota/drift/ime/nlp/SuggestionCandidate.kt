@@ -75,12 +75,13 @@ data class GlideSuggestionCandidate(
     override val text: CharSequence,
     val replacesText: String? = null,
     override val confidence: Double = 0.0,
+    /** Set when the alternative shares the row with next-word predictions, to mark it as a replacement. */
+    override val icon: ImageVector? = null,
 ) : SuggestionCandidate {
     override val secondaryText: CharSequence? = null
     override val isEligibleForAutoCommit: Boolean = false
     override val isEligibleForUserRemoval: Boolean = false
     override val sourceProvider: SuggestionProvider? = null
-    override val icon: ImageVector? = null
 }
 
 data class ClipboardSuggestionCandidate(

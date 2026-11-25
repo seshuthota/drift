@@ -44,9 +44,15 @@ class AsrModelComparisonTest {
             listOf("bundled/two_sentences.wav" to readWav(asset("voice/two_sentences.wav")))
         val manager = application.asrModelManager.value
         val results = JSONArray()
-        for (spec in AsrModelRegistry.models) {
+        // -e models id1,id2 limits the run, so a comparison does not download every model in the registry.
+        val wanted = InstrumentationRegistry.getArguments().getString("models")?.split(",")?.map { it.trim() }
+        val specs = AsrModelRegistry.models.filter { wanted == null || it.id in wanted }
+        for (spec in specs) {
             val installed = manager.installed(spec) ?: manager.install(spec).getOrThrow()
-            val engine = MoonshineEngine()
+            val engine: StreamingAsrEngine = when (spec.engineId) {
+                AsrModelRegistry.PARAKEET -> ParakeetEngine()
+                else -> MoonshineEngine()
+            }
             try {
                 val heapBefore = Debug.getNativeHeapAllocatedSize()
                 val loadStart = System.nanoTime()
@@ -65,15 +71,18 @@ class AsrModelComparisonTest {
                             offset += chunk.size
                         }
                     }
-                    engine.setContext("")
-                    engine.start()
                     val streamStart = System.nanoTime()
                     val finals = mutableListOf<String>()
-                    for (chunk in chunks) {
-                        engine.addAudio(chunk).filterIsInstance<StreamEvent.Final>()
-                            .mapTo(finals) { it.text }
+                    // A one-pass model has no live text; only its one-pass decode is compared.
+                    if (spec.streamsLive) {
+                        engine.setContext("")
+                        engine.start()
+                        for (chunk in chunks) {
+                            engine.addAudio(chunk).filterIsInstance<StreamEvent.Final>()
+                                .mapTo(finals) { it.text }
+                        }
+                        engine.stop().filterIsInstance<StreamEvent.Final>().mapTo(finals) { it.text }
                     }
-                    engine.stop().filterIsInstance<StreamEvent.Final>().mapTo(finals) { it.text }
                     val streamMs = (System.nanoTime() - streamStart) / 1_000_000
                     peakHeap = maxOf(peakHeap, Debug.getNativeHeapAllocatedSize())
                     val onePassStart = System.nanoTime()
@@ -97,7 +106,7 @@ class AsrModelComparisonTest {
             }
         }
         File(folder, "results.json").writeText(results.toString(2))
-        assertTrue(results.length() >= AsrModelRegistry.models.size)
+        assertTrue(results.length() >= specs.size)
     }
 
     private fun asset(path: String): ByteArray = instrumentation.context.assets.open(path).use { it.readBytes() }

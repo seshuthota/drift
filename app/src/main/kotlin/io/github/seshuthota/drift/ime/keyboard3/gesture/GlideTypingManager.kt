@@ -304,10 +304,12 @@ class GlideTypingManager(
                             }
                         }
                         if (alternatives.size > 1) {
-                            nlpManager.suggestDirectly(alternatives)
+                            nlpManager.showGlideAlternatives(alternatives)
                         } else {
                             nlpManager.clearSuggestions()
                         }
+                        // Next-word predictions join the alternatives (NlpManager.mergeGlideRow).
+                        imeController.updateState { refreshSuggestions() }
                     }
                 } else {
                     nlpManager.suggestDirectly(

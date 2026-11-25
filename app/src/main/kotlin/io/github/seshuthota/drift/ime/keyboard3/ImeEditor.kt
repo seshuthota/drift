@@ -224,7 +224,7 @@ open class ImeEditor(
         val ic = ic.get() ?: return false
         val uri = item.uri ?: return false
         val mimeTypes = item.mimeTypes
-        val id = ContentUris.parseId(uri)
+        val id = runCatching { ContentUris.parseId(uri) }.getOrNull() ?: return false
         val appContext = DriftApplication.getHack()
         val file = ClipboardFileStorage.getFileForId(appContext, id)
         if (!file.exists()) return false
