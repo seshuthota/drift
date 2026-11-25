@@ -27,13 +27,21 @@ def edit_distance(ref, hyp):
     return row[-1]
 
 
+def one_pass_models(rows):
+    """Models with no live pass (Parakeet / Fluid Speech Pro): their streamed text is always empty."""
+    return {m for m in {r["model"] for r in rows} if all(r["stream_ms"] == 0 for r in rows if r["model"] == m)}
+
+
 def wer_report(rows, refs):
+    one_pass_only = one_pass_models(rows)
     totals = collections.defaultdict(lambda: [0, 0])
     for r in rows:
         if r["clip"] not in refs:
             continue
         ref = words(refs[r["clip"]])
         for key in ("streamed", "one_pass"):
+            if key == "streamed" and r["model"] in one_pass_only:
+                continue
             total = totals[(r["model"], key)]
             total[0] += edit_distance(ref, words(r[key]))
             total[1] += len(ref)
@@ -50,12 +58,14 @@ def main(path):
     with open(path, encoding="utf-8") as handle:
         rows = json.load(handle)
     models = list(dict.fromkeys(r["model"] for r in rows))
+    one_pass_only = one_pass_models(rows)
     print(f"{len(rows)} runs, models: {', '.join(models)}\n")
     print(f"{'model':32s} {'load':>7s} {'stream RTF':>10s} {'one-pass RTF':>12s} {'native MB':>9s} {'PSS MB':>7s}")
     for model in models:
         group = [r for r in rows if r["model"] == model]
         audio = sum(r["audio_ms"] for r in group) or 1
-        print(f"{model:32s} {group[0]['load_ms']:6d}ms {sum(r['stream_ms'] for r in group) / audio:10.2f} "
+        stream_rtf = "-" if model in one_pass_only else f"{sum(r['stream_ms'] for r in group) / audio:.2f}"
+        print(f"{model:32s} {group[0]['load_ms']:6d}ms {stream_rtf:>10s} "
               f"{sum(r['one_pass_ms'] for r in group) / audio:12.2f} {max(r['native_mb'] for r in group):9.0f} "
               f"{max(r.get('pss_mb', 0) for r in group):7.0f}")
     print("\nRTF = processing time / audio time (below 1 keeps up with speech).\n")
@@ -74,6 +84,9 @@ def main(path):
         print(f"{clip} ({next(iter(runs.values()))['audio_ms'] / 1000:.1f}s){'' if len(texts) > 1 else '  [all agree]'}")
         for model, r in runs.items():
             short = model.replace("moonshine-", "").replace("-streaming-en", "")
+            if model in one_pass_only:
+                print(f"  {short:7s} 1pass: {r['one_pass']}")
+                continue
             print(f"  {short:7s} live: {r['streamed']}")
             if r["one_pass"] != r["streamed"]:
                 print(f"  {short:7s} 1pass: {r['one_pass']}")

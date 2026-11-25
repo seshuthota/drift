@@ -92,6 +92,12 @@ abstract class DriftPreferenceModel : PreferenceModel() {
             key = "voice__refine_mode",
             default = VoiceRefineMode.LOG_ONLY,
         )
+
+        /** Model of the finishing pass, or empty to refine with the live model. Only one-pass models are offered. */
+        val finisherModelId = string(
+            key = "voice__finisher_model_id",
+            default = "",
+        )
     }
 
     val clipboard = Clipboard()

@@ -202,6 +202,15 @@ def refine_report(sessions, edits):
     if times:
         print(f"one-pass time: median {statistics.median(times):.0f} ms, p90 {times[9 * len(times) // 10]:.0f} ms, "
               f"max {times[-1]} ms")
+    # refine_model is logged since 2026-11-25; older runs were decoded by the live model or an unrecorded finisher.
+    by_model = collections.defaultdict(list)
+    for s in runs:
+        by_model[s.get("refine_model", "(not logged)")].append(s)
+    for model, group in sorted(by_model.items()):
+        model_times = sorted(s["refine_ms"] for s in group if "refine_ms" in s)
+        median = f", median {statistics.median(model_times):.0f} ms" if model_times else ""
+        print(f"  by {model}: {len(group)} runs{median}, "
+              f"{dict(collections.Counter(s['refine_result'] for s in group))}")
     with_context = [s for s in sessions if s.get("ctx_chars", 0) > 0]
     print(f"dictations with field context: {pct(len(with_context), len(sessions))}")
     # Backspaces after a dictation belong to the latest dictation logged before them.
@@ -222,7 +231,7 @@ def refine_report(sessions, edits):
             by_result[s["refine_result"]].append(fixes[i])
     for result, counts in sorted(by_result.items()):
         print(f"  {result:13s} {len(counts):4d} dictations, {statistics.mean(counts):.1f} backspaces after each")
-    differing = [s for s in runs if s["refine_result"] not in ("same", "empty", "error", "too_long")]
+    differing = [s for s in runs if s["refine_result"] not in ("same", "empty", "error", "too_long", "no_text", "superseded")]
     print(f"differences ({len(differing)}), latest first:")
     for s in differing[::-1][:20]:
         streamed = " ".join(s.get("lines", []))

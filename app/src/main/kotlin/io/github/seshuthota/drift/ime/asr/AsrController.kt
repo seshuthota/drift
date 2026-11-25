@@ -69,7 +69,10 @@ class AsrController(
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
     private val recorder = AudioRecorder(context.applicationContext)
-    private val engine: StreamingAsrEngine = MoonshineEngine()
+    private val engines: Map<String, StreamingAsrEngine> = listOf(MoonshineEngine(), ParakeetEngine()).associateBy { it.id }
+
+    /** The engine of the model in use; replaced under [engineLock] when a model of another engine is selected. */
+    private var engine: StreamingAsrEngine = engines.getValue(AsrModelRegistry.MOONSHINE)
     private val engineLock = Mutex()
 
     private val _state = MutableStateFlow<AsrState>(AsrState.Idle)
@@ -84,6 +87,7 @@ class AsrController(
         keepClip: Boolean,
         val refineMode: VoiceRefineMode,
         val context: String,
+        refineCapSamples: Int,
     ) {
         val queue = Channel<ShortArray>(Channel.UNLIMITED)
         var worker: Job? = null
@@ -94,13 +98,14 @@ class AsrController(
         val clip: ShortPcmBuffer? = if (keepClip) ShortPcmBuffer(MAX_CLIP_SAMPLES) else null
 
         val audio: ShortPcmBuffer? =
-            if (refineMode != VoiceRefineMode.OFF) ShortPcmBuffer(MAX_REFINE_SAMPLES) else null
+            if (refineMode != VoiceRefineMode.OFF) ShortPcmBuffer(refineCapSamples) else null
 
         /** Everything this dictation typed, spaces included, and the field it went to. Main thread only. */
         val typed = StringBuilder()
         var typedEditor: ImeEditor? = null
 
         var refined: String? = null
+        var refineModel: String? = null
         var refineMs: Long? = null
         var refineResult: String? = null
         var logged = false
@@ -115,6 +120,9 @@ class AsrController(
     /** The current dictation. Written on the main thread only; read by the capture thread. */
     @Volatile
     private var session: Session? = null
+
+    /** The finishing pass of the last dictation, so a new dictation can supersede it. Main thread only. */
+    private var refineJob: Job? = null
 
     init {
         recorder.onAudio = { pcm -> session?.queue?.trySend(pcm) }
@@ -143,6 +151,8 @@ class AsrController(
     /** Starts dictation; text appears while speaking until [stopAndTranscribe] or [cancel] is called. */
     fun start() {
         if (_state.value == AsrState.Recording || _state.value == AsrState.Transcribing) return
+        // A new dictation supersedes the finishing pass of the previous one.
+        refineJob?.cancel()
         if (!recorder.hasPermission()) {
             _state.value = AsrState.Error(AsrError.MissingPermission)
             return
@@ -158,6 +168,8 @@ class AsrController(
             keepClip = QualityLog.keepVoiceClips(),
             refineMode = prefs.voice.refineMode.get(),
             context = editor()?.let { dictationContext(it.getTextBeforeCursor(MAX_CONTEXT_BEFORE), it.getTextAfterCursor(MAX_CONTEXT_AFTER)) }.orEmpty(),
+            // A one-pass finisher splits long audio itself; the live model's own one-pass decode is kept to 30 s.
+            refineCapSamples = if (finisherSpec() != null) MAX_FINISHER_SAMPLES else MAX_REFINE_SAMPLES,
         )
         session = current
         val plainMic = prefs.voice.plainMicSource.get()
@@ -177,6 +189,10 @@ class AsrController(
     private suspend fun streamAll(current: Session, installed: InstalledAsrModel) {
         try {
             engineLock.withLock {
+                val wanted = engines[installed.spec.engineId]
+                    ?: error("no engine for ${installed.spec.engineId}")
+                if (wanted !== engine) closeEngine()
+                engine = wanted
                 engine.load(installed)
                 engine.setContext(current.context)
                 engine.start()
@@ -292,55 +308,97 @@ class AsrController(
             current.queue.close()
             current.worker?.join()
             if (session !== current) return@launch
-            refine(current)
-            if (session !== current) return@launch
-            logSession(current, "stop:$reason")
+            // The dictation itself is over. Give the keyboard back before the finishing pass, which may load a large
+            // model: the streamed text is already in the field and either stays or is corrected later.
             session = null
             imeControllerProvider()?.endExternalEdit()
             if (_state.value == AsrState.Transcribing) _state.value = AsrState.Idle
-            if (!prefs.voice.keepModelLoaded.get()) closeEngineWhenIdle()
+            refineJob?.cancel()
+            refineJob = scope.launch(Dispatchers.Main) {
+                try {
+                    refine(current)
+                } finally {
+                    logSession(current, "stop:$reason")
+                    if (!prefs.voice.keepModelLoaded.get()) closeEngineWhenIdle()
+                }
+            }
         }
     }
 
     /**
      * Decodes the whole recording of [current] in one pass and, if [decideRefinement] allows it, puts that text in
-     * place of what was streamed. Main thread; the decode itself runs in the background.
+     * place of what was streamed. Runs on the main thread besides the decode, so the session fields it reads are only
+     * touched from one thread.
      */
     private suspend fun refine(current: Session) {
         val audio = current.audio ?: return
         val streamed = current.typed.toString()
-        if (streamed.isBlank()) return
+        if (streamed.isBlank()) {
+            current.refineResult = "no_text"
+            return
+        }
         if (audio.isTruncated) {
             current.refineResult = "too_long"
             return
         }
+        val finisher = finisherSpec()?.takeIf { it.id != current.modelId }
+        current.refineModel = finisher?.id ?: current.modelId
         val pcm = audio.toArray()
         val startedAt = SystemClock.elapsedRealtime()
         val refined = try {
-            withContext(Dispatchers.Default) { engineLock.withLock { engine.transcribeAll(pcm) } }
+            withContext(Dispatchers.Default) {
+                engineLock.withLock {
+                    if (finisher == null) engine.transcribeAll(pcm) else transcribeWithFinisher(finisher, pcm)
+                }
+            }
         } catch (e: CancellationException) {
+            // A new dictation started before this one was finished.
+            current.refineResult = "superseded"
             throw e
         } catch (e: Exception) {
             flogInfo { "voice: one-pass decode failed: ${e.message}" }
             current.refineResult = "error"
             return
         }
-        current.refined = refined
+        current.refined = removeFillers(refined)
         current.refineMs = SystemClock.elapsedRealtime() - startedAt
-        if (session !== current) return
-        val decision = decideRefinement(streamed, refined, current.refineMode)
+        val decision = decideRefinement(streamed, current.refined.orEmpty(), current.refineMode)
         val editor = current.typedEditor
         current.refineResult = when {
             !decision.replace -> decision.reason
             editor == null || !editor.supportsLivePreview -> "raw_editor"
-            editor.replaceLiveText(streamed, streamed.takeWhile { it.isWhitespace() } + normalizeTranscript(refined)) ->
+            editor.replaceLiveText(
+                streamed,
+                streamed.takeWhile { it.isWhitespace() } + normalizeTranscript(current.refined.orEmpty()),
+            ) ->
                 decision.reason
             else -> "field_changed"
         }
         flogInfo { "voice: one-pass ${current.refineMs}ms ${current.refineResult}: \"$streamed\" -> \"$refined\"" }
     }
 
+    /**
+     * Decodes [pcm] with [spec] and releases it again, so a large model is resident only for the finishing pass. The
+     * live model is released first unless it should stay loaded, keeping the peak at one model instead of two.
+     */
+    private suspend fun transcribeWithFinisher(spec: AsrModelSpec, pcm: ShortArray): String {
+        val installed = modelManager.installed(spec) ?: error("${spec.id} is no longer installed")
+        if (!prefs.voice.keepModelLoaded.get()) closeEngine()
+        val refiner = engines.getValue(spec.engineId)
+        val startedAt = SystemClock.elapsedRealtime()
+        try {
+            refiner.load(installed)
+            return refiner.transcribeAll(pcm)
+        } finally {
+            refiner.close()
+            val purged = purgeNativeMemory()
+            val elapsed = SystemClock.elapsedRealtime() - startedAt
+            flogInfo { "voice: finisher ${spec.id} took ${elapsed}ms, native memory purged=$purged" }
+        }
+    }
+
     fun cancel() {
+        refineJob?.cancel()
         recorder.stop()
         teardown()
         if (_state.value != AsrState.Idle) {
@@ -383,6 +441,7 @@ class AsrController(
             contextChars = current.context.length,
             refineMode = current.refineMode.name.lowercase(),
             refined = current.refined,
+            refineModel = current.refineModel,
             refineMs = current.refineMs,
             refineResult = current.refineResult,
             sampleRate = AudioRecorder.SAMPLE_RATE,
@@ -397,7 +456,7 @@ class AsrController(
 
     fun release() {
         cancel()
-        scope.launch { engineLock.withLock { closeEngine() } }
+        scope.launch { engineLock.withLock { closeAllEngines() } }
     }
 
     private fun closeEngineWhenIdle() {
@@ -408,14 +467,34 @@ class AsrController(
         }
     }
 
+    /** Releases the live model; the finishing pass closes its own model. Call under [engineLock]. */
     private fun closeEngine() {
         engine.close()
         val purged = purgeNativeMemory()
         flogInfo { "voice: model released, native memory purged=$purged" }
     }
 
+    private fun closeAllEngines() {
+        engines.values.forEach { it.close() }
+        val purged = purgeNativeMemory()
+        flogInfo { "voice: all models released, native memory purged=$purged" }
+    }
+
+    /** The live model: the selected one when it streams live, otherwise an installed streaming model. */
     private fun selectedSpec(): AsrModelSpec? {
-        return modelManager.spec(prefs.voice.modelId.get()) ?: modelManager.models().firstOrNull()
+        val stored = modelManager.spec(prefs.voice.modelId.get())
+        if (stored?.streamsLive == true) return stored
+        return modelManager.models().firstOrNull { it.streamsLive && modelManager.installed(it) != null }
+            ?: modelManager.spec(AsrModelRegistry.DEFAULT_MODEL_ID)
+            ?: modelManager.models().firstOrNull { it.streamsLive }
+    }
+
+    /** The configured finishing-pass model, or null when the live model should refine itself. */
+    private fun finisherSpec(): AsrModelSpec? {
+        val id = prefs.voice.finisherModelId.get()
+        if (id.isNotEmpty()) return modelManager.spec(id)?.takeIf { !it.streamsLive }
+        // Before finishers existed, a one-pass model was selected for everything; keep it doing the finishing pass.
+        return modelManager.spec(prefs.voice.modelId.get())?.takeIf { !it.streamsLive }
     }
 
     companion object {
@@ -430,6 +509,8 @@ class AsrController(
         private const val MAX_CLIP_SAMPLES = AudioRecorder.SAMPLE_RATE * 120
 
         private const val MAX_REFINE_SAMPLES = AudioRecorder.SAMPLE_RATE * 30
+
+        private const val MAX_FINISHER_SAMPLES = AudioRecorder.SAMPLE_RATE * 120
     }
 }
 

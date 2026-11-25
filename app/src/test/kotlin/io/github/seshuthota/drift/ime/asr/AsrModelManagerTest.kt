@@ -36,7 +36,13 @@ class AsrModelManagerTest : FunSpec({
         val ids = AsrModelRegistry.models.map { it.id }
         ids.toSet() shouldHaveSize ids.size
         AsrModelRegistry.default().id shouldBe AsrModelRegistry.DEFAULT_MODEL_ID
-        AsrModelRegistry.forEngine(AsrModelRegistry.MOONSHINE) shouldHaveSize AsrModelRegistry.models.size
+        (AsrModelRegistry.forEngine(AsrModelRegistry.MOONSHINE) + AsrModelRegistry.forEngine(AsrModelRegistry.PARAKEET))
+            .shouldHaveSize(AsrModelRegistry.models.size)
+        AsrModelRegistry.models.filterNot { it.streamsLive }.map { it.id } shouldBe
+            listOf(AsrModelRegistry.FLUID_SPEECH_PRO_ID)
+        AsrModelRegistry.spec(AsrModelRegistry.FLUID_SPEECH_PRO_ID)!!.files.map { it.name }.toSet() shouldBe
+            setOf(ParakeetEngine.ENCODER_FILE, ParakeetEngine.ENCODER_FILE + ".data",
+                ParakeetEngine.DECODER_FILE, ParakeetEngine.DECODER_FILE + ".data", ParakeetEngine.VOCAB_FILE)
         for (spec in AsrModelRegistry.models) {
             spec.files.isEmpty().shouldBeFalse()
             spec.totalBytes shouldBeGreaterThan 1_000_000L

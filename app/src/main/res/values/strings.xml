@@ -492,7 +492,6 @@
     <string name="settings__voice__permission_denied" comment="Microphone permission state">Not allowed</string>
     <string name="settings__voice__allow_microphone" comment="Button that opens the system microphone permission dialog">Allow microphone</string>
     <string name="settings__voice__open_app_settings" comment="Button that opens the app's system settings page">Open app settings</string>
-    <string name="settings__voice__models" comment="Section title in Voice input settings">Models</string>
     <string name="settings__voice__installed" comment="Model is on the device">Installed</string>
     <string name="settings__voice__download" comment="Button that downloads a model">Download</string>
     <string name="settings__voice__delete" comment="Button that removes a downloaded model">Delete</string>
@@ -503,11 +502,19 @@
     <string name="settings__voice__keep_loaded_summary" comment="Preference summary">Skips the model reload before each recording</string>
     <string name="settings__voice__plain_mic" comment="Preference title: record from the plain microphone input">Use the plain microphone input</string>
     <string name="settings__voice__plain_mic_summary" comment="Preference summary">Try this if voice input misses words. Some phones record speech very quietly on the voice recognition input.</string>
-    <string name="settings__voice__refine" comment="Preference title: decode the whole recording again after dictation ends">Refine after speaking</string>
-    <string name="settings__voice__refine_summary" comment="Preference summary">When you stop, the whole recording is transcribed once more with every sentence complete.</string>
-    <string name="settings__voice__refine_off" comment="Refine after speaking option">Off</string>
-    <string name="settings__voice__refine_log_only" comment="Refine after speaking option: run it but keep the live text">Compare only (written to the typing quality log)</string>
-    <string name="settings__voice__refine_replace" comment="Refine after speaking option">Replace the live text when they differ</string>
+    <string name="settings__voice__status_off" comment="Voice settings status line; {live} is a model name">You see {live}\'s text. Nothing runs after you stop.</string>
+    <string name="settings__voice__status_log_only" comment="Voice settings status line; {live} and {finisher} are model names">You see {live}\'s text. When you stop, {finisher} transcribes the recording again, but only the typing quality log gets its result.</string>
+    <string name="settings__voice__status_replace" comment="Voice settings status line; {live} and {finisher} are model names">You see {live}\'s text while you speak. When you stop, {finisher}\'s result replaces it if they differ.</string>
+    <string name="settings__voice__while_speaking" comment="Section title: model that shows text live while dictating">While you speak</string>
+    <string name="settings__voice__while_speaking_summary" comment="Section summary">Text appears as you talk. Only live models can do this.</string>
+    <string name="settings__voice__after_stop" comment="Section title: what happens once dictation ends">After you stop</string>
+    <string name="settings__voice__refine_summary" comment="Preference summary">The whole recording can be transcribed once more with every sentence complete.</string>
+    <string name="settings__voice__refine_off" comment="After-you-stop option">Off</string>
+    <string name="settings__voice__refine_log_only" comment="After-you-stop option: run it but keep the live text">Compare only (you keep the live text; the result goes to the typing quality log)</string>
+    <string name="settings__voice__refine_replace" comment="After-you-stop option">Replace the live text when they differ</string>
+    <string name="settings__voice__finish_with" comment="Section title: model that transcribes the recording again after speaking">Transcribe again with</string>
+    <string name="settings__voice__finish_with_summary" comment="Section summary: one-pass models cannot show live text">Models that only work on a finished recording can be used here. They are loaded after you stop, then released.</string>
+    <string name="settings__voice__finish_with_live" comment="Option: transcribe again with the live model; {live} is its name">{live} (same as while speaking, fastest)</string>
 
     <!-- Typing strings -->
     <string name="settings__typing__title" comment="Title of Typing screen">Typing</string>
