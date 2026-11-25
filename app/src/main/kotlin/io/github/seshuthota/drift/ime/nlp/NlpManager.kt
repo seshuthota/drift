@@ -53,6 +53,8 @@ import org.k3lp.runtime.K3Content
 import org.k3lp.runtime.K3TextRange
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.properties.Delegates
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SwapHoriz
 
 private const val BLANK_STR_PATTERN = "^\\s*$"
 
@@ -227,10 +229,17 @@ class NlpManager(context: Context) {
                 }
             }
             internalSuggestionsGuard.withLock {
-                if (internalSuggestions.first < reqTime) {
+                // `<=`: a glide shows its alternatives and asks for predictions within the same millisecond, and the
+                // predictions must still land on top of them (mergeGlideRow).
+                if (internalSuggestions.first <= reqTime) {
+                    val alternatives = glideAlternativesFor(content.surroundingText.textBefore)
                     internalSuggestions = reqTime to buildList {
                         addAll(emojiSuggestions)
-                        addAll(suggestions)
+                        if (alternatives == null) {
+                            addAll(suggestions)
+                        } else {
+                            addAll(mergeGlideRow(alternatives, suggestions))
+                        }
                     }
                     if (NwpText.partialWord(content.surroundingText.textBefore).isEmpty()) {
                         QualityLog.predictionsShown(suggestions.map { it.text.toString() }, reqTime)
@@ -238,6 +247,29 @@ class NlpManager(context: Context) {
                 }
             }
         }
+    }
+
+    /**
+     * Alternatives of the glide just committed. While the glided word is still the last thing before the cursor, the
+     * row shows the best alternative (marked as a replacement) followed by next-word predictions; once the next word
+     * is started, only predictions remain.
+     */
+    @Volatile
+    private var glideAlternatives: List<GlideSuggestionCandidate> = emptyList()
+
+    fun showGlideAlternatives(alternatives: List<GlideSuggestionCandidate>) {
+        glideAlternatives = alternatives
+        suggestDirectly(alternatives)
+    }
+
+    /** Rank of [word] among the remembered glide alternatives, for the quality log. */
+    fun glideAlternativeRank(word: CharSequence): Int =
+        glideAlternatives.indexOfFirst { it.text.toString() == word.toString() }
+
+    private fun glideAlternativesFor(textBefore: CharSequence): List<GlideSuggestionCandidate>? {
+        val alternatives = glideAlternatives
+        val committed = alternatives.firstOrNull()?.replacesText ?: return null
+        return alternatives.takeIf { textBefore.endsWith(committed) }
     }
 
     fun suggestDirectly(suggestions: List<SuggestionCandidate>) {
@@ -248,6 +280,7 @@ class NlpManager(context: Context) {
     }
 
     fun clearSuggestions() {
+        glideAlternatives = emptyList()
         val reqTime = SystemClock.uptimeMillis()
         runBlocking {
             internalSuggestions = reqTime to emptyList()
@@ -531,4 +564,19 @@ private const val TRUNCATION_HINT_CHARS = 48
 
 internal fun shouldExpandSharedActions(candidates: List<*>?, inlineSuggestions: List<*>?, isSelection: Boolean): Boolean {
     return isSelection || (candidates.isNullOrEmpty() && inlineSuggestions.isNullOrEmpty())
+}
+
+/**
+ * The row right after a glide: the best alternative to the glided word (the first one that differs from it, marked
+ * with a swap icon because tapping it replaces the word) followed by next-word predictions. Without predictions the
+ * row is all alternatives, as before.
+ */
+internal fun mergeGlideRow(
+    alternatives: List<GlideSuggestionCandidate>,
+    predictions: List<SuggestionCandidate>,
+): List<SuggestionCandidate> {
+    if (predictions.isEmpty()) return alternatives
+    val committed = alternatives.firstOrNull()?.text?.toString()
+    val best = alternatives.firstOrNull { it.text.toString() != committed } ?: return predictions
+    return listOf(best.copy(icon = Icons.Default.SwapHoriz)) + predictions
 }

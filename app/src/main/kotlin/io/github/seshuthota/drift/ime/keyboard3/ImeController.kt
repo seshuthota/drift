@@ -757,8 +757,8 @@ class ImeController(
                         ?.replaceLearnedWord(textBeforeWord, oldText.trim(), newText.trim())
                 }
                 if (!state.flags.isIncognitoMode) {
-                    val rank = nlpManager?.takeIf { it.isInitialized() }?.value?.activeCandidates.orEmpty()
-                        .indexOfFirst { it is GlideSuggestionCandidate && it.text == candidate.text }
+                    val rank = nlpManager?.takeIf { it.isInitialized() }?.value?.glideAlternativeRank(candidate.text)
+                        ?: -1
                     QualityLog.glidePicked(candidate.text.toString(), rank)
                 }
             }
@@ -806,6 +806,9 @@ class ImeController(
             reevaluateInputShiftState()
             return true
         }
+
+        /** Recomputes the candidate row now, also while glide alternatives are showing. */
+        fun refreshSuggestions() = requestSuggestions(force = true)
 
         private fun requestSuggestions(force: Boolean = false) {
             val nlp = nlpManager?.value ?: return
