@@ -16,9 +16,7 @@
 
 package io.github.seshuthota.drift.app
 
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import io.github.seshuthota.drift.app.settings.theme.ColorPreferenceSerializer
 import io.github.seshuthota.drift.app.settings.theme.DisplayKbdAfterDialogs
 import io.github.seshuthota.drift.app.settings.theme.SnyggLevel
@@ -56,13 +54,11 @@ import io.github.seshuthota.drift.ime.window.ImeWindowConfig
 import dev.patrickgold.jetpref.datastore.annotations.Preferences
 import dev.patrickgold.jetpref.datastore.jetprefDataStoreOf
 import dev.patrickgold.jetpref.datastore.model.LocalTime
-import dev.patrickgold.jetpref.datastore.model.PreferenceData
 import dev.patrickgold.jetpref.datastore.model.PreferenceMigrationEntry
 import dev.patrickgold.jetpref.datastore.model.PreferenceModel
 import dev.patrickgold.jetpref.datastore.model.PreferenceType
 import dev.patrickgold.jetpref.material.ui.ColorRepresentation
 import kotlinx.serialization.json.Json
-import io.github.seshuthota.drift.lib.android.isOrientationPortrait
 
 val DriftPreferenceStore = jetprefDataStoreOf(DriftPreferenceModel::class)
 
@@ -132,15 +128,6 @@ abstract class DriftPreferenceModel : PreferenceModel() {
             key = "clipboard__history_num_grid_columns_landscape",
             default = CLIPBOARD_HISTORY_NUM_GRID_COLUMNS_AUTO,
         )
-        @Composable
-        fun historyNumGridColumns(): PreferenceData<Int> {
-            val configuration = LocalConfiguration.current
-            return if (configuration.isOrientationPortrait()) {
-                historyNumGridColumnsPortrait
-            } else {
-                historyNumGridColumnsLandscape
-            }
-        }
         val historyAutoCleanOldEnabled = boolean(
             key = "clipboard__history_auto_clean_old_enabled",
             default = false,
