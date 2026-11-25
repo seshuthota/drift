@@ -624,10 +624,28 @@ class ImeController(
                 requestSuggestions()
                 return
             } else {
+                refillTrackedTextBeforeCursor()
                 super.emitBackspace()
             }
             expectedContentQueue.push(state.content)
             requestSuggestions()
+        }
+
+        /**
+         * k3 tracks only a window of the text before the cursor ([TRACKED_CHARS_BEFORE]). Each backspace shrinks
+         * it, and the matching selection update is deduplicated against [expectedContentQueue] so it is never
+         * re-read. In a long field the window runs dry while text remains and backspace silently stops. Re-read it
+         * from the editor once it is shorter than the text that really precedes the cursor.
+         */
+        private fun refillTrackedTextBeforeCursor() {
+            val content = state.content
+            val selection = content.selection
+            if (selection.isNotCollapsed()) return
+            val tracked = content.surroundingText.textBefore.length
+            if (tracked >= minOf(selection.start, TRACKED_REFILL_THRESHOLD)) return
+            val fresh = state.editor.getSurroundingText(TRACKED_CHARS_BEFORE, 10)
+            if (!isSurroundingTextTrustworthy(selection, fresh) || fresh.textBefore.length <= tracked) return
+            resetContent(selection, fresh)
         }
 
         override fun emitEnter() {
@@ -989,6 +1007,9 @@ class ImeController(
 
     companion object {
         private val NEWLINE_SEQ = "\n".asK3String()
+        private const val RECENT_AUTOCORRECTIONS = 8
+        private const val TRACKED_CHARS_BEFORE = 50
+        private const val TRACKED_REFILL_THRESHOLD = 20
 
         /** U+FFFC OBJECT REPLACEMENT CHARACTER, which editors put in their on-screen text for inline objects. */
         private const val OBJECT_REPLACEMENT = '\uFFFC'
